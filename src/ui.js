@@ -40,6 +40,57 @@ export const icons = {
     g.lineStyle(s * 0.18, c, 1); g.strokeCircle(0, 0, s * 0.3);
     g.fillStyle(0xffd23f, 1); g.fillRoundedRect(s * 0.4, -s * 0.18, s * 0.8, s * 0.36, 5);
   },
+  bone(g, s, c = 0xffffff) {
+    g.fillStyle(c, 1); g.fillRoundedRect(-s * 0.7, -s * 0.16, s * 1.4, s * 0.32, 6);
+    [[-0.7, -0.2], [-0.7, 0.2], [0.7, -0.2], [0.7, 0.2]].forEach(([x, y]) => g.fillCircle(s * x, s * y, s * 0.26));
+  },
+  heart(g, s, c = 0xffffff) {
+    g.fillStyle(c, 1); g.fillCircle(-s * 0.4, -s * 0.2, s * 0.5); g.fillCircle(s * 0.4, -s * 0.2, s * 0.5);
+    g.fillTriangle(-s * 0.88, 0.0, s * 0.88, 0.0, 0, s * 0.95);
+  },
+  helpHand(g, s, c = 0xffffff) { // mão aberta = "ajudar"
+    g.fillStyle(c, 1); g.fillRoundedRect(-s * 0.55, -s * 0.1, s * 1.1, s * 0.85, 14);
+    for (let i = 0; i < 4; i++) g.fillRoundedRect(-s * 0.55 + i * s * 0.29, -s * 0.85, s * 0.23, s * 0.9, 8);
+    g.fillRoundedRect(-s * 0.95, -s * 0.05, s * 0.3, s * 0.6, 8);
+  },
+  box(g, s, c = 0xffffff) {
+    g.fillStyle(c, 1); g.fillRoundedRect(-s * 0.8, -s * 0.55, s * 1.6, s * 1.2, 8);
+    g.fillStyle(0xe53935, 1); g.fillRect(-s * 0.12, -s * 0.55, s * 0.24, s * 1.2); g.fillRect(-s * 0.8, -s * 0.05, s * 1.6, s * 0.2);
+  },
+  egg(g, s, c = 0xffffff) {
+    g.fillStyle(c, 1); g.fillEllipse(0, 0, s * 1.2, s * 1.55);
+    g.fillStyle(0x7fcb8c, 1); g.fillCircle(-s * 0.2, -s * 0.2, s * 0.14); g.fillCircle(s * 0.22, s * 0.15, s * 0.17); g.fillCircle(-s * 0.1, s * 0.4, s * 0.1);
+  },
+  basket(g, s, c = 0xffffff) {
+    g.lineStyle(s * 0.12, c, 1); g.lineBetween(-s * 0.6, -s * 0.9, -s * 0.5, -s * 0.15); g.lineBetween(s * 0.6, -s * 0.9, s * 0.5, -s * 0.15);
+    g.fillStyle(c, 1); g.fillRoundedRect(-s * 0.7, -s * 0.15, s * 1.4, s * 0.9, 10);
+  },
+  wing(g, s, c = 0xffffff) {
+    g.fillStyle(c, 1); g.fillTriangle(-s, s * 0.35, s, s * 0.35, 0, -s * 0.8);
+    g.fillStyle(0x000000, 0.18); g.fillTriangle(-s * 0.1, s * 0.35, s * 0.55, s * 0.35, 0, -s * 0.5);
+  },
+  magnet(g, s, c = 0xffffff) {
+    g.lineStyle(s * 0.4, c, 1); g.beginPath(); g.arc(0, -s * 0.05, s * 0.6, Math.PI, 0, false); g.strokePath();
+    g.fillStyle(0xe53935, 1); g.fillRect(-s * 0.8, -s * 0.05, s * 0.4, s * 0.55); g.fillRect(s * 0.4, -s * 0.05, s * 0.4, s * 0.55);
+  },
+  shield(g, s, c = 0xffffff) {
+    g.fillStyle(c, 1); g.fillTriangle(-s * 0.85, -s * 0.6, s * 0.85, -s * 0.6, 0, s * 0.95); g.fillRoundedRect(-s * 0.85, -s * 0.85, s * 1.7, s * 0.7, 8);
+  },
+  bolt(g, s, c = 0xffffff) {
+    g.fillStyle(c, 1); g.fillTriangle(s * 0.15, -s, -s * 0.7, s * 0.15, s * 0.05, s * 0.15); g.fillTriangle(-s * 0.15, s, s * 0.7, -s * 0.15, -s * 0.05, -s * 0.15);
+  },
+  spring(g, s, c = 0xffffff) {
+    g.lineStyle(s * 0.2, c, 1);
+    for (let i = 0; i < 4; i++) g.lineBetween(-s * 0.6, s * 0.7 - i * s * 0.45, s * 0.6, s * 0.5 - i * s * 0.45);
+    g.fillStyle(c, 1); g.fillTriangle(0, -s, -s * 0.5, -s * 0.5, s * 0.5, -s * 0.5);
+  },
+  jetDrop(g, s, c = 0xffffff) {
+    icons.drop(g, s * 0.8, c); g.lineStyle(s * 0.14, c, 1); g.lineBetween(-s * 0.95, s * 0.2, -s * 0.55, s * 0.2); g.lineBetween(-s * 0.95, s * 0.55, -s * 0.55, s * 0.55);
+  },
+  truck(g, s, c = 0xffffff) {
+    g.fillStyle(c, 1); g.fillRoundedRect(-s, -s * 0.4, s * 1.3, s * 0.8, 6); g.fillRoundedRect(s * 0.3, -s * 0.2, s * 0.65, s * 0.6, 6);
+    g.fillStyle(0x1b2a49, 1); g.fillCircle(-s * 0.55, s * 0.45, s * 0.22); g.fillCircle(s * 0.55, s * 0.45, s * 0.22);
+  },
   hand(g, s) { // dedo apontando (tutorial)
     g.fillStyle(0xffe0bd, 1); g.lineStyle(4, 0x1b2a49, 1);
     g.fillRoundedRect(-s * 0.3, -s * 0.2, s * 0.6, s * 0.95, 14); g.strokeRoundedRect(-s * 0.3, -s * 0.2, s * 0.6, s * 0.95, 14);
@@ -51,7 +102,7 @@ export const icons = {
  * Botão redondo grande. Reage ao TOQUE (pointerdown), não ao "clique": resposta imediata.
  * opts: { color, icon(g,s), onDown, depth }
  */
-export function roundButton(scene, x, y, r, { color = 0x2f9bff, icon, onDown, depth = 50, iconScale = 0.5, ring = 0xffffff } = {}) {
+export function roundButton(scene, x, y, r, { color = 0x2f9bff, icon, onDown, onUp, depth = 50, iconScale = 0.5, ring = 0xffffff } = {}) {
   const root = scene.add.container(x, y).setDepth(depth);
   const base = scene.add.graphics();
   const draw = (col, alpha) => {
@@ -84,5 +135,6 @@ export function roundButton(scene, x, y, r, { color = 0x2f9bff, icon, onDown, de
     scene.tweens.add({ targets: root, scale: 0.9, duration: 70, yoyo: true });
     onDown && onDown(p);
   });
+  if (onUp) { hit.on('pointerup', () => onUp()); hit.on('pointerout', () => onUp()); hit.on('pointerupoutside', () => onUp()); }
   return api;
 }

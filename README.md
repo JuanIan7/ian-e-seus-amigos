@@ -3,14 +3,19 @@
 Jogo infantil de corrida e resgate para Android (para o Ian, 4 anos, e seus primos de 5 e 7). Corrida lateral automática, dois botões grandes, três modos de dificuldade (Fácil, Aventura, Desafio).
 
 ## Como jogar
-- **Seta verde (direita): pular.**
-- **Gota laranja (esquerda): ação** — acende quando há algo para fazer (apagar fogo com a mangueira).
+- Menu: escolha a **dificuldade**, a **fase inicial (1 a 5)** e, se quiser, monte o personagem (botão do rostinho). Toque no **▶** para começar.
+- **Seta verde (direita): pular.** No ar, **segurar** o botão faz planar (quando tem as asas).
+- **Botão laranja (esquerda): ação** — o ícone muda conforme a missão (gota, osso, mãozinha, caixa, ovo, cesta, coração) e acende quando há algo para fazer.
+- A cada **50 estrelas** nasce um poder aleatório: escudo, ímã de estrelas, super pulo, turbo, voo ou jato forte (ícone com anel de tempo no topo).
 - Pause no canto superior direito (continuar, voltar ao menu, som).
 
-## Estado atual (etapa 1 — protótipo)
-Funcionando: menu com 3 modos, corrida automática, pulo (com tolerância e dica visual no Fácil), obstáculos, estrelas, mangueira, fogo na lixeira (corrida para na posição de interação, indicador de progresso em gotas), colisão amigável (desacelera, nunca reinicia), ajuda automática após erros repetidos, tutorial de pulo (congela no ponto ideal até tocar), pausa, som, salvamento local, pausa automática em segundo plano. Arte e áudio 100% gerados por código.
+## Estado atual (etapa 2 — todas as fases jogáveis)
+- **Fases 1–5** conectadas na mesma sessão (banner "Fase N", cenário em fusão, sem menu): bairro (bombeiro), praça (cães + gatinho, osso, caminhão), floresta (buracos, folhas, trampolim, planar, coelhinho, suprimentos), alturas (telhados, voo, resgate com helicóptero) e mundo dos dinossauros (osso para o estegossauro, ovo ao ninho, filhote e família, pterossauro). Depois da 5 volta ao tema 1 com contador (×2…), dificuldade com teto.
+- **Personalização:** 7 tons de pele, 3 formatos de rosto, 6 cores de olhos, 8 penteados (liso, ondulado, cacheado, crespo, rabo, trança, coquinhos), 8 cores de cabelo, 10 roupas (bombeiro, equipe de cães, dinossauro, explorador, piloto, guarda-florestal, astronauta, super-herói, esportiva, casual). Salvo localmente.
+- **Recuperação amigável:** colisões só desaceleram; quedas em buracos voltam o mundo e reaparecem em chão firme; no Fácil há pulo assistido, planar automático e salto de resgate; objetivos perdidos reaparecem adiante.
+- Visual ainda é provisório (formas geradas por código). A arte final seguirá o estilo de jogos de corrida coloridos enviados como referência (contornos grossos, cores saturadas, camadas de fundo com profundidade).
 
-Ainda falta: casa e prédio em chamas (resto da Fase 1), personalização e 10 roupas, fases 2–5, transições, ciclo infinito, arte final, áudio final.
+Ainda falta: arte final, áudio final, ajuste fino de dificuldade com as crianças, medição de desempenho em celular real.
 
 ## Decisões registradas
 - **Tecnologia:** Phaser 3 + Vite (HTML5) empacotado com Capacitor. Funciona offline, desenvolvimento e testes no navegador, APK gerado pelo GitHub Actions.
@@ -24,8 +29,9 @@ Ainda falta: casa e prédio em chamas (resto da Fase 1), personalização e 10 r
 npm install
 npm run dev            # http://localhost:5173
 npm run build          # gera dist/
-npm test               # simulação com bots (3 modos) — precisa de build antes
+npm test               # simulação com bots: 5 fases × 3 modos, poderes, aparências — precisa de build antes
 npm run test:ui        # toques emulados + capturas em tests/out/
+node tests/shots.mjs   # capturas de cada missão em tests/out/shots/
 ```
 Teste no navegador: Espaço/↑ = pular, ↓/X = ação, P/Esc = pausa. Para PCs sem GPU: `?renderer=canvas`.
 
