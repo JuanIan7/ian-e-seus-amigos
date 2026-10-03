@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.DS_Store
+tests/out/
+*.log
+
+# Android (o projeto android/ é versionado; saídas de compilação não)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/build/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+.idea/

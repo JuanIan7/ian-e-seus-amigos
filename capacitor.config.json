@@ -1,0 +1,7 @@
+{
+  "appId": "br.com.ianeamigos.jogo",
+  "appName": "Ian e Seus Amigos",
+  "webDir": "dist",
+  "backgroundColor": "#1b2a49",
+  "android": { "allowMixedContent": false }
+}
