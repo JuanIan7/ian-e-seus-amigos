@@ -1,6 +1,7 @@
 // Personagem infantil personalizável (origem = pés, voltado para a direita).
 // Tudo desenhado por código: tons de pele, rostos, 8 penteados, cores e 10 roupas.
 import { load, DEFAULT_LOOK } from './save.js';
+import { og } from './outline.js';
 
 export const SKINS = [0xffe0c2, 0xf5c9a0, 0xe0a370, 0xc68642, 0x9a6233, 0x6e4426, 0x4a2c17];
 export const HAIR_COLORS = [0x1a1410, 0x4a2c17, 0x8a5a35, 0xe6c04c, 0xb5502a, 0x9aa0a8, 0x3f7fd9, 0xff7eb6];
@@ -106,7 +107,7 @@ function hairFront(g, style, c, face) {
 
 function drawHead(scene, look, o) {
   const skin = SKINS[look.skin] ?? SKINS[3], hc = HAIR_COLORS[look.hairColor] ?? HAIR_COLORS[1], ec = EYE_COLORS[look.eyes] ?? EYE_COLORS[0];
-  const back = scene.add.graphics(), front = scene.add.graphics();
+  const back = og(scene), front = og(scene), hat = og(scene); hat.y = -9; // chapéus sobem um pouco para não cobrir os olhos
   hairBack(back, look.hair, hc);
   const g = front;
   // rosto
@@ -129,6 +130,7 @@ function drawHead(scene, look, o) {
   g.lineStyle(3, 0x7a3b22, 1); g.beginPath(); g.arc(3, 9, 9, 0.25, Math.PI - 0.25); g.strokePath();
   g.fillStyle(0xff8a80, 0.55); g.fillCircle(17, 10, 5); g.fillCircle(-12, 10, 4.5);
   // acessórios de cabeça
+  { const g = (h === 'astro' || h === 'mask' || h === 'headband') ? front : hat;
   switch (h) {
     case 'helmet':
       g.fillStyle(0xe53935, 1); g.slice(0, -4, 30, Math.PI, 0, false); g.fillPath(); g.fillRoundedRect(-34, -6, 68, 9, 4);
@@ -164,7 +166,8 @@ function drawHead(scene, look, o) {
       g.fillStyle(0xffffff, 1); g.fillCircle(-4, -18, 4.5); break;
     default: break;
   }
-  return { back, front };
+  }
+  return { back, front, hat };
 }
 
 /** Constrói o personagem. look = {skin, face, hair, hairColor, eyes, outfit} (índices). */
@@ -174,7 +177,7 @@ export function buildChild(scene, look = load().look) {
   const o = O[outfit.id];
   const skin = SKINS[look.skin] ?? SKINS[3];
   const c = scene.add.container(0, 0);
-  const g = () => scene.add.graphics();
+  const g = () => og(scene);
 
   const mkLeg = (x, dark) => {
     const l = g(); l.x = x; l.y = -38;
@@ -200,8 +203,8 @@ export function buildChild(scene, look = load().look) {
 
   const body = g(); drawTorso(body, outfit.id, o);
 
-  const { back, front } = drawHead(scene, look, o);
-  const head = scene.add.container(0, -108, [front]);
+  const { back, front, hat } = drawHead(scene, look, o);
+  const head = scene.add.container(0, -108, [front, hat]);
   const hairBackG = back; hairBackG.setPosition(0, -108);
 
   // traseiros: capa, cauda, mochila

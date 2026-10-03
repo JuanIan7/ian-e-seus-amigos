@@ -5,10 +5,11 @@ import { GROUND } from './config.js';
 import { buildChild } from './character.js';
 import { buildDog, poseDog, buildDino, buildCat, buildBunny, buildCrates, buildShelter, buildNest, buildEgg, buildHeli, buildBasketRig } from './creatures.js';
 import { sfx, speak } from './audio.js';
+import { og } from './outline.js';
 
 const npcLook = (outfit, skin, hair, hairColor) => ({ skin, face: 0, hair, hairColor, eyes: 0, outfit });
 const flameG = (scene, x, y, size) => {
-  const f = scene.add.graphics(); f.x = x; f.y = y;
+  const f = og(scene); f.x = x; f.y = y;
   f.fillStyle(0xff6a1a, 1); f.fillCircle(0, -size * 0.5, size * 0.5); f.fillTriangle(-size * 0.5, -size * 0.55, size * 0.5, -size * 0.55, 0, -size * 1.5);
   f.fillStyle(0xffd23f, 1); f.fillCircle(0, -size * 0.35, size * 0.28); f.fillTriangle(-size * 0.28, -size * 0.4, size * 0.28, -size * 0.4, 0, -size * 0.95);
   f.phase = Math.random() * 6; return f;
@@ -32,7 +33,7 @@ export const MISSIONS = {
     icon: 'drop', proj: 'drop', needs: 'hose', kind: 'fire', hits: (c) => c.fireHits, cue: 'Fogo na lixeira!',
     build(scene) {
       const root = scene.add.container(0, GROUND).setDepth(6);
-      const bin = scene.add.graphics();
+      const bin = og(scene);
       bin.fillStyle(0x000000, 0.2); bin.fillEllipse(0, 2, 90, 14);
       bin.fillStyle(0x4f7d9a, 1); bin.fillRoundedRect(-36, -84, 72, 84, 8); bin.fillStyle(0x3d6580, 1); bin.fillRoundedRect(-42, -96, 84, 16, 6);
       bin.fillStyle(0x2d4d63, 1); for (let i = -18; i <= 18; i += 12) bin.fillRect(i - 2, -72, 4, 56);
@@ -46,7 +47,7 @@ export const MISSIONS = {
     icon: 'drop', proj: 'drop', needs: 'hose', kind: 'fire', hits: (c) => c.fireHits + 1, cue: 'Fogo na casa!',
     build(scene) {
       const root = scene.add.container(0, GROUND).setDepth(6);
-      const h = scene.add.graphics();
+      const h = og(scene);
       h.fillStyle(0xffd9a8, 1); h.fillRect(-100, -150, 200, 150); h.fillStyle(0xd9534f, 1); h.fillTriangle(-116, -150, 116, -150, 0, -225);
       h.fillStyle(0x8d5a3b, 1); h.fillRect(-18, -76, 36, 76); h.fillStyle(0x9fdcff, 1); h.fillRect(-84, -112, 44, 44); h.fillRect(40, -112, 44, 44);
       h.fillStyle(0x6e4527, 1); h.fillRect(-84, -92, 44, 4); h.fillRect(-64, -112, 4, 44);
@@ -60,7 +61,7 @@ export const MISSIONS = {
     icon: 'drop', proj: 'drop', needs: 'hose', kind: 'fire', hits: (c) => c.fireHits + 2, cue: 'Fogo no prédio!',
     build(scene) {
       const root = scene.add.container(0, GROUND).setDepth(6);
-      const b = scene.add.graphics();
+      const b = og(scene);
       b.fillStyle(0x9fb4d6, 1); b.fillRect(-90, -300, 180, 300); b.fillStyle(0x8199c4, 1); b.fillRect(-90, -300, 180, 14);
       b.fillStyle(0xfff2b0, 0.9); for (let yy = -272; yy < -30; yy += 46) for (let xx = -70; xx < 70; xx += 46) b.fillRect(xx, yy, 28, 30);
       b.fillStyle(0x6e4527, 1); b.fillRect(-18, -64, 36, 64);
@@ -120,7 +121,7 @@ export const MISSIONS = {
     build(scene) {
       const root = scene.add.container(0, GROUND).setDepth(6);
       const bunny = buildBunny(scene); bunny.x = 12;
-      const log = scene.add.graphics(); log.fillStyle(0x8a5a35, 1); log.fillRoundedRect(-62, -76, 124, 76, 18); log.fillStyle(0xd9a86a, 1); log.fillCircle(-52, -38, 26); log.lineStyle(4, 0x8a5a35, 1); log.strokeCircle(-52, -38, 16);
+      const log = og(scene); log.fillStyle(0x8a5a35, 1); log.fillRoundedRect(-62, -76, 124, 76, 18); log.fillStyle(0xd9a86a, 1); log.fillCircle(-52, -38, 26); log.lineStyle(4, 0x8a5a35, 1); log.strokeCircle(-52, -38, 16);
       log.fillStyle(0x6e4527, 1); log.fillRect(-30, -62, 80, 4); log.fillRect(-30, -40, 80, 4);
       root.add([bunny, log]);
       return { root, w: 120, h: 100, aim: { x: 0, y: 60 }, parts: { bunny, log } };
@@ -132,7 +133,7 @@ export const MISSIONS = {
     icon: 'box', proj: 'box', needs: null, hits: () => 2, cue: 'Entregue os suprimentos!',
     build(scene) {
       const root = scene.add.container(0, GROUND).setDepth(6);
-      const tent = scene.add.graphics(); tent.fillStyle(0xff8a1f, 1); tent.fillTriangle(30, 0, 150, 0, 90, -100); tent.fillStyle(0x7a3b10, 1); tent.fillTriangle(70, 0, 110, 0, 90, -60);
+      const tent = og(scene); tent.fillStyle(0xff8a1f, 1); tent.fillTriangle(30, 0, 150, 0, 90, -100); tent.fillStyle(0x7a3b10, 1); tent.fillTriangle(70, 0, 110, 0, 90, -60);
       const camper = buildChild(scene, npcLook(3, 4, 0, 0)); camper.setScale(0.95); camper.x = -20;
       root.add([tent, camper]);
       return { root, w: 120, h: 130, aim: { x: -10, y: 80 }, parts: { camper } };
@@ -145,7 +146,7 @@ export const MISSIONS = {
     icon: 'basket', proj: 'basket', needs: null, hits: (c) => Math.max(2, c.fireHits - 1), cue: 'Desça a cesta de resgate!',
     build(scene) {
       const root = scene.add.container(0, GROUND).setDepth(6);
-      const plat = scene.add.graphics(); plat.fillStyle(0x7b828c, 1); plat.fillRoundedRect(-80, -250, 160, 20, 6); plat.fillStyle(0xffd23f, 1); for (let x = -70; x < 60; x += 30) plat.fillRect(x, -250, 14, 20);
+      const plat = og(scene); plat.fillStyle(0x7b828c, 1); plat.fillRoundedRect(-80, -250, 160, 20, 6); plat.fillStyle(0xffd23f, 1); for (let x = -70; x < 60; x += 30) plat.fillRect(x, -250, 14, 20);
       plat.lineStyle(6, 0x586380, 1); plat.lineBetween(-66, -230, -66, 0); plat.lineBetween(66, -230, 66, 0);
       const person = buildChild(scene, npcLook(3, 2, 2, 2)); person.setScale(0.9); person.y = -250;
       const heli = buildHeli(scene); heli.setScale(0.7); heli.y = -430; heli.x = 40;
@@ -183,7 +184,7 @@ export const MISSIONS = {
     icon: 'helpHand', proj: 'heart', needs: null, hits: (c) => Math.max(2, c.fireHits - 1), cue: 'Ajude o filhote!', label: 'baby',
     build(scene) {
       const root = scene.add.container(0, GROUND).setDepth(6);
-      const mud = scene.add.graphics(); mud.fillStyle(0x6e4b2a, 1); mud.fillEllipse(0, -8, 150, 34); mud.fillStyle(0x8a5a35, 1); mud.fillEllipse(-10, -12, 90, 18);
+      const mud = og(scene); mud.fillStyle(0x6e4b2a, 1); mud.fillEllipse(0, -8, 150, 34); mud.fillStyle(0x8a5a35, 1); mud.fillEllipse(-10, -12, 90, 18);
       const baby = buildDino(scene, 'baby'); baby.scaleX = -1; baby.y = 6;
       root.add([baby, mud]);
       return { root, w: 130, h: 110, aim: { x: 0, y: 50 }, parts: { baby, mud } };

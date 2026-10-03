@@ -1,5 +1,6 @@
 // Criaturas e veículos originais, desenhados por código (rosto/cores/uniformes próprios).
 // Todos voltados para a DIREITA, origem = pés no chão. Use scaleX = -1 para virar.
+import { og } from './outline.js';
 
 const shade = (c, f) => {
   const r = Math.min(255, ((c >> 16) & 255) * f), g = Math.min(255, ((c >> 8) & 255) * f), b = Math.min(255, (c & 255) * f);
@@ -16,7 +17,7 @@ export const DOGS = {
 export function buildDog(scene, key, scale = 1) {
   const d = DOGS[key] || DOGS.bolota;
   const c = scene.add.container(0, 0);
-  const g = () => scene.add.graphics();
+  const g = () => og(scene);
   const leg = (x, front) => { const l = g(); l.x = x; l.y = -30; l.fillStyle(d.coat, 1); l.fillRoundedRect(-6, 0, 12, 28, 5); l.fillStyle(front ? d.belly : shade(d.coat, 0.85), 1); l.fillRoundedRect(-7, 22, 17, 9, 4); return l; };
   const legs = [leg(-24, false), leg(-10, false), leg(14, true), leg(28, true)];
   const tail = g(); tail.x = -32; tail.y = -46; tail.fillStyle(d.coat, 1); tail.fillEllipse(-10, -8, 30, 11); tail.fillStyle(d.belly, 1); tail.fillCircle(-22, -12, 6);
@@ -70,7 +71,7 @@ export const DINOS = {
 };
 
 export function buildDino(scene, species) {
-  const g = scene.add.graphics();
+  const g = og(scene);
   const eye = (x, y, r = 7) => { g.fillStyle(0xffffff, 1); g.fillCircle(x, y, r); g.fillStyle(0x222222, 1); g.fillCircle(x + r * 0.25, y, r * 0.55); g.fillStyle(0xffffff, 1); g.fillCircle(x + r * 0.4, y - r * 0.25, r * 0.22); };
   const legs4 = (col, h, xs) => { xs.forEach((x, i) => { g.fillStyle(i % 2 ? shade(col, 0.82) : col, 1); g.fillRoundedRect(x - 14, -h, 28, h, 10); g.fillStyle(0xf1e6b3, 1); g.fillRoundedRect(x - 16, -9, 34, 10, 5); }); };
   if (species === 'trex') {
@@ -133,7 +134,7 @@ export function buildDino(scene, species) {
 
 export function buildPtero(scene) {
   const c = scene.add.container(0, 0);
-  const g = scene.add.graphics();
+  const g = og(scene);
   g.fillStyle(0xb18cff, 1); g.fillTriangle(-70, 0, 70, 0, 0, -48);               // asa de cima (simplificada)
   g.fillStyle(0x8a62e0, 1); g.fillTriangle(-70, 0, 0, 0, -30, 30); g.fillTriangle(70, 0, 0, 0, 30, 30);
   g.fillStyle(0xd6c0ff, 1); g.fillEllipse(0, 4, 54, 28);
@@ -146,13 +147,13 @@ export function buildPtero(scene) {
 }
 
 export function buildEgg(scene) {
-  const g = scene.add.graphics();
+  const g = og(scene);
   g.fillStyle(0xfff3dc, 1); g.fillEllipse(0, -28, 40, 52);
   g.fillStyle(0x7fcb8c, 1); g.fillCircle(-7, -36, 5); g.fillCircle(8, -24, 6); g.fillCircle(-3, -14, 4);
   return g;
 }
 export function buildNest(scene) {
-  const g = scene.add.graphics();
+  const g = og(scene);
   g.fillStyle(0x8a5a35, 1); g.fillEllipse(0, -10, 130, 36); g.fillStyle(0xc2864a, 1); g.fillEllipse(0, -16, 112, 26);
   g.lineStyle(3, 0x6e4527, 1); for (let i = -50; i <= 50; i += 14) g.lineBetween(i, -22, i + 10, -6);
   return g;
@@ -160,7 +161,7 @@ export function buildNest(scene) {
 
 // ------------------------------------------------------------------ animais e objetos de resgate
 export function buildCat(scene) {
-  const g = scene.add.graphics();
+  const g = og(scene);
   g.fillStyle(0xff9a3c, 1); g.fillEllipse(0, -26, 54, 46); g.fillStyle(0xfff0d6, 1); g.fillEllipse(6, -18, 28, 24);
   g.fillStyle(0xff9a3c, 1); g.fillCircle(8, -56, 22); g.fillTriangle(-8, -70, 0, -88, 10, -70); g.fillTriangle(10, -70, 20, -88, 28, -68);
   g.fillStyle(0xcc6a1c, 1); g.fillRect(2, -76, 3, 10); g.fillRect(10, -76, 3, 10);
@@ -170,7 +171,7 @@ export function buildCat(scene) {
   return g;
 }
 export function buildBunny(scene) {
-  const g = scene.add.graphics();
+  const g = og(scene);
   g.fillStyle(0xf4f1ea, 1); g.fillEllipse(0, -24, 50, 42); g.fillCircle(-26, -22, 9);
   g.fillCircle(14, -50, 19); g.fillEllipse(6, -86, 12, 40); g.fillEllipse(20, -84, 12, 40);
   g.fillStyle(0xffb3c1, 1); g.fillEllipse(6, -86, 6, 28); g.fillEllipse(20, -84, 6, 28);
@@ -178,7 +179,7 @@ export function buildBunny(scene) {
   return g;
 }
 export function buildCrates(scene, n = 3) {
-  const g = scene.add.graphics();
+  const g = og(scene);
   for (let i = 0; i < n; i++) {
     const x = (i % 2) * 8 - 4, y = -i * 40;
     g.fillStyle(0xc99a5b, 1); g.fillRoundedRect(x - 36, y - 40, 72, 40, 4); g.lineStyle(4, 0x8a5a35, 1); g.strokeRoundedRect(x - 36, y - 40, 72, 40, 4);
@@ -187,13 +188,13 @@ export function buildCrates(scene, n = 3) {
   return g;
 }
 export function buildShelter(scene) {
-  const g = scene.add.graphics();
+  const g = og(scene);
   g.fillStyle(0x3ecb6b, 1); g.fillRoundedRect(-52, -120, 104, 120, 10); g.fillStyle(0xffffff, 1); g.fillRect(-8, -102, 16, 66); g.fillRect(-33, -77, 66, 16);
   g.fillStyle(0x2d9a52, 1); g.fillRect(-52, -128, 104, 10);
   return g;
 }
 export function buildBasketRig(scene) { // cesta de resgate presa a uma corda
-  const g = scene.add.graphics();
+  const g = og(scene);
   g.lineStyle(5, 0x555555, 1); g.lineBetween(-22, -10, -14, -60); g.lineBetween(22, -10, 14, -60);
   g.fillStyle(0xff8a1f, 1); g.fillRoundedRect(-30, -10, 60, 34, 8); g.fillStyle(0xffd23f, 1); g.fillRect(-30, 0, 60, 6);
   return g;
@@ -202,7 +203,7 @@ export function buildBasketRig(scene) { // cesta de resgate presa a uma corda
 // ------------------------------------------------------------------ veículos originais
 export function buildFireTruck(scene) {
   const c = scene.add.container(0, 0);
-  const g = scene.add.graphics();
+  const g = og(scene);
   g.fillStyle(0x000000, 0.2); g.fillEllipse(0, 4, 210, 16);
   g.fillStyle(0xe53935, 1); g.fillRoundedRect(-104, -78, 150, 62, 10);                 // carroceria
   g.fillStyle(0xc62828, 1); g.fillRoundedRect(36, -92, 64, 76, 12);                    // cabine
@@ -212,18 +213,18 @@ export function buildFireTruck(scene) {
   g.fillStyle(0x6c757d, 1); g.fillRoundedRect(-104, -26, 204, 12, 4);
   g.fillStyle(0xffd23f, 1); g.fillCircle(-62, -62, 10); g.fillStyle(0xe53935, 1); g.fillCircle(-62, -62, 4.5);   // símbolo fictício da equipe
   g.fillStyle(0x222222, 1); g.fillCircle(-62, -8, 19); g.fillCircle(66, -8, 19); g.fillStyle(0xbdbdbd, 1); g.fillCircle(-62, -8, 9); g.fillCircle(66, -8, 9);
-  const light = scene.add.graphics(); light.fillStyle(0x4db8ff, 1); light.fillRoundedRect(46, -104, 22, 12, 4); light.fillStyle(0xff3b3b, 1); light.fillRoundedRect(70, -104, 22, 12, 4);
+  const light = og(scene); light.fillStyle(0x4db8ff, 1); light.fillRoundedRect(46, -104, 22, 12, 4); light.fillStyle(0xff3b3b, 1); light.fillRoundedRect(70, -104, 22, 12, 4);
   c.add([g, light]); c.light = light;
   return c;
 }
 export function buildHeli(scene) {
   const c = scene.add.container(0, 0);
-  const g = scene.add.graphics();
+  const g = og(scene);
   g.fillStyle(0x8a4fd9, 1); g.fillEllipse(0, 0, 130, 70); g.fillRoundedRect(-150, -12, 110, 18, 8); g.fillTriangle(-150, -12, -170, -44, -134, -12);
   g.fillStyle(0x9fdcff, 1); g.fillEllipse(26, -8, 56, 38);
   g.fillStyle(0xffd23f, 1); g.fillRect(-30, 10, 60, 6);
   g.lineStyle(5, 0x444444, 1); g.lineBetween(-40, 42, 52, 42); g.lineBetween(-20, 30, -24, 42); g.lineBetween(30, 30, 34, 42);
-  const rotor = scene.add.graphics(); rotor.fillStyle(0x333333, 1); rotor.fillRoundedRect(-110, -46, 220, 8, 4); rotor.fillRect(-3, -40, 6, 12);
+  const rotor = og(scene); rotor.fillStyle(0x333333, 1); rotor.fillRoundedRect(-110, -46, 220, 8, 4); rotor.fillRect(-3, -40, 6, 12);
   c.add([g, rotor]); c.rotor = rotor;
   return c;
 }

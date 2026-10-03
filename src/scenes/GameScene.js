@@ -390,7 +390,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   startFall() {
-    this.fall = { t: 0 }; this.stats.falls++; sfx.hit(); this.puff(this.p.x, GROUND, 8);
+    this.fall = { t: 0 }; this.stats.falls++; sfx.hit(); this.cameras.main.shake(160, 0.004); this.puff(this.p.x, GROUND, 8);
     this.hitTimes.push(this.t); this.hitTimes = this.hitTimes.filter((t) => this.t - t < 25); this.cleanTimer = 0;
     if (this.hitTimes.length >= 3 && this.assist < 2) { this.assist++; this.hitTimes = []; }
   }
@@ -625,7 +625,7 @@ export default class GameScene extends Phaser.Scene {
     const spr = o.sprite;
     this.tweens.add({ targets: spr, x: spr.x + 120, y: GROUND - 140, angle: 200, alpha: 0, duration: 520, ease: 'Quad.out', onComplete: () => { spr.destroy(); } });
     if (this.powers.shield) { this.removePower('shield'); sfx.star(); this.puff(p.x, p.y - 60, 10, 0x4db8ff); p.invul = 0.6; return; }
-    p.invul = 1.4; this.recover = 1.0; this.stats.hits++; sfx.hit();
+    p.invul = 1.4; this.recover = 1.0; this.stats.hits++; sfx.hit(); this.cameras.main.shake(140, 0.004);
     this.tweens.add({ targets: this.kid, angle: { from: -8, to: 8 }, duration: 70, yoyo: true, repeat: 3, onComplete: () => this.kid.setAngle(0) });
     this.puff(p.x + 20, p.y - 60, 5);
     this.hitTimes.push(this.t); this.hitTimes = this.hitTimes.filter((t) => this.t - t < 25); this.cleanTimer = 0;
