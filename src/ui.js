@@ -7,6 +7,11 @@ export const icons = {
     g.fillTriangle(0, -s, s * 0.95, s * 0.1, -s * 0.95, s * 0.1);
     g.fillRoundedRect(-s * 0.32, s * 0.05, s * 0.64, s * 0.8, 6);
   },
+  fwd(g, s, c = 0xffffff) {
+    g.fillStyle(c, 1);
+    g.fillTriangle(s * 0.95, 0, s * 0.05, -s * 0.8, s * 0.05, s * 0.8);
+    g.fillTriangle(-s * 0.05, 0, -s * 0.95, -s * 0.8, -s * 0.95, s * 0.8);
+  },
   drop(g, s, c = 0xffffff) {
     g.fillStyle(c, 1);
     g.fillCircle(0, s * 0.25, s * 0.62);

@@ -40,6 +40,7 @@ export const sfx = {
   splash: () => noise(0.25, 0.18, 2200),
   hose: () => { tone(520, 0.12, { type: 'triangle' }); tone(780, 0.12, { type: 'triangle', delay: 0.1 }); tone(1040, 0.2, { type: 'triangle', delay: 0.2 }); },
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, { type: 'triangle', vol: 0.22, delay: i * 0.11 })),
+  bark: () => { tone(330, 0.1, { type: 'sawtooth', vol: 0.1, slide: -140 }); tone(300, 0.12, { type: 'sawtooth', vol: 0.1, slide: -140, delay: 0.15 }); },
   tap: () => tone(600, 0.08, { type: 'triangle', vol: 0.15 }),
 };
 

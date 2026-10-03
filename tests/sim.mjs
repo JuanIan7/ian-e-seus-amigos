@@ -163,6 +163,51 @@ for (const power of ['shield', 'magnet', 'jump', 'speed', 'fly', 'jet']) {
   await ctx.close();
 }
 
+// ---------- 8) controles novos: segurar "para frente" acelera, segurar pulo desce devagar, pulo duplo ----------
+{
+  const run1 = async (fn) => {
+    const { ctx, page } = await newPage();
+    const r = await page.evaluate(async (src) => {
+      const game = window.__ian.game;
+      game.scene.start('Game', { mode: 'facil', phase: 1, seed: 'ctl', manual: true });
+      await new Promise((x) => setTimeout(x, 300));
+      const s = game.scene.getScene('Game');
+      s.ents.forEach((e) => { e.sprite && e.sprite.destroy && e.sprite.destroy(); }); s.ents = []; s.spawnLogic = () => {}; s.tutorialJump = false;
+      // simula um voo sem nada no caminho: mede apex, tempo no ar e velocidade máxima de queda
+      const flight = (o) => {
+        s.p.y = 590; s.p.vy = 0; s.p.ground = true; s.p.dbl = false; s.p.floating = false; s.jumpHeld = false;
+        const dt = 1 / 60; let top = 590, air = 0, maxFall = 0, i = 0;
+        s.pressJump();
+        for (; i < 600; i++) {
+          if (o.dbl && i === 20) s.pressJump();
+          if (o.dbl && i === 26) s.pressJump(); // terceiro toque não pode dar um triplo salto
+          s.jumpHeld = !!o.hold && i > 20;
+          s.tick(dt);
+          top = Math.min(top, s.p.y); if (!s.p.ground) { air++; maxFall = Math.max(maxFall, s.p.vy); }
+          if (i > 5 && s.p.ground) break;
+        }
+        return { apex: Math.round(590 - top), air: +(air / 60).toFixed(2), maxFall: Math.round(maxFall), doubles: s.stats.doubles };
+      };
+      const single = flight({}), dbl = flight({ dbl: true }), hold = flight({ hold: true });
+      // acelerar
+      s.p.y = 590; s.p.ground = true;
+      for (let i = 0; i < 90; i++) s.tick(1 / 60);
+      const normal = s.worldSpeed; s.fwdHeld = true;
+      for (let i = 0; i < 90; i++) s.tick(1 / 60);
+      const fast = s.worldSpeed; s.fwdHeld = false;
+      for (let i = 0; i < 120; i++) s.tick(1 / 60);
+      return { single, dbl, hold, normal: Math.round(normal), fast: Math.round(fast), back: Math.round(s.worldSpeed) };
+    });
+    await ctx.close();
+    return r;
+  };
+  const r = await run1();
+  const ok = r.dbl.apex > r.single.apex * 1.5 && r.dbl.doubles === 1 && r.hold.air > r.single.air * 1.2 && r.hold.maxFall < 340 && r.fast > r.normal * 1.15 && Math.abs(r.back - r.normal) < r.normal * 0.12;
+  results.push({ teste: 'controles', mode: 'facil', fase: 1, seg: 0, avancou: 0, missoes: 0, hits: 0, quedas: 0, estrelas: 0, poderes: 0, planou: 0, parado: 0, ok });
+  console.log('controles:', JSON.stringify(r));
+  if (!ok) fail('controles', JSON.stringify(r));
+}
+
 console.table(results);
 if (errors.length) { console.log('ERROS DE PÁGINA:', errors.slice(0, 10)); failed = true; }
 await browser.close(); srv.close();

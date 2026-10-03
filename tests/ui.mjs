@@ -96,6 +96,23 @@ async function open(viewport = { width: 1560, height: 720 }) {
   s = await state(); const dr0 = s.dist; await sleep(600);
   check('retomar volta a correr', s.paused === false && (await state()).dist > dr0 + 20);
 
+  // segurar o botão "para frente" acelera; soltar volta ao normal
+  {
+    const m = await page.evaluate(() => { const r = document.querySelector('canvas').getBoundingClientRect(); return { x: r.left, y: r.top, s: r.width / 1560 }; });
+    await page.mouse.move(m.x + 1090 * m.s, m.y + 612 * m.s); await page.mouse.down(); await sleep(1100);
+    const held = await page.evaluate(() => { const g = window.__ian.game.scene.getScene('Game'); return { f: g.fwdHeld, t: g.turbo }; });
+    await page.mouse.up(); await sleep(1400);
+    const rel = await page.evaluate(() => { const g = window.__ian.game.scene.getScene('Game'); return { f: g.fwdHeld, t: g.turbo }; });
+    check('segurar o botão para frente acelera e soltar volta ao normal', held.f && held.t > 1.12 && !rel.f && rel.t < 1.05, JSON.stringify({ held, rel }));
+  }
+  // dois toques seguidos no botão de pular = pulo duplo
+  {
+    await page.evaluate(() => { const g = window.__ian.game.scene.getScene('Game'); g.p.buffer = 0; });
+    await tap(1345, 590); await sleep(220); await tap(1345, 590); await sleep(150);
+    check('dois toques no botão de pular dão pulo duplo', (await state()).stats.doubles >= 1, JSON.stringify((await state()).stats));
+    await sleep(1500);
+  }
+
   // segundo plano => pausa automática
   await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
   await sleep(300);

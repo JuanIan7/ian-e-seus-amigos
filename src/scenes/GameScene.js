@@ -6,6 +6,7 @@ import { roundButton, icons } from '../ui.js';
 import { buildChild, poseChild } from '../character.js';
 import { buildDog, poseDog, buildPtero, buildFireTruck, DOGS } from '../creatures.js';
 import { MISSIONS } from '../missions.js';
+import { buildAmbient } from '../ambient.js';
 import { sfx, unlock, startMusic, stopMusic, speak, silenceVoice } from '../audio.js';
 
 const OBS = { cone: { w: 46, h: 58 }, log: { w: 100, h: 62 } };
@@ -71,13 +72,13 @@ export default class GameScene extends Phaser.Scene {
     this.t = 0; this.runTime = 0; this.dist = 0; this.stars = 0; this.nextPowerAt = STARS_PER_POWER;
     this.eq = { hose: this.phaseNum >= 2, bone: this.phaseNum >= 5, glider: this.phaseNum >= 4, egg: false };
     this.powers = {}; this.powerHud = {};
-    this.paused = false; this.jumpHeld = false;
+    this.paused = false; this.jumpHeld = false; this.fwdHeld = false; this.turbo = 1;
     this.recover = 0; this.assist = 0; this.hitTimes = []; this.cleanTimer = 0;
     this.ents = []; this.drops = []; this.mission = null; this.ride = null; this.sprayCd = 0; this.lastTap = 0;
     this.sinceSpawn = 0; this.nextGapPx = 700; this.groupId = 0; this.missionMul = 1; this.fall = null;
     this.queue = ph.script.slice();
     this.tutorialJump = !load().tut.jump; this.tutorialWater = !load().tut.water; this.tutWait = 0;
-    this.stats = { hits: 0, falls: 0, jumps: 0, missions: 0, stars: 0, phases: 0, powers: 0, glides: 0 };
+    this.stats = { hits: 0, falls: 0, jumps: 0, missions: 0, stars: 0, phases: 0, powers: 0, glides: 0, doubles: 0 };
     this.worldSpeed = 0; this.dustT = 0; this.squash = { x: 1, y: 1 };
     this.p = { x: PLAYER_X, y: GROUND, vy: 0, ground: true, onPlat: null, coyote: 0, buffer: 0, invul: 0, phase: 0, state: 'run', flying: false, gliding: false };
 
@@ -95,6 +96,7 @@ export default class GameScene extends Phaser.Scene {
     this.speedLines = this.add.container(0, 0).setDepth(35).setVisible(false);
     for (let i = 0; i < 9; i++) { const l = this.add.rectangle(Math.random() * W, 60 + Math.random() * 560, 140 + Math.random() * 120, 4, 0xffffff, 0.45); this.speedLines.add(l); }
     this.setDog(ph.dog, true);
+    this.ambient = buildAmbient(this); this.ambient.setTheme(ph.theme);
 
     this.buildHud();
 
@@ -102,6 +104,9 @@ export default class GameScene extends Phaser.Scene {
     const kb = this.input.keyboard;
     kb.on('keydown-SPACE', () => { this.jumpHeld = true; this.pressJump(); }); kb.on('keyup-SPACE', () => { this.jumpHeld = false; });
     kb.on('keydown-UP', () => { this.jumpHeld = true; this.pressJump(); }); kb.on('keyup-UP', () => { this.jumpHeld = false; });
+    kb.on('keydown-RIGHT', () => { this.fwdHeld = true; }); kb.on('keyup-RIGHT', () => { this.fwdHeld = false; });
+    kb.on('keydown-D', () => { this.fwdHeld = true; }); kb.on('keyup-D', () => { this.fwdHeld = false; });
+    kb.on('keydown-W', () => { this.jumpHeld = true; this.pressJump(); }); kb.on('keyup-W', () => { this.jumpHeld = false; });
     kb.on('keydown-DOWN', () => this.pressAction()); kb.on('keydown-X', () => this.pressAction()); kb.on('keydown-Z', () => this.pressAction());
     kb.on('keydown-P', () => this.setPaused(!this.paused)); kb.on('keydown-ESC', () => this.setPaused(!this.paused));
 
@@ -140,6 +145,7 @@ export default class GameScene extends Phaser.Scene {
     this.actionBtn = roundButton(this, 205, 590, 105, { color: COLORS.orange, depth: 50, iconScale: 0.5, icon: (g, s) => icons.drop(g, s), onDown: () => this.pressAction() });
     this.actionIcon = 'drop';
     this.jumpBtn = roundButton(this, W - 215, 590, 118, { color: COLORS.green, depth: 50, iconScale: 0.52, icon: (g, s) => icons.jump(g, s), onDown: () => { this.jumpHeld = true; this.pressJump(); }, onUp: () => { this.jumpHeld = false; } });
+    this.fwdBtn = roundButton(this, W - 470, 612, 82, { color: COLORS.blue, depth: 50, iconScale: 0.5, icon: (g, s) => icons.fwd(g, s), onDown: () => { this.fwdHeld = true; }, onUp: () => { this.fwdHeld = false; } });
     this.actionBtn.setEnabled(false);
 
     this.hand = this.add.graphics().setDepth(70); icons.hand(this.hand, 70); this.hand.visible = false;
@@ -175,8 +181,13 @@ export default class GameScene extends Phaser.Scene {
   pressJump() {
     unlock();
     if (this.paused) return;
-    this.p.buffer = this.cfg.buffer + 0.08 * this.assist;
+    const p = this.p;
+    p.buffer = this.cfg.buffer + 0.08 * this.assist;
     this.lastTap = this.t;
+    // pulo duplo: toque de novo no ar (perto do chão vale como pulo antecipado para a aterrissagem)
+    const m = this.mission;
+    if (!p.ground && p.coyote <= 0 && !p.flying && !this.ride && !this.fall && !p.dbl && !(m && m.engaged)
+      && this.t - (p.jumpT || 0) > 0.08 && !(p.vy > 0 && p.y > GROUND - 45 && !p.onPlat)) p.dblReq = true;
   }
   pressAction() {
     unlock();
@@ -259,7 +270,10 @@ export default class GameScene extends Phaser.Scene {
     if (m && m.engaged) this.missionMul = 0;
     mul = Math.min(mul, this.missionMul);
     const rec = this.recover > 0 ? c.slow + (1 - c.slow) * (1 - this.recover / 1.0) : 1;
-    const boost = (this.powers.speed ? 1.45 : 1) * (this.ride ? 1.5 : 1);
+    const turboMax = c.id === 'facil' ? 1.25 : 1.4;
+    const wantTurbo = this.fwdHeld && !this.fall && !this.ride && !this.powers.speed && !(m && m.engaged) && !this.tutorialActive ? turboMax : 1;
+    this.turbo += (wantTurbo - this.turbo) * Math.min(1, dt * 5);
+    const boost = (this.powers.speed ? 1.45 : 1) * (this.ride ? 1.5 : 1) * this.turbo;
     const speed = this.baseSpeed * boost * mul * rec;
     const stopped = (m && m.engaged) || this.tutorialActive || this.fall;
     if (!stopped) this.runTime += dt;
@@ -281,6 +295,7 @@ export default class GameScene extends Phaser.Scene {
     this.updateMission(dt, m);
     this.updateDrops(dt);
     this.updateCompanions(dt, speed);
+    this.ambient.update(dt, speed, p.x, p.y);
     this.updateFx(dt, speed);
     this.updateUI(m);
   }
@@ -289,7 +304,7 @@ export default class GameScene extends Phaser.Scene {
   physics(dt, dx, m) {
     const c = this.cfg, p = this.p;
     const engaged = m && m.engaged;
-    p.gliding = false;
+    p.gliding = false; if (p.ground || p.flying) p.floating = false;
     // transição de voo
     if (p.flying && !(this.powers.fly) ) {
       // fim do voo: só termina quando há chão firme à frente
@@ -305,7 +320,7 @@ export default class GameScene extends Phaser.Scene {
         if (h && (c.id === 'facil' || this.assist > 0) && !this.tutorialActive) want = true;
       }
       if (want && (p.ground || p.coyote > 0)) {
-        p.vy = -this.jumpV; p.ground = false; p.onPlat = null; p.coyote = 0; p.buffer = 0; this.stats.jumps++; sfx.jump();
+        p.vy = -this.jumpV; p.ground = false; p.onPlat = null; p.coyote = 0; p.buffer = 0; p.dbl = false; p.dblReq = false; p.jumpT = this.t; this.stats.jumps++; sfx.jump();
         this.squash.x = 0.82; this.squash.y = 1.2;
         this.puff(p.x, p.y, 3);
         if (this.tutorialJump) { this.tutorialJump = false; this.tutWait = 0; save({ tut: { ...load().tut, jump: true } }); this.hand.visible = false; }
@@ -332,8 +347,18 @@ export default class GameScene extends Phaser.Scene {
         // planar: segurar o botão de pular (no fácil, planar é automático sobre buracos)
         const canGlide = this.eq.glider && p.vy > 0;
         const autoGlide = c.id === 'facil' && this.holeNear(p.x - 20, p.x + 380);
+        p.floating = false;
+        if (p.dblReq) {
+          p.dblReq = false; p.dbl = true; p.buffer = 0; p.rescued = false;
+          p.vy = -this.jumpV * 1.12; this.stats.doubles = (this.stats.doubles || 0) + 1; sfx.jump();
+          this.squash.x = 0.8; this.squash.y = 1.25; this.sparkle(p.x, p.y - 20, 7); this.puff(p.x, p.y, 4);
+        }
         if (canGlide && (this.jumpHeld || autoGlide)) { p.gliding = true; if (p.vy > 130) p.vy -= (p.vy - 130) * Math.min(1, dt * 12); }
-        else p.vy += c.gravity * dt;
+        else {
+          p.vy += c.gravity * dt;
+          // segurar o pulo no ar: desce devagarzinho
+          if (this.jumpHeld && p.vy > 215) { p.floating = true; p.vy -= (p.vy - 215) * Math.min(1, dt * 30); }
+        }
         p.y += p.vy * dt;
         // salto de resgate: em modo assistido, quem cai no buraco ganha um impulso extra (uma vez por pulo)
         if (!p.gliding && p.vy > 0 && !p.rescued && (c.id === 'facil' || this.assist > 0) && p.y > GROUND - 90 && !this.supportedGround(p.x) && !p.onPlat) {
@@ -349,7 +374,7 @@ export default class GameScene extends Phaser.Scene {
           }
           if (!landed && ((prevY <= GROUND && p.y >= GROUND) || (p.y > GROUND && p.y < GROUND + 55)) && this.supportedGround(p.x)) { p.y = GROUND; p.onPlat = null; landed = true; }
           if (landed) {
-            p.vy = 0; p.ground = true; p.rescued = false; p.coyote = c.coyote; this.squash.x = 1.18; this.squash.y = 0.84; this.puff(p.x, p.y, 4);
+            p.vy = 0; p.ground = true; p.rescued = false; p.dbl = false; p.dblReq = false; p.floating = false; p.coyote = c.coyote; this.squash.x = 1.18; this.squash.y = 0.84; this.puff(p.x, p.y, 4);
           } else if (p.y > GROUND + 130) {
             this.startFall();
           }
@@ -358,7 +383,8 @@ export default class GameScene extends Phaser.Scene {
     }
     // estado visual
     const spraying = this.spraying > 0; if (spraying) this.spraying -= dt;
-    p.state = p.flying ? 'fly' : p.gliding ? 'glide' : !p.ground ? 'jump' : (engaged ? (spraying ? 'spray' : 'idle') : 'run');
+    p.dblReq = false;
+    p.state = p.flying ? 'fly' : (p.gliding || p.floating) ? 'glide' : !p.ground ? 'jump' : (engaged ? (spraying ? 'spray' : 'idle') : 'run');
     if (this.ride) p.state = 'idle';
     if (engaged && !p.flying && p.ground) p.state = this.mission && this.mission.def.icon === 'drop' ? 'spray' : (spraying ? 'throw' : 'idle');
     p.phase += dt * (6 + this.worldSpeed / 22);
@@ -587,6 +613,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   setTheme(theme) {
+    if (this.ambient) this.ambient.setTheme(theme);
     if (this.bg.theme === theme) return;
     if (this.bgOld) { this.bgOld.destroy(); this.bgOld = null; }
     const old = this.bg;
@@ -641,7 +668,7 @@ export default class GameScene extends Phaser.Scene {
       if (e.type === 'pad') {
         if (e.cool > 0) e.cool -= dt;
         if (!wide && e.cool <= 0 && Math.abs(p.x - (e.x + e.w / 2)) < 46 && p.y >= GROUND - 70 && p.vy >= -50 && !p.onPlat) {
-          e.cool = 0.6; p.vy = -this.cfg.jumpV * 1.45; p.ground = false; p.onPlat = null; p.coyote = 0; sfx.jump(); this.squash.x = 0.8; this.squash.y = 1.25;
+          e.cool = 0.6; p.dbl = false; p.vy = -this.cfg.jumpV * 1.45; p.ground = false; p.onPlat = null; p.coyote = 0; sfx.jump(); this.squash.x = 0.8; this.squash.y = 1.25;
           this.tweens.add({ targets: e.sprite, scaleY: 0.6, duration: 100, yoyo: true });
           this.puff(p.x, GROUND, 6, 0x4db8ff);
         }
@@ -845,12 +872,26 @@ export default class GameScene extends Phaser.Scene {
     if (!this.dog) return;
     const p = this.p, d = this.dog;
     const engaged = this.mission && this.mission.engaged;
-    const tx = p.x - (engaged ? 120 : 170) + Math.sin(this.t * 1.7) * 12;
-    d.x += (tx - d.x) * Math.min(1, dt * 3);
     this.dogT = (this.dogT || 0) + dt;
-    const air = !p.ground && !p.flying;
-    d.y = GROUND - (air ? Math.max(0, (GROUND - p.y) * 0.35) : 0) - Math.abs(Math.sin(this.dogT * 9)) * (speed > 5 ? 4 : 0);
-    poseDog(d, speed < 5 ? 'idle' : air ? 'jump' : 'run', this.dogT * 11, this.t);
+    // o cão passeia: corre ao lado, passa na frente, volta, e fica para trás quando o menino acelera
+    const wander = Math.sin(this.t * 0.55) * 95 + Math.sin(this.t * 1.3) * 25;
+    const tx = engaged ? p.x - 120 : p.x - 150 + wander - (this.turbo - 1) * 320;
+    d.x += (tx - d.x) * Math.min(1, dt * 3.2);
+    // pula junto com o menino (um pouquinho depois) e comemora cada estrelinha pegando um pulinho
+    if (p.jumpT !== undefined && p.jumpT !== this._dogSeenJump) { this._dogSeenJump = p.jumpT; this.dogHop = { t: -0.14, dur: 0.62, h: 150 }; }
+    if (this.stars !== this._dogStars) { if (this._dogStars !== undefined && this.stars > this._dogStars && !this.dogHop && Math.random() < 0.35) this.dogHop = { t: 0, dur: 0.38, h: 50 }; this._dogStars = this.stars; }
+    let hop = 0;
+    if (this.dogHop) { const h = this.dogHop; h.t += dt; if (h.t >= h.dur) this.dogHop = null; else if (h.t > 0) { const u = h.t / h.dur; hop = 4 * h.h * u * (1 - u); } }
+    // late de vez em quando e quando um poder nasce
+    this.dogBark = (this.dogBark || 8) - dt;
+    if (this.dogBark <= 0 && speed > 50) {
+      this.dogBark = 9 + Math.random() * 6; sfx.bark();
+      const t = this.add.text(d.x + 50, GROUND - 130, 'Au!', { fontFamily: 'Arial Black, Arial, sans-serif', fontSize: '38px', color: '#ffffff', stroke: '#1b2a49', strokeThickness: 8 }).setOrigin(0.5).setDepth(30);
+      this.tweens.add({ targets: t, y: t.y - 60, alpha: 0, duration: 900, onComplete: () => t.destroy() });
+      this.dogHop = this.dogHop || { t: 0, dur: 0.4, h: 40 };
+    }
+    d.y = GROUND - hop - (hop > 0 ? 0 : Math.abs(Math.sin(this.dogT * 9)) * (speed > 5 ? 4 : 0));
+    poseDog(d, speed < 5 && hop === 0 ? 'idle' : hop > 4 ? 'jump' : 'run', this.dogT * (11 + speed / 60), this.t);
     d.alpha = Math.min(d.alpha + dt * 2, 1);
   }
 
@@ -859,7 +900,7 @@ export default class GameScene extends Phaser.Scene {
     // poeira ao correr
     if (p.ground && speed > 40 && !this.ride) { this.dustT -= dt; if (this.dustT <= 0) { this.dustT = 0.13; this.puff(p.x - 14, (p.onPlat ? p.onPlat.top : GROUND), 1, 0xe9e3d4, 0.4); } }
     // linhas de velocidade (turbo, caminhão, voo)
-    const fast = !!this.powers.speed || !!this.ride || p.flying;
+    const fast = !!this.powers.speed || !!this.ride || p.flying || this.turbo > 1.12;
     this.speedLines.visible = fast;
     if (fast) this.speedLines.list.forEach((l) => { l.x -= (900 + speed) * dt; if (l.x < -200) { l.x = W + 100; l.y = 60 + Math.random() * 560; } });
     // fogo da viatura

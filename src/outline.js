@@ -17,3 +17,24 @@ export function outline(g, w = 3, col = OUT, alpha = 1) {
   return g;
 }
 export const og = (scene, w = 3, col = OUT, alpha = 1) => outline(scene.add.graphics(), w, col, alpha);
+
+// Deixa as cores mais vivas (saturação maior) em texturas de cenário.
+function boost(c, k) {
+  let r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  if (d < 0.001) return c;
+  let sat = d / (1 - Math.abs(2 * l - 1)); let h;
+  if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+  h *= 60; if (h < 0) h += 360;
+  sat = Math.min(1, sat * k);
+  const cc = (1 - Math.abs(2 * l - 1)) * sat, x = cc * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - cc / 2;
+  let rr, gg, bb;
+  if (h < 60) [rr, gg, bb] = [cc, x, 0]; else if (h < 120) [rr, gg, bb] = [x, cc, 0]; else if (h < 180) [rr, gg, bb] = [0, cc, x];
+  else if (h < 240) [rr, gg, bb] = [0, x, cc]; else if (h < 300) [rr, gg, bb] = [x, 0, cc]; else [rr, gg, bb] = [cc, 0, x];
+  return (Math.round((rr + m) * 255) << 16) | (Math.round((gg + m) * 255) << 8) | Math.round((bb + m) * 255);
+}
+export function vivid(g, k = 1.35) {
+  const f = g.fillStyle.bind(g);
+  g.fillStyle = (color, alpha) => f(boost(color, k), alpha);
+  return g;
+}

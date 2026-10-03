@@ -112,23 +112,31 @@ function drawHead(scene, look, o) {
   const g = front;
   // rosto
   g.fillStyle(skin, 1);
-  if (look.face === 1) g.fillEllipse(0, 0, 47, 55); else if (look.face === 2) g.fillRoundedRect(-24, -26, 48, 52, 15); else g.fillCircle(0, 0, 25.5);
+  if (look.face === 1) g.fillEllipse(0, 0, 47, 55); else if (look.face === 2) g.fillRoundedRect(-25, -26, 50, 52, 21); else g.fillCircle(0, 0, 25.5);
   g.fillStyle(shade(skin, 0.9), 1); g.fillCircle(-25, 4, 4.5); g.fillCircle(25, 4, 4.5); // orelhas
   hairFront(g, look.hair, hc, look.face);
-  // olhos e boca
+  // olhos grandes e brilhantes, sobrancelhas e sorriso aberto (rosto simpático e expressivo)
+  const brow = shade(hc, 0.75);
   const eyes = () => {
-    g.fillStyle(0xffffff, 1); g.fillCircle(9, 2, 7); g.fillCircle(-8, 2, 6.2);
-    g.fillStyle(ec, 1); g.fillCircle(11, 2, 4.2); g.fillCircle(-6, 2, 3.8);
-    g.fillStyle(0x111111, 1); g.fillCircle(11.5, 2, 2.2); g.fillCircle(-5.5, 2, 2);
-    g.fillStyle(0xffffff, 1); g.fillCircle(12.6, 0.8, 1.5);
+    g.fillStyle(0xffffff, 1); g.fillEllipse(10, 1, 17, 20); g.fillEllipse(-8, 1, 15, 18);
+    g.fillStyle(ec, 1); g.fillCircle(12, 2.5, 5.6); g.fillCircle(-6, 2.5, 5.2);
+    g.fillStyle(0x111111, 1); g.fillCircle(12.6, 2.7, 3.1); g.fillCircle(-5.4, 2.7, 2.9);
+    g.fillStyle(0xffffff, 1); g.fillCircle(14.2, 0.2, 2.3); g.fillCircle(-3.8, 0.2, 2.1); g.fillCircle(11, 5, 1.1);
+    g.lineStyle(3.4, brow, 1);
+    g.beginPath(); g.arc(11, -8, 9, Math.PI * 1.12, Math.PI * 1.88); g.strokePath();
+    g.beginPath(); g.arc(-8, -8, 8, Math.PI * 1.12, Math.PI * 1.88); g.strokePath();
   };
   const h = o.head;
   if (h === 'mask') {
     g.fillStyle(0x3b1f7a, 1); g.fillRoundedRect(-22, -8, 44, 17, 8); g.fillStyle(0xffd23f, 1); g.fillRect(-22, -9, 44, 3);
   }
   eyes();
-  g.lineStyle(3, 0x7a3b22, 1); g.beginPath(); g.arc(3, 9, 9, 0.25, Math.PI - 0.25); g.strokePath();
-  g.fillStyle(0xff8a80, 0.55); g.fillCircle(17, 10, 5); g.fillCircle(-12, 10, 4.5);
+  g.fillStyle(0x7a2230, 1); g.slice(3, 11, 10.5, 0.12, Math.PI - 0.12, false); g.fillPath();
+  g.fillStyle(0xffffff, 1); g.slice(3, 11, 10.5, 0.12, Math.PI - 0.12, false); g.fillPath();
+  g.fillStyle(0x7a2230, 1); g.fillEllipse(3, 15.5, 16, 10);
+  g.fillStyle(0xff7d8a, 1); g.fillEllipse(3.5, 17.5, 9, 5);
+  g.lineStyle(2.6, 0x4a1420, 1); g.beginPath(); g.arc(3, 11, 10.5, 0.12, Math.PI - 0.12, false); g.closePath(); g.strokePath();
+  g.fillStyle(0xff6f7f, 0.6); g.fillCircle(18, 11, 6.5); g.fillCircle(-14, 11, 5.8);
   // acessórios de cabeça
   { const g = (h === 'astro' || h === 'mask' || h === 'headband') ? front : hat;
   switch (h) {
@@ -204,8 +212,8 @@ export function buildChild(scene, look = load().look) {
   const body = g(); drawTorso(body, outfit.id, o);
 
   const { back, front, hat } = drawHead(scene, look, o);
-  const head = scene.add.container(0, -108, [front, hat]);
-  const hairBackG = back; hairBackG.setPosition(0, -108);
+  const head = scene.add.container(0, -108, [front, hat]); head.setScale(1.14);
+  const hairBackG = back; hairBackG.setPosition(0, -108); hairBackG.setScale(1.14);
 
   // traseiros: capa, cauda, mochila
   const rear = g();

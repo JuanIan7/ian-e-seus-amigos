@@ -1,22 +1,22 @@
 import Phaser from 'phaser';
 import { W, H, GROUND } from '../config.js';
-import { outline, OUT } from '../outline.js';
+import { outline, vivid, OUT } from '../outline.js';
 
 // Gera todas as texturas por código: arte 100% original, sem arquivos externos nem licenças a registrar.
 // Cada tema tem: céu (sky_X), camada distante (far_X), camada do meio (mid_X) e chão (ground_X).
 export const THEMES = {
-  bairro:   { sky: [0x7fd4ff, 0xdff6ff], farH: 300, midH: 360 },
-  praca:    { sky: [0x8fd8ff, 0xfff1cf], farH: 300, midH: 360 },
-  floresta: { sky: [0x8fdcff, 0xe6ffd0], farH: 340, midH: 420 },
-  altura:   { sky: [0x62a8ff, 0xffd2a8], farH: 360, midH: 420 },
-  pre:      { sky: [0xffc86b, 0xfff0c4], farH: 360, midH: 400 },
+  bairro:   { sky: [0x4fb6ff, 0xcfeeff], farH: 300, midH: 360 },
+  praca:    { sky: [0x5cc0ff, 0xffeab0], farH: 300, midH: 360 },
+  floresta: { sky: [0x55c4ff, 0xd6ffb5], farH: 340, midH: 420 },
+  altura:   { sky: [0x3c8dff, 0xffc08a], farH: 360, midH: 420 },
+  pre:      { sky: [0xffa94d, 0xffe9a8], farH: 360, midH: 400 },
 };
 
 export default class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
 
   create() {
-    const mk = (key, w, h, fn, ol = 0) => { const g = this.make.graphics({ x: 0, y: 0, add: false }); if (ol) outline(g, 3, OUT, ol); fn(g); g.generateTexture(key, w, h); g.destroy(); };
+    const mk = (key, w, h, fn, ol = 0) => { const g = this.make.graphics({ x: 0, y: 0, add: false }); if (/^(far|mid|ground)_/.test(key)) vivid(g, 1.4); if (ol) outline(g, 3, OUT, ol); fn(g); g.generateTexture(key, w, h); g.destroy(); };
     let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
     // ---------- céus ----------
