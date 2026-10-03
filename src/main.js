@@ -4,6 +4,7 @@ import BootScene from './scenes/BootScene.js';
 import MenuScene from './scenes/MenuScene.js';
 import GameScene from './scenes/GameScene.js';
 import CharacterScene from './scenes/CharacterScene.js';
+import Game3DScene from './scenes/Game3DScene.js';
 
 // ?renderer=canvas serve para testes em computadores sem GPU; no celular usa WebGL automaticamente.
 const forceCanvas = new URLSearchParams(location.search).get('renderer') === 'canvas';
@@ -17,7 +18,7 @@ const game = new Phaser.Game({
   input: { activePointers: 3 },
   render: { antialias: true, powerPreference: 'low-power' }, // poupa bateria
   fps: { target: 60 },
-  scene: [BootScene, MenuScene, CharacterScene, GameScene],
+  scene: [BootScene, MenuScene, CharacterScene, GameScene, Game3DScene],
 });
 window.__ian = { game };
 

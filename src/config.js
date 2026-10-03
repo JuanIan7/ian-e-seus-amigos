@@ -73,3 +73,6 @@ export const POWERS = {
 };
 export const POWER_KEYS = Object.keys(POWERS);
 export const STARS_PER_POWER = 50;
+
+// Cena do jogo: 3D por padrão; ?2d na URL abre a versão 2D anterior (usada pelos testes antigos).
+export const GAME_SCENE = (typeof location !== 'undefined' && new URLSearchParams(location.search).has('2d')) ? 'Game' : 'Game3D';

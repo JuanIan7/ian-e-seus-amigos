@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W, H, MODES, MODE_ORDER, COLORS, PHASES } from '../config.js';
+import { W, H, MODES, MODE_ORDER, COLORS, PHASES, GAME_SCENE } from '../config.js';
 import { load, save } from '../save.js';
 import { buildBackground } from '../world.js';
 import { roundButton, icons } from '../ui.js';
@@ -116,7 +116,7 @@ export default class MenuScene extends Phaser.Scene {
     }
   }
 
-  start() { speak('Vamos lá!'); this.scene.start('Game', { mode: this.mode, phase: this.phaseSel }); }
+  start() { speak('Vamos lá!'); this.scene.start(GAME_SCENE, { mode: this.mode, phase: this.phaseSel }); }
 
   update(_, delta) {
     const dt = Math.min(delta / 1000, 0.05);
