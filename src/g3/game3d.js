@@ -4,17 +4,29 @@ import { THREE, rng, Particles, blobShadow, mixHex } from './kit.js';
 import { buildKid, poseKid } from './kid.js';
 import { World, LANE_W, THEMES3 } from './world.js';
 import { buildObstacle, OBSTACLES, buildStar, buildFlame, buildBin, buildHouse, buildTower, buildPickup } from './props.js';
+import { MISSIONS3, ACTIONS } from './missions3.js';
+import { buildBoneProp, buildGiftBox, buildEgg, buildFruit, buildDog, buildDino, buildLeaf, buildPlatform, buildPad, buildGlider, buildWing, animCreature } from './creatures.js';
+import { buildFireTruck } from './props.js';
 import { MODES3 } from './config3.js';
 import { PHASES, POWERS, STARS_PER_POWER } from '../config.js';
 import { load, save } from '../save.js';
+import { startMinigame, MINI_ICONS } from './minigames.js';
 import { sfx, unlock, startMusic, stopMusic, speak, silenceVoice } from '../audio.js';
 import { createHud } from './hud.js';
 
 const STOP = 3.2;                       // distância (em z) em que o mundo para diante de uma missão
 const PLAYER_R = 0.3;
-const POWER_EMOJI = { shield: '🛡️', magnet: '🧲', jump: '🦘', speed: '⚡', jet: '💦', fly: '🪽' };
-const POWER_POOL = ['shield', 'magnet', 'jump', 'speed', 'jet'];     // 'fly' entra junto com os trechos de voo
+const POWER_EMOJI = { shield: '🛡️', magnet: '🧲', jump: '🦘', speed: '⚡', jet: '💦', fly: '🪽', glide: '🪂', truck: '🚒' };
+const POWERS_ALL = { ...POWERS, glide: { name: 'Planador', say: 'Planador! Segure o pulo no ar!', dur: 16, color: 0x4db8ff }, truck: { name: 'Viatura', say: 'Viatura dos bombeiros!', dur: 9, color: 0xe8352f } };
+const POWER_POOL = ['shield', 'magnet', 'jump', 'speed', 'jet'];     // 'fly' entra a partir da fase 4 (trechos de voo)
 const FIRE_TARGETS = { fire_bin: 'bin', fire_house: 'house', fire_building: 'tower' };
+const FIRE_DEFS = {
+  bin: { kind: 'fire', icon: 'drop', needs: 'hose', cam: 0, cue: 'Fogo na lixeira!', hits: (c) => c.fireHits },
+  house: { kind: 'fire', icon: 'drop', needs: 'hose', cam: 1, cue: 'Fogo na casa!', hits: (c) => c.fireHits + 1 },
+  tower: { kind: 'fire', icon: 'drop', needs: 'hose', cam: 2, cue: 'Fogo no prédio!', hits: (c) => c.fireHits + 2 },
+};
+const EQUIP_EMOJI = { hose: '🧯', bone: '🦴', egg: '🥚', fruit: '🍎' };
+const GIVE_TEXT = { hose: 'Um amigo trouxe a mangueira!', bone: 'Um amigo trouxe um ossinho!', egg: 'Um amigo trouxe o ovo!', fruit: 'Um amigo trouxe uma fruta!' };
 
 export class Game3D {
   constructor(o) {
@@ -53,10 +65,18 @@ export class Game3D {
     this.p = { x: 0, y: 0, vy: 0, lane: 0, ground: true, coyote: 0, buffer: 0, invul: 0, dbl: false, dblReq: false, floating: false, floatT: 0, jumpT: -9, lastSteer: -9, rescued: false, hitT: 0, squash: 0, roll: 0, cheer: 0 };
     this.runHeld = false; this.jumpHeld = false; this.turbo = 1; this.recover = 0; this.fall = null; this.missionMul = 1;
     this.eq = { hose: this.phaseNum >= 2 };
-    this.stats = { hits: 0, falls: 0, jumps: 0, doubles: 0, missions: 0, stars: 0, phases: 0, powers: 0, floats: 0 };
+    this.stats = { minis: 0, minisWon: 0, hits: 0, falls: 0, jumps: 0, doubles: 0, missions: 0, stars: 0, phases: 0, powers: 0, floats: 0 };
     this.ents = []; this.mission = null; this.tutorialJump = !load().tut.jump && this.phaseNum === 1; this.tutorialActive = false; this.tutWait = 0;
+    this.mini = null; this.offer = null; this.offerCd = 28; this.miniKind = 'puzzle'; this.lastOfferMissions = -1; this.lastOfferTime = -999; this.resumeMul = 1;
     this.lastTap = 0; this.sprayT = 0; this.sprayCd = 0; this.idleT = 0; this.shake = 0;
+    const tt = load().tut; this.tutDouble = !tt.dbl; this.tutFloat = !tt.float; this.tutKind = null;
+    this.projs = []; this.dog = null; this.dogShadow = null; this.dogBark = 0;
+    this.truck = buildFireTruck(); this.truck.scale.setScalar(0.5); this.truck.visible = false; this.scene.add(this.truck);
+    this.wing = buildWing(); this.wing.visible = false; this.kid.add(this.wing); this.wing.position.set(0, 0.9, 0.2);
+    this.glider = buildGlider(); this.glider.scale.setScalar(1.0); this.glider.visible = false; this.kid.add(this.glider); this.glider.position.set(0, 1.9, 0.1);
+    this.carryEgg = buildEgg(0.9); this.carryEgg.visible = false; this.kid.add(this.carryEgg); this.carryEgg.position.set(0, 1.75, 0);
     this.queue = this.scriptFor(this.phaseNum); this.nextS = 26; this.firstObstacle = true;
+    this.setupDog();
 
     // ---- interface ----
     this.hud = createHud(this.el, {
@@ -91,23 +111,23 @@ export class Game3D {
       else if (down && (c === 'ArrowLeft' || c === 'KeyA')) this.steer(-1);
       else if (down && (c === 'ArrowRight' || c === 'KeyD')) this.steer(1);
       else if (down && (c === 'ArrowDown' || c === 'KeyX' || c === 'KeyZ')) this.pressAction();
-      else if (down && (c === 'KeyP' || c === 'Escape')) this.setPaused(!this.paused);
+      else if (down && (c === 'KeyP' || c === 'Escape')) { if (this.mini) this.closeMini(false); else this.setPaused(!this.paused); }
     };
     this.kd = (e) => k(e, true); this.ku = (e) => k(e, false);
     window.addEventListener('keydown', this.kd); window.addEventListener('keyup', this.ku);
   }
   setJump(v) { unlock(); if (v === this.jumpHeld) return; this.jumpHeld = v; if (v) this.pressJump(); }
-  setRun(v) { this.runHeld = v; this.hud.setRunActive(v); }
-  steer(d) { unlock(); if (this.paused || this.fall) return; const p = this.p; const nl = Math.max(-1, Math.min(1, p.lane + d)); if (nl !== p.lane) { p.lane = nl; sfx.tap && sfx.tap(); } p.lastSteer = this.t; }
+  setRun(v) { if (this.mini) v = false; this.runHeld = v; this.hud.setRunActive(v); }
+  steer(d) { unlock(); if (this.paused || this.mini || this.fall) return; const p = this.p; const nl = Math.max(-1, Math.min(1, p.lane + d)); if (nl !== p.lane) { p.lane = nl; sfx.tap && sfx.tap(); } p.lastSteer = this.t; }
   pressJump() {
-    unlock(); if (this.paused) return;
+    unlock(); if (this.paused || this.mini) return;
     const p = this.p, m = this.mission;
     p.buffer = this.cfg.buffer + 0.08 * this.assist; this.lastTap = this.t;
     // pulo duplo: segundo toque no ar (perto do chão vale como pulo antecipado para a aterrissagem)
     if (!p.ground && p.coyote <= 0 && !this.fall && !p.dbl && !this.focus && this.t - p.jumpT > 0.08 && !(p.vy < 0 && p.y < 0.35)) p.dblReq = true;
   }
   pressAction() {
-    unlock(); if (this.paused) return;
+    unlock(); if (this.paused || this.mini) return;
     this.lastTap = this.t;
     const m = this.focus;
     if (m && !m.done && this.sprayCd <= 0) this.spray(m);
@@ -126,14 +146,10 @@ export class Game3D {
 
   // ================================================================ roteiro das fases
   scriptFor(num) {
-    // Nesta etapa só os tokens da fase 1 existem em 3D; os demais viram estrelas (ou buraco) até serem portados.
-    const ph = PHASES[(num - 1) % PHASES.length];
+    const ph = PHASES[(num - 1) % PHASES.length]; let wall = false;
     return ph.script.map((tok) => {
-      if (tok === 'obs' || tok === 'stars' || tok === 'gap') return tok;
-      if (tok === 'glidegap') return 'gap';
-      if (tok === 'pickup:hose' && num === 1) return tok;
-      if (tok.startsWith('mission:') && FIRE_TARGETS[tok.slice(8)]) return tok;
-      return 'stars';
+      if (tok === 'obs' && ph.id === 2 && !wall) { wall = true; return 'wall'; }          // a fase 2 apresenta o pulo duplo
+      return tok;
     });
   }
 
@@ -162,7 +178,7 @@ export class Game3D {
   }
 
   tick(dt) {
-    if (this.paused) return;
+    if (this.paused || this.mini) return;
     const c = this.cfg, p = this.p;
     this.t += dt;
     if (p.invul > 0) p.invul -= dt; if (this.recover > 0) this.recover -= dt; if (this.sprayCd > 0) this.sprayCd -= dt;
@@ -176,11 +192,16 @@ export class Game3D {
     this.focus = this.ents.find((e) => e.type === 'mission' && e.engaged) || null;      // missão em andamento (ou comemorando)
 
     // ---- velocidade do mundo ----
-    let mul = 1; this.tutorialActive = false;
+    let mul = 1; this.tutorialActive = false; this.tutKind = null;
     if (this.fall) mul = 0;
-    else if (this.tutorialJump && p.ground) {
+    else if (p.ground && !this.focus && !this.bridge()) {
       const h = this.nextHazard();
-      if (h && h.gap > 0 && h.gap <= this.jumpDist() * 0.62) { this.tutorialActive = true; mul = 0; this.tutWait += dt; if (this.tutWait > 10) p.buffer = 0.2; }
+      const near = h && h.gap > 0 && h.gap <= this.jumpDist() * 0.62;
+      const kind = !near ? null : (h.kind === 'wall' && this.tutDouble) ? 'double' : (h.glide && this.tutFloat) ? 'float' : (this.tutorialJump && h.kind !== 'wall') ? 'jump' : null;
+      if (kind) {
+        this.tutorialActive = true; this.tutKind = kind; mul = 0; this.tutWait += dt;
+        if (this.tutWait > 12) { if (kind === 'jump') p.buffer = 0.2; else if (kind === 'double') { this.tutDouble = false; save({ tut: { ...load().tut, dbl: true } }); } else { p.buffer = 0.2; } }
+      } else this.tutWait = 0;
     }
     let target = 1;
     if (m) {
@@ -191,10 +212,11 @@ export class Game3D {
     this.missionMul += (target - this.missionMul) * Math.min(1, dt * 5);
     if (this.focus) this.missionMul = 0;
     mul = Math.min(mul, this.missionMul);
+    if (this.resumeMul < 1) { this.resumeMul = Math.min(1, this.resumeMul + dt / 1.3); mul = Math.min(mul, 0.35 + 0.65 * this.resumeMul); }
     const rec = this.recover > 0 ? c.slow + (1 - c.slow) * (1 - this.recover / 1.0) : 1;
     // correr: aceleração gradual enquanto o botão está pressionado; ao soltar volta suavemente à velocidade da partida
-    const turboMax = this.powers.speed ? 1.5 : c.runBoost;
-    const wantTurbo = (this.runHeld && !this.fall && !this.focus && !this.tutorialActive) ? turboMax : (this.powers.speed ? 1.5 : 1);
+    const turboMax = this.powers.speed ? 1.5 : Math.max(c.runBoost, this.powers.truck ? 1.35 : 1);
+    const wantTurbo = (this.runHeld && !this.fall && !this.focus && !this.tutorialActive) ? turboMax : (this.powers.speed ? 1.5 : this.powers.truck ? 1.35 : 1);
     this.turbo += (wantTurbo - this.turbo) * Math.min(1, dt * (wantTurbo > this.turbo ? 2.6 : 3.2));
     const speed = Math.min(this.baseSpeed * this.turbo, c.speedMax * c.runBoost * 1.02) * mul * rec;
     const stopped = this.focus || this.tutorialActive || this.fall;
@@ -208,15 +230,28 @@ export class Game3D {
     if (!this.fall) { this.collide(); this.pickups(dt); }
     this.updateEnts(dt);
     this.updateMission(dt, m);
+    this.updateProjs(dt);
     this.cleanup();
     this.pose(dt);
+    this.updateCompanion(dt);
     this.updateCamera(dt);
     this.fx.update(dt, dx);
     this.updateHud(m);
+    this.updateOffer(dt, m);
   }
 
   // ================================================================ física do personagem
   groundOK(s) { return !this.world.inHole(s - 0.12, s + 0.12); }
+  bridge() { return !!this.powers.truck || !!this.powers.fly; }
+  /** altura do apoio sob a criança em (x, s): chão, plataformas e topo de obstáculos; -Infinity = vazio (buraco) */
+  floorAt(x, s, y) {
+    let f = (this.bridge() || this.groundOK(s)) ? 0 : -Infinity;
+    for (const e of this.ents) {
+      if (e.type === 'plat') { if (Math.abs(x - e.x) < e.w / 2 + 0.2 && Math.abs(s - e.s) < e.len / 2 && e.top <= y + 0.35 && e.top > f) f = e.top; }
+      else if (e.type === 'obs' && !e.hit && !e.noFloor) { if (Math.abs(x - e.x) < e.w / 2 + 0.15 && Math.abs(s - e.s) < e.d / 2 + 0.05 && e.h <= y + 0.35 && e.h > f) f = e.h; }
+    }
+    return f;
+  }
   physics(dt) {
     const c = this.cfg, p = this.p, engaged = !!this.focus;
     // faixa: movimento suave; durante missões o menino se alinha ao centro
@@ -224,20 +259,28 @@ export class Game3D {
     const tx = p.lane * LANE_W, vx0 = p.x;
     p.x += (tx - p.x) * Math.min(1, dt * 11);
     p.roll += ((p.x - vx0) / Math.max(dt, 1e-3) * -0.045 - p.roll) * Math.min(1, dt * 12);
-
+    if (p.softT > 0) p.softT -= dt;
     p.floating = false;
-    const wasGround = p.ground;
-    // perder o apoio ao passar do chão para um buraco
-    if (p.ground && !this.groundOK(this.dist) && !this.fall) { p.ground = false; p.coyote = c.coyote; p.vy = 0; }
-    // pulo (buffer + coyote), assistido na beira de buracos
+    // ---- voo (poder): segurar o pulo sobe, soltar desce devagar; não há risco de cair
+    if (this.powers.fly && !this.fall) {
+      const target = this.jumpHeld ? 3.5 : 1.5;
+      p.y += (target - p.y) * Math.min(1, dt * 3.4); p.vy = (target - p.y) * 3.4; p.ground = false; p.coyote = 0; p.buffer = 0; p.dbl = false; p.dblReq = false; p.floatT = 0; p.flying = true; p.rescued = false;
+      if (p.flip > 0) p.flip -= dt; p.squash += (0 - p.squash) * Math.min(1, dt * 10);
+      return;
+    }
+    p.flying = false;
+    // perder o apoio ao passar do chão para um vazio (ou ao sair da beira de uma plataforma)
+    if (p.ground && !this.fall) { const f = this.floorAt(p.x, this.dist, p.y); if (f < p.y - 0.02) { p.ground = false; p.coyote = c.coyote; p.vy = 0; } else p.y = f; }
+    // pulo (buffer + coyote), assistido na beira de vazios
     if (!engaged && !this.fall) {
       let want = p.buffer > 0;
       if (!want && p.ground && (c.jumpAssist || this.assist > 0) && !this.tutorialActive) {
-        const h = this.nextHole(); if (h && h.s - this.dist < this.jumpDist() * 0.16 + 0.3 && h.s - this.dist > -0.1) want = true;
+        const ahead = this.jumpDist() * 0.2 + 0.5;
+        if (this.floorAt(p.x, this.dist + ahead, p.y) === -Infinity) want = true;
       }
       if (want && (p.ground || p.coyote > 0)) {
         p.vy = this.jumpV; p.ground = false; p.coyote = 0; p.buffer = 0; p.dbl = false; p.dblReq = false; p.jumpT = this.t; p.rescued = false; this.stats.jumps++; sfx.jump();
-        p.squash = -0.2; this.fx.burst(p.x, 0.1, 0, 5, { col: 0xffffff, s: 0.14, speed: 1.2, life: 0.4, g: 0 });
+        p.squash = -0.2; this.fx.burst(p.x, 0.1 + Math.max(0, p.y), 0, 5, { col: 0xffffff, s: 0.14, speed: 1.2, life: 0.4, g: 0 });
         if (this.tutorialJump) { this.tutorialJump = false; this.tutWait = 0; save({ tut: { ...load().tut, jump: true } }); }
       }
     }
@@ -248,19 +291,32 @@ export class Game3D {
       if (p.dblReq) {
         p.dblReq = false; p.dbl = true; p.buffer = 0; p.vy = this.jumpV * 0.95; this.stats.doubles++; sfx.jump(); p.flip = 0.55; p.squash = -0.25;
         this.fx.burst(p.x, p.y + 0.2, 0, 14, { col: 0xffe14a, s: 0.12, speed: 2.4, life: 0.5 });
+        if (this.tutDouble) { this.tutDouble = false; save({ tut: { ...load().tut, dbl: true } }); }
       }
-      // segurar o pulo no ar: desce devagarzinho (limitado para não virar voo infinito)
+      // segurar o pulo no ar: desce devagarzinho (limitado; o planador desce ainda mais devagar e por mais tempo)
       p.vy -= this.g * dt;
-      if (this.jumpHeld && p.vy < -1.7 && p.floatT < 2.2 && !engaged) { p.floating = true; p.floatT += dt; p.vy += (-1.7 - p.vy) * Math.min(1, dt * 14); }
-      p.y += p.vy * dt;
-      if (p.floating && !this._wasFloating) this.stats.floats++;
-      // salto de resgate sobre buracos em modos assistidos
-      if (p.vy < 0 && !p.rescued && (c.jumpAssist || this.assist > 0) && p.y < 0.5 && !this.groundOK(this.dist)) { p.vy = this.jumpV * 0.8; p.rescued = true; sfx.jump(); this.fx.burst(p.x, p.y, 0, 6, { col: 0xffe14a, s: 0.12, speed: 1.6, life: 0.4 }); }
-      if (p.y <= 0 && p.vy <= 0) {
-        if (this.groundOK(this.dist)) { p.y = 0; p.vy = 0; p.ground = true; p.dbl = false; p.dblReq = false; p.floatT = 0; p.rescued = false; p.coyote = c.coyote; p.squash = 0.28; this.fx.burst(p.x, 0.05, 0, 6, { col: 0xf1ead8, s: 0.16, speed: 1.3, life: 0.45 }); sfx.land && sfx.land(); }
-        else if (p.y < -1.1) this.startFall();
+      const cap = this.powers.glide ? -0.9 : -1.7, maxT = this.powers.glide ? 14 : 2.2;
+      if ((this.jumpHeld || p.softT > 0) && p.vy < cap && p.floatT < maxT && !engaged) { p.floating = true; p.floatT += dt; p.vy += (cap - p.vy) * Math.min(1, dt * 14); }
+      const yPrev = p.y; p.y += p.vy * dt;
+      if (p.floating && !this._wasFloating) { this.stats.floats++; if (this.tutFloat) { this.tutFloat = false; save({ tut: { ...load().tut, float: true } }); } }
+      const fl = this.floorAt(p.x, this.dist, yPrev);
+      // salto de resgate sobre vazios em modos assistidos
+      if (p.vy < 0 && !p.rescued && (c.jumpAssist || this.assist > 0) && p.y < 0.5 && fl === -Infinity) { p.vy = this.jumpV * 0.8; p.rescued = true; sfx.jump(); this.fx.burst(p.x, p.y, 0, 6, { col: 0xffe14a, s: 0.12, speed: 1.6, life: 0.4 }); }
+      if (p.vy <= 0 && fl > -Infinity && p.y <= fl) {
+        p.y = fl; p.vy = 0; p.ground = true; p.dbl = false; p.dblReq = false; p.floatT = 0; p.rescued = false; p.coyote = c.coyote; p.squash = 0.28; this.fx.burst(p.x, fl + 0.05, 0, 6, { col: 0xf1ead8, s: 0.16, speed: 1.3, life: 0.45 }); sfx.land && sfx.land();
+      } else if (fl === -Infinity && p.y < -1.1) this.startFall();
+    } else { /* no apoio: p.y já foi ajustado acima */ }
+    // trampolins
+    if (!engaged && !this.fall) {
+      for (const e of this.ents) {
+        if (e.type !== 'pad') continue;
+        if (e.cool && Math.abs(this.dist - e.s) > 1.6) e.cool = false;
+        if (!e.cool && Math.abs(p.x - e.x) < 1.1 && Math.abs(this.dist - e.s) < 0.8 && p.y < 0.45 && p.vy <= 0.5) {
+          e.cool = true; e.bounce = 0.5; p.vy = this.jumpV * 1.3; p.ground = false; p.coyote = 0; p.dbl = false; p.dblReq = false; p.floatT = 0; p.squash = -0.3; p.jumpT = this.t; sfx.jump();
+          this.fx.burst(e.x, 0.4, 0, 12, { col: 0xff9fc4, s: 0.14, speed: 2.4, life: 0.5 }); this.stats.bounces = (this.stats.bounces || 0) + 1;
+        }
       }
-    } else { p.y = 0; p.vy = 0; }
+    }
     this._wasFloating = p.floating;
     if (p.flip > 0) p.flip -= dt;
     p.squash += (0 - p.squash) * Math.min(1, dt * 10);
@@ -290,9 +346,9 @@ export class Game3D {
       if (e.type !== 'obs' || e.hit) continue;
       if (Math.abs(e.x - px) > e.w / 2 + 0.8) continue;
       const gap = e.s - e.d / 2 - this.dist - PLAYER_R; if (gap < -0.3) continue;
-      if (!best || gap < best.gap) best = { gap, top: e.h, x: e.x, s: e.s };
+      if (!best || gap < best.gap) best = { gap, top: e.h, x: e.x, s: e.s, kind: e.kind };
     }
-    const h = this.nextHole(); if (h) { const gap = h.s - this.dist - 0.1; if (gap > -0.3 && (!best || gap < best.gap)) best = { gap, top: 0, x: 0, s: h.s + h.len / 2, hole: true }; }
+    const h = this.nextHole(); if (h) { const gap = h.s - this.dist - 0.1; if (gap > -0.3 && (!best || gap < best.gap)) best = { gap, top: 0, x: 0, s: h.s + h.len / 2, hole: true, kind: 'hole', glide: !!h.glide }; }
     return best;
   }
   laneBlocked(lane, s0, s1) { return this.ents.some((e) => e.type === 'obs' && !e.hit && e.lane === lane && e.s + e.d / 2 > s0 && e.s - e.d / 2 < s1); }
@@ -305,6 +361,7 @@ export class Game3D {
     const o = this.ents.find((e) => e.type === 'obs' && !e.hit && e.lane === p.lane && e.s > this.dist - 0.2 && e.s - e.d / 2 < this.dist + look);
     // nunca desvia de barreiras que ocupam todas as faixas (essas pedem pulo)
     const free = [-1, 0, 1].filter((l) => !this.laneBlocked(l, this.dist - 0.2, this.dist + look + 2)).sort((a, b) => Math.abs(a - p.lane) - Math.abs(b - p.lane));
+    if (o && o.kind === 'wall' && this.tutDouble) return;               // a primeira parede é a demonstração do pulo duplo
     if (o && free.length && Math.abs(free[0] - p.lane) <= 1) p.lane = free[0];
   }
 
@@ -342,12 +399,61 @@ export class Game3D {
         return { width: start - s + len + 5, extra: 0.4 };
       }
       case 'pickup': this.addPickup(arg, this.rng.int(-1, 1), s); return { width: 5 };
+      case 'wall': return { width: this.spawnWall(s) };
+      case 'pad': return this.spawnPad(s);
+      case 'leaf': return this.spawnLeaves(s);
+      case 'glidegap': return this.spawnGlideGap(s);
+      case 'flystars': return this.spawnFlyStars(s);
+      case 'ptero': return this.spawnPtero(s);
       case 'mission': return this.addMission(arg, s);
       default: return { width: 4 };
     }
   }
+  // ---- trechos que pedem habilidades ----
+  spawnWall(s) {
+    const r = this.rng, l0 = r.int(-1, 1), lanes = this.modeId === 'desafio' ? [l0, l0 === 1 ? 0 : l0 + 1] : [l0];
+    lanes.forEach((l) => { this.addObstacle('wall', l, s); this.addStar(l, s - 0.6, 3.4); this.addStar(l, s + 0.6, 3.4); });
+    const free = [-1, 0, 1].find((l) => !lanes.includes(l)); this.addStar(free, s, 0.9);
+    return 6;
+  }
+  addPlat(kind, lane, s, len, top) {
+    const th = this.phase.theme, natural = th === 'floresta' || th === 'pre';
+    const mesh = natural ? buildLeaf(1.9, len, th === 'pre' ? 0x6fcf3a : 0x3fcf5a) : buildPlatform(1.9, len);
+    this.scene.add(mesh);
+    const e = { type: 'plat', lane, x: this.laneX(lane), s, len, w: 1.9, top, mesh, natural }; this.ents.push(e); return e;
+  }
+  spawnPad(s) {
+    const lane = this.rng.int(-1, 1), top = 2.4;
+    const mesh = buildPad(); this.scene.add(mesh); this.ents.push({ type: 'pad', lane, x: this.laneX(lane), s: s + 1, mesh, bounce: 0 });
+    this.addPlat('top', lane, s + 7.2, 4.6, top);
+    for (let i = 0; i < 5; i++) this.addStar(lane, s + 5.4 + i * 1.0, top + 0.9);
+    return { width: 14, extra: 0.2 };
+  }
+  spawnLeaves(s) {
+    const start = Math.ceil(s / 3) * 3, len = 9, lane = 0;
+    const h = this.world.addHole(start, len); this.ents.push({ type: 'hole', s: start, len, h });
+    this.addPlat('leaf', lane, start + 1.8, 3.8, 0.9); this.addPlat('leaf', lane, start + 7.2, 3.6, 0.9);
+    for (let i = 0; i < 3; i++) { this.addStar(lane, start + 0.7 + i * 1.2, 1.8); this.addStar(lane, start + 6.0 + i * 1.2, 1.8); }
+    return { width: start - s + len + 4, extra: 0.4 };
+  }
+  spawnGlideGap(s) {
+    const start = Math.ceil(s / 3) * 3, len = 9;
+    const h = this.world.addHole(start, len); h.glide = true; this.ents.push({ type: 'hole', s: start, len, h });
+    for (let i = 0; i < 6; i++) this.addStar(0, start - 0.6 + i * 1.8, 1.5 + Math.sin((i / 5) * Math.PI) * 0.6);
+    return { width: start - s + len + 5, extra: 0.5 };
+  }
+  spawnFlyStars(s) {
+    for (let i = 0; i < 12; i++) this.addStar([-1, 0, 1, 0][i % 4], s + i * 1.7, 2.6 + Math.sin(i * 0.7) * 0.7);
+    return { width: 22 };
+  }
+  spawnPtero(s) {
+    const lane = this.rng.int(-1, 1); this.addObstacle('ptero', lane, s);
+    const other = [-1, 0, 1].filter((l) => l !== lane)[this.rng.int(0, 1)]; for (let i = 0; i < 3; i++) this.addStar(other, s - 1.2 + i * 1.2, 1.0);
+    return { width: 6 };
+  }
   obsKinds() { return { bairro: ['cone', 'barrier', 'crate', 'hydrant'], praca: ['cone', 'bench', 'crate', 'bush'], floresta: ['log', 'rock', 'bush', 'mushroom'], altura: ['crate', 'ac', 'barrier', 'pipe'], pre: ['rock', 'log', 'bone', 'mushroom'] }[this.phase.theme]; }
   spawnObstacleGroup(s) {
+    if (!this.firstObstacle && this.phaseNum >= 3 && this.rng.frac() < (this.modeId === 'facil' ? 0.2 : 0.35)) return this.spawnWall(s);
     const grp = this.firstObstacle ? 'full' : this.rng.pick(this.cfg.groups); this.firstObstacle = false;
     const kinds = this.obsKinds(), r = this.rng;
     const k = r.pick(kinds.slice(0, 3));
@@ -359,9 +465,12 @@ export class Game3D {
   }
   tmpl(kind) { return (this.tpl[kind] ||= buildObstacle(kind)); }
   addObstacle(kind, lane, s) {
-    const d = OBSTACLES[kind]; const mesh = this.tmpl(kind).clone(); this.scene.add(mesh);
+    const d = OBSTACLES[kind]; let mesh;
+    if (kind === 'ptero') { mesh = new THREE.Group(); const b = buildDino('ptero'); b.scale.setScalar(1.15); b.rotation.y = Math.PI; mesh.add(b); mesh.userData.b = b; }
+    else mesh = this.tmpl(kind).clone();
+    this.scene.add(mesh);
     const sh = blobShadow(d.w * 1.1, d.d * 1.3); this.scene.add(sh);
-    const e = { type: 'obs', kind, lane, x: this.laneX(lane), s, w: d.w, h: d.h, d: d.d, mesh, sh, hit: false }; this.ents.push(e); return e;
+    const e = { type: 'obs', kind, lane, x: this.laneX(lane), s, w: d.w, h: d.h, d: d.d, mesh, sh, hit: false, noFloor: kind === 'ptero' }; this.ents.push(e); return e;
   }
   addStar(lane, s, y) {
     const mesh = buildStar(); this.scene.add(mesh);
@@ -372,25 +481,33 @@ export class Game3D {
     this.ents.push({ type: 'pickup', kind, lane, x: this.laneX(lane), s, y: 1.1, mesh });
   }
   addMission(key, s) {
-    const side = this.rng.frac() < 0.5 ? -1 : 1; const kind = FIRE_TARGETS[key];
-    const obj = new THREE.Group(); let tx, flames = [], model, aim = [];
-    if (kind === 'bin') { model = buildBin(); model.scale.setScalar(1.7); tx = 3.9; flames = [[0, 2.3, 0, 1.9]]; }
-    else if (kind === 'house') { model = buildHouse(this.rng.pick([0xffd66b, 0xff9fb2, 0x86dcff]), 0xe8352f); tx = 7.8; flames = [[-1.4, 1.5, -1.9, 1.1], [1.4, 1.5, -1.9, 1.1], [0.0, 3.4, -0.4, 1.4]]; }
-    else { model = buildTower(4); tx = 10.2; flames = [[-1.6, 1.4, -1.9, 1.1], [1.6, 3.3, -1.9, 1.1], [0, 5.2, -1.9, 1.2], [-1.6, 7.0, -1.9, 1.1]]; }
+    const side = this.rng.frac() < 0.5 ? -1 : 1; const fk = FIRE_TARGETS[key];
+    let def, spec;
+    if (fk) {
+      def = FIRE_DEFS[fk];
+      if (fk === 'bin') { const model = buildBin(); model.scale.setScalar(1.7); spec = { model, tx: 3.9, flames: [[0, 2.3, 0, 1.9]] }; }
+      else if (fk === 'house') spec = { model: buildHouse(this.rng.pick([0xffd66b, 0xff9fb2, 0x86dcff]), 0xe8352f), tx: 7.8, flames: [[-1.4, 1.5, -1.9, 1.1], [1.4, 1.5, -1.9, 1.1], [0.0, 3.4, -0.4, 1.4]] };
+      else spec = { model: buildTower(4), tx: 10.2, flames: [[-1.6, 1.4, -1.9, 1.1], [1.6, 3.3, -1.9, 1.1], [0, 5.2, -1.9, 1.2], [-1.6, 7.0, -1.9, 1.1]] };
+    } else { def = MISSIONS3[key]; spec = def.build(side); }
+    const obj = new THREE.Group(), model = spec.model;
     model.rotation.y = side < 0 ? -Math.PI / 2 : Math.PI / 2; obj.add(model);
-    const fl = flames.map(([x, y, z, sc]) => { const f = buildFlame(); f.position.set(x, y, z); f.scale.setScalar(sc); f.userData.base = sc; const holder = new THREE.Group(); holder.add(f); holder.rotation.y = model.rotation.y; obj.add(holder); return f; });
-    obj.position.set(side * tx, 0, 0); this.scene.add(obj);
-    const hits = kind === 'bin' ? this.cfg.fireHits : kind === 'house' ? this.cfg.fireHits + 1 : this.cfg.fireHits + 2;
-    const m = { type: 'mission', key, kind, s, side, tx: side * tx, obj, model, flames: fl, hp: hits + Math.min(this.loop, 2), done: false, engaged: false, w: 4 };
-    m.max = m.hp; this.ents.push(m);
+    const fl = (spec.flames || []).map(([x, y, z, sc]) => { const f = buildFlame(); f.position.set(x, y, z); f.scale.setScalar(sc); f.userData.base = sc; const holder = new THREE.Group(); holder.add(f); holder.rotation.y = model.rotation.y; obj.add(holder); return f; });
+    obj.position.set(side * spec.tx, 0, 0); this.scene.add(obj);
+    const hits = def.hits(this.cfg) + Math.min(this.loop, 2);
+    const m = { type: 'mission', key, kind: fk || (def.kind === 'fire' ? 'bin' : 'help'), def, s, side, tx: side * spec.tx, obj, model, parts: spec.parts, aim: spec.aim, flames: fl, hp: hits, max: hits, prog: 0, done: false, engaged: false, w: 4 };
+    this.ents.push(m);
     return { width: 14, extra: 0.6 };
   }
 
   collide() {
-    const p = this.p; if (p.invul > 0 || this.powers.speed) return;
+    const p = this.p; if (p.invul > 0 || this.powers.fly) return;
+    const ghost = this.powers.speed || this.powers.truck;
     for (const o of this.ents) {
       if (o.type !== 'obs' || o.hit) continue;
-      if (Math.abs(p.x - o.x) < o.w / 2 + PLAYER_R * 0.85 && Math.abs(this.dist - o.s) < o.d / 2 + 0.2 && p.y < o.h - 0.12) { this.onHit(o); break; }
+      if (Math.abs(p.x - o.x) < o.w / 2 + PLAYER_R * 0.85 && Math.abs(this.dist - o.s) < o.d / 2 + 0.2 && p.y < o.h - 0.12) {
+        if (ghost) { o.hit = true; o.fly = { t: 0, vx: (o.x >= p.x ? 1 : -1) * 5, vy: 6 }; this.fx.burst(o.x, 0.6, 0, 8, { col: 0xfff2c8, s: 0.18, speed: 2.4, life: 0.5 }); sfx.star(); continue; }
+        this.onHit(o); break;
+      }
     }
   }
   onHit(o) {
@@ -417,8 +534,13 @@ export class Game3D {
     }
   }
   takePickup(e) {
-    sfx.hose && sfx.hose();
-    if (e.kind === 'hose') { this.eq.hose = true; speak('Mangueira!'); this.hud.toast('🧯', 'Mangueira!'); }
+    sfx.hose && sfx.hose(); const k = e.kind;
+    if (k === 'hose') { this.eq.hose = true; speak('Mangueira!'); this.hud.toast('🧯', 'Mangueira!'); }
+    else if (k === 'bone') { this.eq.bone = true; speak('Um ossinho!'); this.hud.toast('🦴', 'Ossinho!'); }
+    else if (k === 'egg') { this.eq.egg = true; speak('Um ovo! Cuidado!'); this.hud.toast('🥚', 'Leve o ovo ao ninho!'); }
+    else if (k === 'glider') { this.grantPower('glide'); }
+    else if (k === 'truck') { this.grantPower('truck'); }
+    else if (k === 'flight') { this.grantPower('fly'); }
     this.fx.burst(e.mesh.position.x, e.y, e.mesh.position.z, 14, { col: 0xffd23f, s: 0.14, speed: 2.6, life: 0.6 });
     this.scene.remove(e.mesh);
   }
@@ -426,75 +548,177 @@ export class Game3D {
   addStars(n) {
     this.stars += n; this.stats.stars += n; this.hud.setStars(this.stars);
     if (this.stars > (load().bestStars || 0)) save({ bestStars: this.stars });
-    while (this.stars >= this.nextPowerAt) { this.nextPowerAt += STARS_PER_POWER; this.grantPower(this.rng.pick(POWER_POOL.filter((k) => !this.powers[k]).concat(POWER_POOL.filter((k) => this.powers[k]).length === POWER_POOL.length ? POWER_POOL : []))); }
+    while (this.stars >= this.nextPowerAt) { this.nextPowerAt += STARS_PER_POWER; { const pool = this.phaseNum >= 4 ? POWER_POOL.concat(['fly']) : POWER_POOL, free = pool.filter((k) => !this.powers[k]); this.grantPower(this.rng.pick(free.length ? free : pool)); } }
+  }
+
+
+  // ================================================================ minijogos opcionais (bolha de desafio)
+  /** há obstáculo ou buraco à frente em qualquer faixa? */
+  hazardWithin(d) {
+    for (const e of this.ents) { if (e.type === 'obs' && !e.hit) { const gap = e.s - e.d / 2 - this.dist; if (gap > -2 && gap < d) return true; } }
+    return !!this.world.inHole(this.dist - 2, this.dist + d);
+  }
+  updateOffer(dt, m) {
+    const p = this.p;
+    const ok = !this.focus && !this.tutorialActive && !this.tutorialJump && !this.fall && p.ground && !this.powers.fly && !this.powers.truck && this.recover <= 0 && this.runTime > 20
+      && (!m || m.s - this.dist > 45) && !this.hazardWithin(34);
+    if (this.offer) {
+      if (!ok) { this.hideOffer(8); return; }
+      this.offer.t -= dt; if (this.offer.t <= 0) this.hideOffer(40);     // ignorou: some sozinha, sem cobrança
+      return;
+    }
+    if (!ok) return;
+    this.offerCd -= dt;
+    // nunca em sequência: precisa ter havido uma missão ou bastante tempo desde a última bolha
+    if (this.offerCd <= 0 && (this.stats.missions > this.lastOfferMissions || this.runTime - this.lastOfferTime > 110)) this.showOffer();
+  }
+  showOffer(kind) {
+    kind = kind || this.miniKind; this.miniKind = kind === 'puzzle' ? 'snake' : 'puzzle';
+    this.offer = { t: 10, kind }; this.lastOfferMissions = this.stats.missions; this.lastOfferTime = this.runTime;
+    this.hud.quest(MINI_ICONS[kind], () => this.openMini(kind)); speak('Toque na bolha!');
+  }
+  hideOffer(cd) { this.offer = null; this.offerCd = cd; this.hud.quest(null); }
+  openMini(kind) {
+    if (this.mini || this.paused) return; this.hideOffer(60);
+    this.setRun(false); this.jumpHeld = false; this.p.dblReq = false; this.stats.minis++;
+    const fx = { star: () => sfx.star(), tap: () => sfx.tap && sfx.tap(), win: () => sfx.star(), hit: () => sfx.hit() };
+    this.mini = startMinigame(this.el, kind, {
+      mode: this.modeId, rng: this.rng.frac, sfx: fx, speak,
+      onWin: () => this.closeMini(true), onClose: () => this.closeMini(false),
+    });
+    this.mini.kind = kind;
+  }
+  /** volta ao jogo com segurança: arranque suave e proteção breve; recompensa uma única vez */
+  closeMini(won) {
+    const mg = this.mini; if (!mg) return; this.mini = null; if (mg.destroy) mg.destroy();
+    this.offerCd = won ? 75 : 50; this.resumeMul = 0; this.p.invul = Math.max(this.p.invul, 2.5); this.recover = 0;
+    this.last = performance.now(); this.acc = 0;
+    if (won && !mg.rewarded) { mg.rewarded = true; this.stats.minisWon++; this.miniReward(); }
+  }
+  miniReward() {
+    // sem vidas: o escudo é a recompensa mais comum; os demais poderes e estrelas completam o sorteio
+    const pool = [['shield', 4], ['stars', 3], ['jet', 1], ['jump', 1], ['glide', 1], ['magnet', 1]];
+    const cand = pool.filter(([k]) => k === 'stars' || !this.powers[k]);
+    let tot = cand.reduce((a, [, w]) => a + w, 0), r = this.rng.frac() * tot, pick = 'stars';
+    for (const [k, w] of cand) { if ((r -= w) <= 0) { pick = k; break; } }
+    this.lastReward = pick;
+    if (pick === 'stars') { this.addStars(10); this.hud.toast('⭐', '+10'); speak('Que legal! Mais estrelas!'); }
+    else this.grantPower(pick);
+    this.p.cheer = 1.6; sfx.star();
   }
 
   // ================================================================ poderes temporários (um a cada 50 estrelas)
   grantPower(key) {
-    if (!key) return; const d = POWERS[key]; this.stats.powers++;
+    if (!key) return; const d = POWERS_ALL[key]; this.stats.powers++;
     this.powers[key] = { t: d.dur, dur: d.dur }; this.hud.toast(POWER_EMOJI[key], d.name); speak(d.say); sfx.star();
     this.fx.burst(this.p.x, 0.9, 0, 18, { col: d.color, s: 0.15, speed: 3, life: 0.7 }); this.lastPower = key;
   }
-  removePower(k) { delete this.powers[k]; }
+  removePower(k) { delete this.powers[k]; if (k === 'fly' || k === 'truck') this.p.softT = 2.6; }
   updatePowers(dt) {
     for (const k of Object.keys(this.powers)) {
       const pw = this.powers[k];
       if (!this.focus && !this.tutorialActive && k !== 'shield') pw.t -= dt;    // o tempo dos poderes para durante missões
-      if (pw.t <= 0) { this.removePower(k); }
+      // a viatura chega ao local da ocorrência: a criança desce e segue a pé
+      if (k === 'truck' && this.mission && !this.mission.engaged && this.mission.s - this.dist < 26) pw.t = Math.min(pw.t, 0);
+      if (pw.t <= 0) {
+        // voo e viatura só terminam sobre chão firme (nunca deixam a criança sobre um vazio)
+        if ((k === 'truck' || k === 'fly') && this.world.inHole(this.dist - 1.0, this.dist + (k === 'fly' ? 14 : 4)) && (pw.over = (pw.over || 0) + dt) < 8) { pw.t = 0.05; continue; }
+        this.removePower(k);
+      }
     }
   }
 
-  // ================================================================ missões de incêndio
+  // ================================================================ missões (incêndio, resgate, entrega)
   engageMission(m) {
-    m.engaged = true; m.idle = 0; this.hud.toast('🔥', 'Fogo!'); speak(m.kind === 'bin' ? 'Fogo na lixeira!' : m.kind === 'house' ? 'Fogo na casa!' : 'Fogo no prédio!');
-    if (!this.eq.hose) { this.eq.hose = true; this.hud.toast('🧯', 'Um amigo trouxe a mangueira!'); }
+    m.engaged = true; m.idle = 0; const d = m.def;
+    this.hud.toast(d.kind === 'fire' ? '🔥' : '❗', d.cue); speak(d.say || d.cue);
+    if (d.needs && !this.eq[d.needs]) { this.eq[d.needs] = true; this.hud.toast(EQUIP_EMOJI[d.needs], GIVE_TEXT[d.needs]); }
     this.tutorialWater = !load().tut.water;
+    if (d.dogAssist) m.assistAt = this.t + 2.2;
   }
   aimPoint(m, i = null) {
     m.obj.updateMatrixWorld(true);
+    if (!m.flames.length) { const v = new THREE.Vector3(m.aim[0], m.aim[1], m.aim[2]); return m.model.localToWorld(v); }
     const alive = m.flames.filter((f) => f.visible && f.scale.x > 0.05);
     const f = i === null ? (alive[0] || m.flames[0]) : m.flames[i];
     const v = new THREE.Vector3(); f.getWorldPosition(v); v.y += 0.35; return v;
   }
   spray(m) {
-    const p = this.p; this.sprayCd = 0.28; this.sprayT = 0.55; sfx.hose && sfx.hose();
+    const p = this.p, proj = ACTIONS[m.def.icon].proj;
+    this.sprayCd = proj === 'water' ? 0.28 : 0.6; this.sprayT = 0.55;
     const from = new THREE.Vector3(p.x + 0.3 * Math.cos(this.kid.rotation.y), 0.82, -0.25), to = this.aimPoint(m);
-    const T = 0.5, gr = 9;
-    const jet = this.powers.jet ? 2 : 1;
-    for (let i = 0; i < 14 * jet; i++) {
-      const dt0 = i / (14 * jet) * 0.18, jx = (Math.random() - 0.5) * 0.3, jz = (Math.random() - 0.5) * 0.3;
-      this.fx.emit(from.x, from.y, from.z, { vx: (to.x - from.x + jx) / T, vy: (to.y - from.y + 0.5 * gr * T * T) / T, vz: (to.z - from.z + jz) / T, g: gr, s: this.powers.jet ? 0.26 : 0.2, life: T + dt0, col: this.powers.jet ? 0x7fd0ff : 0x9be0ff });
-    }
-    this.hitQueue = (this.hitQueue || []); this.hitQueue.push({ t: T * 0.9, m, n: jet });
     if (this.tutorialWater) { this.tutorialWater = false; save({ tut: { ...load().tut, water: true } }); }
+    this.hitQueue = (this.hitQueue || []);
+    if (proj === 'water') {
+      sfx.hose && sfx.hose(); this.arcWater(from, to, this.powers.jet ? 2 : 1, 0x9be0ff, this.powers.jet ? 0x7fd0ff : 0x9be0ff);
+      this.hitQueue.push({ t: 0.45, m, n: this.powers.jet ? 2 : 1 });
+    } else if (proj === 'heart') {
+      sfx.star(); this.arcWater(from, to, 0.6, 0xff7ab0, 0xffb3d1, 0.14); this.hitQueue.push({ t: 0.45, m, n: 1 });
+    } else if (proj === 'none') {
+      sfx.hose && sfx.hose(); this.hitQueue.push({ t: 0.5, m, n: 1 });
+    } else {
+      sfx.jump();
+      const mesh = proj === 'bone' ? buildBoneProp(1.5) : proj === 'box' ? buildGiftBox() : proj === 'egg' ? buildEgg(1.1) : buildFruit(1.6);
+      mesh.position.copy(from); this.scene.add(mesh); this.projs = this.projs || []; this.projs.push({ mesh, from, to, t: 0, T: 0.6, m });
+    }
+  }
+  arcWater(from, to, jet, c1, c2, size = 0.2) {
+    const T = 0.5, gr = 9, n = Math.ceil(14 * jet);
+    for (let i = 0; i < n; i++) {
+      const dt0 = i / n * 0.18, jx = (Math.random() - 0.5) * 0.3, jz = (Math.random() - 0.5) * 0.3;
+      this.fx.emit(from.x, from.y, from.z, { vx: (to.x - from.x + jx) / T, vy: (to.y - from.y + 0.5 * gr * T * T) / T, vz: (to.z - from.z + jz) / T, g: gr, s: jet > 1 ? size * 1.3 : size, life: T + dt0, col: i % 2 ? c1 : c2 });
+    }
+  }
+  updateProjs(dt) {
+    if (!this.projs || !this.projs.length) return;
+    for (const pr of this.projs) {
+      pr.t += dt; const u = Math.min(1, pr.t / pr.T);
+      pr.mesh.position.set(pr.from.x + (pr.to.x - pr.from.x) * u, pr.from.y + (pr.to.y - pr.from.y) * u + Math.sin(u * Math.PI) * 1.4, pr.from.z + (pr.to.z - pr.from.z) * u);
+      pr.mesh.rotation.y += dt * 9; pr.mesh.rotation.x += dt * 5;
+      if (u >= 1) { this.scene.remove(pr.mesh); pr.done = true; this.hitQueue.push({ t: 0, m: pr.m, n: 1 }); this.fx.burst(pr.to.x, pr.to.y, pr.to.z, 8, { col: 0xffe14a, s: 0.14, speed: 2, life: 0.5 }); }
+    }
+    this.projs = this.projs.filter((x) => !x.done);
   }
   updateMission(dt, m) {
     if (this.hitQueue && this.hitQueue.length) {
       for (const h of this.hitQueue) h.t -= dt;
       const due = this.hitQueue.filter((h) => h.t <= 0); this.hitQueue = this.hitQueue.filter((h) => h.t > 0);
-      for (const h of due) { const mm = h.m; if (mm.done) continue; mm.hp = Math.max(0, mm.hp - h.n); const v = this.aimPoint(mm); this.fx.burst(v.x, v.y, v.z, 10, { col: 0xffffff, s: 0.2, speed: 1.8, up: 1.5, life: 0.7, grow: 1.3 }); if (mm.hp <= 0) this.finishMission(mm); }
+      for (const h of due) {
+        const mm = h.m; if (mm.done) continue;
+        mm.hp = Math.max(0, mm.hp - h.n); mm.prog = 1 - mm.hp / mm.max; const v = this.aimPoint(mm);
+        if (mm.def.kind === 'fire') this.fx.burst(v.x, v.y, v.z, 10, { col: 0xffffff, s: 0.2, speed: 1.8, up: 1.5, life: 0.7, grow: 1.3 });
+        else this.fx.burst(v.x, v.y, v.z, 10, { col: 0xff9fc4, s: 0.16, speed: 2, up: 2.2, life: 0.8, g: -1 });
+        mm.def.onHit && mm.def.onHit(mm, this);
+        if (mm.hp <= 0) this.finishMission(mm);
+      }
     }
     const f = this.focus;
-    if (f && !f.done) { f.idle += dt; if (this.cfg.autoHelpAfter && f.idle > this.cfg.autoHelpAfter && this.sprayCd <= 0) { f.idle = this.cfg.autoHelpAfter - 3; this.spray(f); this.hud.toast('🐶', 'Um amigo ajuda!'); } }
+    if (f && !f.done) {
+      f.idle += dt;
+      if (this.cfg.autoHelpAfter && f.idle > this.cfg.autoHelpAfter && this.sprayCd <= 0) { f.idle = this.cfg.autoHelpAfter - 3; this.spray(f); this.hud.toast('🐶', 'Um amigo ajuda!'); }
+      if (f.assistAt && this.t >= f.assistAt && this.dog) { f.assistAt = null; const from = this.dog.position.clone(); from.y += 0.9; this.arcWater(from, this.aimPoint(f), 1, 0x9be0ff, 0xffffff); this.hitQueue.push({ t: 0.45, m: f, n: 1 }); this.dogBark = 1; speak('Au au!'); }
+    }
   }
   finishMission(m) {
-    m.done = true; this.stats.missions++; sfx.star(); this.addStars(5); this.p.cheer = 2.2;
+    m.done = true; m.prog = 1; this.stats.missions++; sfx.star(); this.addStars(5); this.p.cheer = 2.2; const d = m.def;
     m.flames.forEach((f) => { const v = new THREE.Vector3(); f.getWorldPosition(v); this.fx.burst(v.x, v.y + 0.3, v.z, 12, { col: 0xdfe6f1, s: 0.3, speed: 1.6, up: 1.8, life: 0.9, grow: 1.5 }); });
-    // moradores comemoram
+    if (d.needs && d.needs !== 'hose') this.eq[d.needs] = false;
+    // moradores comemoram (nas missões de fogo)
     m.cheer = [];
-    const n = m.kind === 'bin' ? 0 : m.kind === 'house' ? 2 : 3;
-    for (let i = 0; i < n; i++) { const k = buildKid({ skin: this.rng.int(0, 6), face: this.rng.int(0, 2), hair: this.rng.int(0, 7), hairColor: this.rng.int(0, 7), eyes: this.rng.int(0, 5), outfit: 9 }); k.position.set(m.tx + (m.side < 0 ? 1 : -1) * (m.kind === 'house' ? 3.2 : 4.2), 0, 1.4 + i * 1.5 - 1); k.rotation.y = m.side < 0 ? Math.PI / 2 + 0.6 : -Math.PI / 2 - 0.6; k.rotation.y = Math.PI * (0.9 + (i - 1) * 0.12); this.scene.add(k); m.cheer.push(k); }
+    const n = d.kind !== 'fire' ? 0 : m.kind === 'bin' ? 0 : m.kind === 'house' ? 2 : 3;
+    for (let i = 0; i < n; i++) { const k = buildKid({ skin: this.rng.int(0, 6), face: this.rng.int(0, 2), hair: this.rng.int(0, 7), hairColor: this.rng.int(0, 7), eyes: this.rng.int(0, 5), outfit: 9 }); k.position.set(m.tx + (m.side < 0 ? 1 : -1) * (m.kind === 'house' ? 3.2 : 4.2), 0, 1.4 + i * 1.5 - 1); k.rotation.y = Math.PI * (0.9 + (i - 1) * 0.12); this.scene.add(k); m.cheer.push(k); }
+    if (d.kind !== 'fire') { const v = this.aimPoint(m); this.fx.burst(v.x, v.y + 0.6, v.z, 18, { col: 0xff7ab0, s: 0.2, speed: 1.6, up: 2.4, life: 1.2, g: -0.8 }); this.fx.burst(v.x, v.y + 0.6, v.z, 12, { col: 0xffe14a, s: 0.14, speed: 2.4, up: 1.2, life: 0.9 }); }
     this.hud.toast('⭐', '+5'); speak(this.rng.pick(['Muito bem!', 'Você conseguiu!', 'Parabéns!']));
     this.p.invul = Math.max(this.p.invul, 2.2);
-    this.time0 = this.t;
-    m.endAt = this.t + 1.6;
+    this.time0 = this.t; this.dogBark = 2.5;
+    m.endAt = this.t + (d.hold ?? 1.6);
   }
 
   // ================================================================ fases
   advancePhase() {
     this.phaseNum++; this.stats.phases++;
     const ph = this.phase; this.world.setTheme(ph.theme);
-    this.queue = this.scriptFor(this.phaseNum); this.firstObstacle = false;
+    this.queue = this.scriptFor(this.phaseNum); this.firstObstacle = false; this.setupDog();
     save({ phase: Math.min(5, (this.phaseNum - 1) % PHASES.length + 1) });
     this.hud.banner('Fase ' + this.phaseNum, ph.name); this.hud.setDots((this.phaseNum - 1) % PHASES.length, PHASES.length, this.loop);
     const th = THEMES3[ph.theme]; this.themeTarget = th; this.sunTarget = th.sun;
@@ -507,7 +731,14 @@ export class Game3D {
     const t = this.t;
     for (const e of this.ents) {
       const z = this.dist - e.s;
-      if (e.type === 'obs') {
+      if (e.type === 'plat') {
+        e.mesh.position.set(e.x, e.top, z);
+        if (e.natural) e.mesh.rotation.z = Math.sin(t * 1.6 + e.s) * 0.015;
+      } else if (e.type === 'pad') {
+        e.mesh.position.set(e.x, 0, z); e.bounce = Math.max(0, (e.bounce || 0) - dt); const k = e.bounce > 0 ? 1 - Math.sin((0.5 - e.bounce) / 0.5 * Math.PI) * 0.5 : 1; e.mesh.userData.top.scale.y = k; e.mesh.userData.top.position.y = 0.3 + (e.bounce > 0 ? Math.sin((0.5 - e.bounce) / 0.5 * Math.PI) * 0.25 : 0);
+      } else if (e.type === 'obs' && e.kind === 'ptero' && !e.hit) {
+        e.mesh.position.set(e.x, 1.1 + Math.sin(t * 3 + e.s) * 0.18, z); e.sh.position.set(e.x, 0.02, z); animCreature(e.mesh.userData.b, t, { flap: 9 });
+      } else if (e.type === 'obs') {
         if (e.hit) { if (e.fly) { e.fly.t += dt; e.fly.vy -= 16 * dt; e.mesh.position.x += e.fly.vx * dt; e.mesh.position.y += e.fly.vy * dt; e.mesh.rotation.z += 9 * dt; e.mesh.rotation.x += 6 * dt; if (e.fly.t > 0.8) { e.mesh.visible = false; e.sh.visible = false; } } e.mesh.position.z = z; }
         else { e.mesh.position.set(e.x, 0, z); e.sh.position.set(e.x, 0.02, z); }
       } else if (e.type === 'star') {
@@ -529,9 +760,10 @@ export class Game3D {
             if (Math.random() < dt * 4) { f.getWorldPosition(v); this.fx.emit(v.x, v.y + 0.6, v.z, { vy: 1.2, vx: (Math.random() - 0.5) * 0.4, s: 0.14, life: 1.0, col: 0x59616e, grow: 1.6 }); }
           }
         });
+        if (e.def && e.def.update) e.def.update(e, t, dt);
         if (e.done) {
           e.cheer && e.cheer.forEach((k, i) => { k.position.z = z + 0.4 + i * 1.5; poseKid(k, 'cheer', 0, t + i); });
-          if (e.model && e.kind === 'bin') e.model.scale.y = 1 + Math.abs(Math.sin((t - (e.endAt - 1.6)) * 8)) * 0.1 * Math.max(0, e.endAt - t);
+          if (e.model && e.kind === 'bin' && e.def.kind === 'fire') e.model.scale.y = 1.7 * (1 + Math.abs(Math.sin((t - (e.endAt - 1.6)) * 8)) * 0.1 * Math.max(0, e.endAt - t));
           if (t > e.endAt && e.engaged) { e.engaged = false; e.released = true; this.missionMul = 0.2; }
         }
       }
@@ -562,6 +794,8 @@ export class Game3D {
     let st = 'run';
     if (this.fall) st = 'hit';
     else if (p.cheer > 0 && p.ground) st = 'cheer';
+    else if (this.powers.truck) st = 'cheer';
+    else if (p.flying) st = 'glide';
     else if (!p.ground) st = p.flip > 0 ? 'flip' : p.floating ? 'float' : 'jump';
     else if (engaged) st = 'spray';
     else if (p.hitT > 0) st = 'hit';
@@ -575,14 +809,21 @@ export class Game3D {
     this.kid.rotation.y = this.yaw;
     const k = this.kid.userData;
     poseKid(this.kid, st, this.phaseRun, this.t, { roll: p.roll * 0.9, lean: (this.turbo > 1.05 ? 0.1 : 0), fast: this.turbo > 1.08 });
-    k.hose.visible = this.eq.hose; k.nozzle.visible = st === 'spray';
+    k.hose.visible = this.eq.hose; k.nozzle.visible = st === 'spray' && !!(this.focus && ACTIONS[this.focus.def.icon].proj === 'water');
     if (st === 'spray') { k.armR.rotation.x = -1.5 + Math.sin(this.t * 14) * 0.05; k.armR.rotation.z = -0.1; }
+    // equipamentos visíveis: asas do voo, planador e ovo carregado
+    this.wing.visible = !!p.flying; if (p.flying) { const f = Math.sin(this.t * 16) * 0.5; this.wing.userData.l.rotation.z = -f; this.wing.userData.r.rotation.z = f; }
+    this.glider.visible = !!this.powers.glide; if (this.powers.glide) { this.glider.rotation.z = Math.sin(this.t * 2) * 0.04; this.glider.position.y = 1.85 + (p.ground ? 0 : 0.1); }
+    this.carryEgg.visible = !!this.eq.egg; if (this.eq.egg && (st === 'run' || st === 'idle')) { k.armL.rotation.x = -2.7; k.armR.rotation.x = -2.7; k.armL.rotation.z = 0.15; k.armR.rotation.z = -0.15; }
+    // viatura de bombeiros: a criança vai no teto
+    const tk = !!this.powers.truck; this.truck.visible = tk;
+    if (tk) { this.truck.position.set(p.x, Math.max(0, p.y - 0.0), 0.5); this.truck.rotation.z = -p.roll * 0.3; const fl = Math.floor(this.t * 6) % 2; this.truck.userData.lights.forEach((l, i) => { l.visible = (i === fl); }); }
     // cambalhota do pulo duplo
     k.spin.rotation.x = p.flip > 0 ? -((0.55 - p.flip) / 0.55) * Math.PI * 2 : 0;
     k.body.scale.set(1 - p.squash * 0.35, 1 + p.squash * 0.5, 1 - p.squash * 0.35);
-    this.kid.position.set(p.x, p.y, 0);
+    this.kid.position.set(p.x, p.y + (tk ? 1.05 : 0), 0);
     this.kid.visible = !(p.invul > 0 && p.invul < 1.6 && Math.floor(this.t * 14) % 2 && !this.fall);
-    this.shadow.position.set(p.x, 0.02, 0); const alt = Math.max(0, p.y); this.shadow.scale.set(0.9 * (1 - Math.min(0.5, alt / 5)), 1, 0.9 * (1 - Math.min(0.5, alt / 5))); this.shadow.visible = !this.fall;
+    this.shadow.position.set(p.x, 0.02 + (p.y > 0.5 && p.ground ? p.y : 0), 0); const alt = p.ground ? 0 : Math.max(0, p.y); this.shadow.scale.set(0.9 * (1 - Math.min(0.5, alt / 5)), 1, 0.9 * (1 - Math.min(0.5, alt / 5))); this.shadow.visible = !this.fall;
     this.bubble.visible = !!this.powers.shield; this.bubble.position.set(p.x, p.y + 0.75, 0); this.bubble.scale.setScalar(1 + Math.sin(this.t * 6) * 0.03);
     // dica de salto (modo fácil)
     const h = this.cfg.hintDist && p.ground && !this.fall ? this.nextHazard() : null;
@@ -598,15 +839,35 @@ export class Game3D {
     else this.scene.fog.color.copy(this.world.fogColor);
   }
 
+  setupDog() {
+    if (this.dog) { this.scene.remove(this.dog); this.scene.remove(this.dogShadow); this.dog = null; }
+    const key = this.phase.dog; if (!key) return;
+    this.dog = buildDog(key); this.dog.scale.setScalar(1.45); this.dog.position.set(-4.7, 0, 1.2); this.scene.add(this.dog);
+    this.dogShadow = blobShadow(1.5, 2.0); this.scene.add(this.dogShadow);
+  }
+  updateCompanion(dt) {
+    const dg = this.dog; if (!dg) return;
+    const p = this.p, t = this.t, f = this.focus, mm = f || (this.mission && !this.mission.done && this.mission.s - this.dist < 26 ? this.mission : null);
+    let tx, tz, ry = 0, lift = 0, walk = this.worldSpeed > 0.5 ? 1 : 0;
+    if (mm) { tx = mm.side * 1.6; tz = -1.5; ry = f && !f.done ? -mm.side * 0.9 : 0; }
+    else { tx = (p.x >= 0 ? -1 : 1) * 4.3; tz = -2.4 + Math.sin(t * 0.9) * 0.9; }
+    if (f && f.done) { lift = Math.abs(Math.sin(t * 9)) * 0.7; walk = 0; }
+    if (this.dogBark > 0) { this.dogBark -= dt; lift = Math.max(lift, Math.abs(Math.sin(t * 15)) * 0.4); walk = 0; }
+    if (Math.abs(tx - dg.position.x) > 0.2) walk = 1;
+    dg.position.x += (tx - dg.position.x) * Math.min(1, dt * 2.6); dg.position.z += (tz - dg.position.z) * Math.min(1, dt * 2.6);
+    dg.rotation.y += (ry - dg.rotation.y) * Math.min(1, dt * 6);
+    animCreature(dg, t, { walk, rate: 4 + this.worldSpeed * 1.3 + (walk ? 4 : 0), wag: 10, wagAmp: 0.5, lift });
+    this.dogShadow.position.set(dg.position.x, 0.02, dg.position.z); this.dogShadow.scale.set(1.5 * (1 - lift * 0.3), 1, 2.0 * (1 - lift * 0.3));
+  }
   sparkleRing(x, y) { for (let i = 0; i < 18; i++) { const a = (i / 18) * Math.PI * 2; this.fx.emit(x, y, 0, { vx: Math.cos(a) * 3, vy: Math.sin(a) * 3, s: 0.12, life: 0.6, col: 0xffe14a }); } }
 
   updateCamera(dt, snap = false) {
     const p = this.p, m = this.focus;
     let pos, look, fov = 60;
     if (m) {
-      const big = m.kind === 'bin' ? 0 : m.kind === 'house' ? 1 : 2;
-      pos = new THREE.Vector3(-m.side * 1.2, 2.7 + big * 1.0, 4.6 + big * 1.4);
-      look = new THREE.Vector3(m.tx * 0.55, 1.3 + big * 1.5, -3.0); fov = 56 + big * 3;
+      const big = m.cam || 0, tall = m.def.camTall;
+      pos = new THREE.Vector3(-m.side * 1.2, tall ? 3.4 : 2.7 + big * 1.0, tall ? 7.2 : 4.6 + big * 1.4);
+      look = new THREE.Vector3(m.tx * 0.45, tall ? tall : 1.3 + big * 1.5, -3.0); fov = tall ? 68 : 56 + big * 3;
     }
     else { pos = new THREE.Vector3(p.x * 0.55, 3.3 + Math.max(0, p.y) * 0.4, 5.7); look = new THREE.Vector3(p.x * 0.35, 1.1 + Math.max(0, p.y) * 0.3, -9); fov = 60 + (this.turbo - 1) * 16; }
     if (this.shake > 0) { this.shake -= dt; pos.y += Math.sin(this.t * 60) * 0.04 * Math.min(1, this.shake * 5); }
@@ -620,12 +881,20 @@ export class Game3D {
   updateHud(m) {
     const frac = (this.stars - (this.nextPowerAt - STARS_PER_POWER)) / STARS_PER_POWER; this.hud.setBar(Math.max(0, Math.min(1, frac)));
     const keys = Object.keys(this.powers);
-    if (keys.length) { const k = keys[keys.length - 1], pw = this.powers[k]; this.hud.power(POWER_EMOJI[k], pw.t / pw.dur, '#' + POWERS[k].color.toString(16).padStart(6, '0')); } else this.hud.power(null);
+    if (keys.length) { const k = keys[keys.length - 1], pw = this.powers[k]; this.hud.power(POWER_EMOJI[k], pw.t / pw.dur, '#' + POWERS_ALL[k].color.toString(16).padStart(6, '0')); } else this.hud.power(null);
     // botão de ação: mostra de antemão o que fará
     const near = m && !m.done && (m.s - this.dist) < 34;
-    this.hud.setAction(near ? 'drop' : null, !!(this.focus && !this.focus.done), near && !m.engaged);
+    this.hud.setAction(near ? m.def.icon : null, !!(this.focus && !this.focus.done), near && !m.engaged);
+    this.hud.setEquip(Object.keys(this.eq).filter((k) => this.eq[k]).map((k) => EQUIP_EMOJI[k]));
+    this.hud.setProg(this.focus && !this.focus.done ? this.focus.max - this.focus.hp : 0, this.focus && !this.focus.done ? this.focus.max : 0);
     this.hud.pulseJump(this.tutorialActive || (this.hint.visible && this.cfg.hintDist > 0));
-    if (this.tutorialActive) { this.hud.hand(this.hud.els.jump, true); if (!this._saidJump) { this._saidJump = true; speak('Toque na seta para pular!'); } }
+    const p = this.p, fh = this.tutFloat && !p.ground && this.world.holes.some((h) => h.glide && this.dist > h.s - 3 && this.dist < h.s + h.len);
+    if (this.tutorialActive || fh) {
+      this.hud.hand(this.hud.els.jump, true);
+      const key = this.tutorialActive ? this.tutKind : 'floatnow';
+      if (this._said !== key) { this._said = key; if (key === 'jump') speak('Toque na seta para pular!'); else if (key === 'double') { speak('Toque duas vezes para pular mais alto!'); this.hud.toast('🦘', 'Toque 2 vezes!'); } else { speak('Segure a seta no ar para planar!'); this.hud.toast('🪂', 'Segure a seta!'); } }
+    } else this._said = null;
+    if (this.tutorialActive || fh) { /* mão já exibida */ }
     else if (this.focus && !this.focus.done && this.tutorialWater) this.hud.hand(this.hud.els.act, true);
     else this.hud.hand(null, false);
   }
@@ -635,7 +904,7 @@ export class Game3D {
     return {
       mode: this.modeId, phase: this.phaseNum, theme: this.world.nextTheme, t: this.t, dist: this.dist, stars: this.stars, speed: this.worldSpeed, base: this.baseSpeed, turbo: this.turbo,
       y: p.y, lane: p.lane, onGround: p.ground, floating: p.floating, dbl: p.dbl, assist: this.assist, powers: Object.keys(this.powers), eq: { ...this.eq },
-      falling: !!this.fall, paused: this.paused, tutorial: this.tutorialActive, mission: m ? { key: m.key, hp: m.hp, engaged: m.engaged, done: m.done } : null, focus: !!this.focus, runTime: this.runTime,
+      falling: !!this.fall, paused: this.paused, mini: !!this.mini, offer: this.offer ? this.offer.kind : null, tutorial: this.tutorialActive, mission: m ? { key: m.key, hp: m.hp, engaged: m.engaged, done: m.done } : null, focus: !!this.focus, runTime: this.runTime,
       stats: { ...this.stats }, ents: this.ents.length, queue: this.queue.length,
     };
   }
@@ -643,7 +912,7 @@ export class Game3D {
   destroy() {
     cancelAnimationFrame(this.raf); window.removeEventListener('resize', this.onResize); document.removeEventListener('visibilitychange', this.onHidden);
     window.removeEventListener('keydown', this.kd); window.removeEventListener('keyup', this.ku);
-    stopMusic(); silenceVoice(); this.hud.destroy();
+    stopMusic(); silenceVoice(); if (this.mini) { this.mini.destroy(); this.mini = null; } this.hud.destroy();
     this.renderer.dispose(); if (this.el.parentNode) this.el.parentNode.removeChild(this.el);
     if (window.__ian3 === this) window.__ian3 = null;
   }

@@ -42,6 +42,11 @@ const css = `
 .g3 .prog{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 3vh);transform:translateX(-50%);display:none;gap:10px;pointer-events:none}
 .g3 .prog span{width:min(6vh,34px);height:min(6vh,34px);border-radius:50%;background:rgba(255,255,255,.4);border:4px solid #1b2a49}
 .g3 .prog span.f{background:#4db8ff}
+.g3 .equip{position:absolute;left:calc(env(safe-area-inset-left) + 2.2vw);top:calc(env(safe-area-inset-top) + 2vh + min(25vh,138px));display:flex;gap:6px;pointer-events:none}
+.g3 .equip b{font-size:min(6vh,32px);font-weight:400;background:rgba(27,42,73,.7);border:3px solid #fff;border-radius:50%;width:min(8vh,44px);height:min(8vh,44px);display:flex;align-items:center;justify-content:center}
+.g3 .quest{background:radial-gradient(circle at 35% 30%,#fff 0,#bfe8ff 45%,#6cc8ff 100%);width:min(20vh,100px);height:min(20vh,100px);right:calc(env(safe-area-inset-right) + 2vw);top:calc(env(safe-area-inset-top) + 2vh + min(14vh,70px));animation:g3float 1.4s ease-in-out infinite;display:none}
+.g3 .quest svg{width:62%;height:62%}
+@keyframes g3float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.07)}}
 .g3 .veil{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;gap:5vw;pointer-events:auto}
 .g3 .veil .btn{position:static;width:min(24vh,120px);height:min(24vh,120px)}
 .g3 .veil .big{width:min(34vh,170px);height:min(34vh,170px);background:#3ecb6b}
@@ -62,6 +67,12 @@ export const ICONS = {
   mute: svg('<path d="M10 38 H30 L54 16 V84 L30 62 H10 Z" fill="#fff"/><path d="M68 36 L92 64 M92 36 L68 64" stroke="#fff" stroke-width="9" stroke-linecap="round"/>'),
   star: svg('<path d="M50 6 L62 36 L94 38 L69 58 L77 90 L50 72 L23 90 L31 58 L6 38 L38 36 Z" fill="#ffd62e" stroke="#1b2a49" stroke-width="6" stroke-linejoin="round"/>'),
   hose: svg('<circle cx="46" cy="52" r="30" fill="none" stroke="#fff" stroke-width="14"/><circle cx="46" cy="52" r="14" fill="none" stroke="#fff" stroke-width="10"/><rect x="66" y="64" width="24" height="12" rx="4" fill="#ffd23f"/>'),
+  bone: svg('<circle cx="20" cy="36" r="13" fill="#fff"/><circle cx="20" cy="64" r="13" fill="#fff"/><circle cx="80" cy="36" r="13" fill="#fff"/><circle cx="80" cy="64" r="13" fill="#fff"/><rect x="20" y="38" width="60" height="24" rx="8" fill="#fff"/>'),
+  helpHand: svg('<path d="M50 52 C24 34 22 16 35 12 C43 10 50 16 50 22 C50 16 57 10 65 12 C78 16 76 34 50 52 Z" fill="#fff"/><path d="M8 70 H30 L50 82 H74 a7 7 0 0 1 0 14 H40 L8 86 Z" fill="#fff" stroke="#1b2a49" stroke-width="4" stroke-linejoin="round"/>'),
+  box: svg('<rect x="14" y="40" width="72" height="50" rx="8" fill="#fff"/><rect x="10" y="30" width="80" height="18" rx="6" fill="#fff" stroke="#1b2a49" stroke-width="4"/><rect x="44" y="30" width="12" height="60" fill="#ffd23f"/><path d="M50 30 C30 4 16 16 30 28 Z M50 30 C70 4 84 16 70 28 Z" fill="#ffd23f" stroke="#1b2a49" stroke-width="3"/>'),
+  basket: svg('<path d="M50 4 V38" stroke="#fff" stroke-width="8" stroke-linecap="round"/><path d="M14 44 H86 L74 90 H26 Z" fill="#fff" stroke="#1b2a49" stroke-width="4" stroke-linejoin="round"/><path d="M24 62 H76 M30 78 H70" stroke="#c2864a" stroke-width="5"/>'),
+  egg: svg('<ellipse cx="50" cy="56" rx="30" ry="38" fill="#fff"/><circle cx="40" cy="42" r="6" fill="#6fcf6a"/><circle cx="60" cy="58" r="7" fill="#6fcf6a"/><circle cx="42" cy="72" r="5" fill="#6fcf6a"/>'),
+  fruit: svg('<circle cx="50" cy="58" r="32" fill="#fff"/><path d="M50 28 C50 14 58 8 68 8 C68 20 60 28 50 28 Z" fill="#3ecb6b" stroke="#1b2a49" stroke-width="3"/>'),
   heart: svg('<path d="M50 90 C10 60 6 34 26 24 C40 18 50 28 50 36 C50 28 60 18 74 24 C94 34 90 60 50 90 Z" fill="#fff"/>'),
 };
 
@@ -83,6 +94,7 @@ export function createHud(root, h) {
   els.jump = mk('jump', ICONS.up, () => h.jump(true), () => h.jump(false));
   els.act = mk('act', ICONS.drop, () => h.action());
   els.run = mk('run', ICONS.run, () => h.run(true), () => h.run(false));
+  els.quest = mk('quest', ICONS.up, () => { const f = els.quest._tap; f && f(); });
   els.pause = mk('pause', ICONS.pause, () => h.pause());
   els.act.classList.add('off');
 
@@ -93,6 +105,8 @@ export function createHud(root, h) {
   const banner = document.createElement('div'); banner.className = 'banner'; banner.innerHTML = '<h1></h1><h2></h2>'; ui.appendChild(banner);
   const toast = document.createElement('div'); toast.className = 'toast'; toast.innerHTML = '<span></span><div></div>'; ui.appendChild(toast);
   const hand = document.createElement('div'); hand.className = 'hand'; hand.innerHTML = ICONS.hand; ui.appendChild(hand);
+  const equip = document.createElement('div'); equip.className = 'equip'; ui.appendChild(equip);
+  const prog = document.createElement('div'); prog.className = 'prog'; ui.appendChild(prog);
   const veil = document.createElement('div'); veil.className = 'veil'; ui.appendChild(veil);
 
   // deslizar o dedo para os lados também muda de faixa
@@ -115,6 +129,9 @@ export function createHud(root, h) {
       if (icon && els.act.dataset.icon !== icon) { els.act.dataset.icon = icon; els.act.innerHTML = ICONS[icon] || ICONS.drop; }
       els.act.classList.toggle('off', !enabled); els.act.classList.toggle('pulse', !!pulse && enabled);
     },
+    setEquip(list) { const k = list.join(''); if (equip.dataset.k === k) return; equip.dataset.k = k; equip.innerHTML = list.map((e) => '<b>' + e + '</b>').join(''); },
+    setProg(done, total) { if (total <= 0) { prog.style.display = 'none'; prog.dataset.k = ''; return; } const k = done + '/' + total; if (prog.dataset.k === k) return; prog.dataset.k = k; prog.style.display = 'flex'; prog.innerHTML = Array.from({ length: total }, (_, i) => '<span class="' + (i < done ? 'f' : '') + '"></span>').join(''); },
+    quest(icon, on) { if (!icon) { els.quest.style.display = 'none'; els.quest._tap = null; return; } els.quest.innerHTML = icon; els.quest._tap = on; els.quest.style.display = 'flex'; },
     pulseJump(v) { els.jump.classList.toggle('pulse', !!v); },
     showRun(v) { els.run.style.display = v ? 'flex' : 'none'; },
     setRunActive(v) { els.run.classList.toggle('on', !!v); },

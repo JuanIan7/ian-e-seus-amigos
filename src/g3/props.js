@@ -1,5 +1,6 @@
 // Objetos 3D do jogo: obstáculos, estrelas, equipamentos, chamas, alvos de missão e cenário de cada tema.
 import { THREE, P, sph, box, cyl, cone, cap, tor, dome, toMesh, toon, glow, hex, mergeParts } from './kit.js';
+import { buildBoneProp, buildEgg, buildGlider, buildWing, buildFruit } from './creatures.js';
 
 const bx = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const group = (...kids) => { const g = new THREE.Group(); kids.forEach((k) => k && g.add(k)); return g; };
@@ -20,7 +21,8 @@ export const OBSTACLES = {
   ac: { w: 1.3, h: 0.85, d: 0.9 },
   pipe: { w: 1.9, h: 0.65, d: 0.7 },
   bone: { w: 1.6, h: 0.6, d: 0.7 },
-  wall: { w: 2.0, h: 2.7, d: 0.5 },          // muro alto: exige pulo duplo
+  wall: { w: 2.0, h: 2.7, d: 0.5 },
+  ptero: { w: 1.5, h: 2.0, d: 1.0 },          // muro alto: exige pulo duplo
 };
 
 export function buildObstacle(kind) {
@@ -117,10 +119,16 @@ export function buildHosePickup() {
   return g;
 }
 export function buildPickup(kind) {
-  const g = new THREE.Group();
-  const col = { hose: 0xe8352f, bone: 0xfff3dc, glider: 0x4db8ff, egg: 0xf3e2b5, truck: 0xe8352f, flight: 0xb18cff }[kind] || 0xffd23f;
   if (kind === 'hose') return buildHosePickup();
-  g.add(toMesh([P(sph(0.34, 14, 10), col)], { thin: true }));
+  const g = new THREE.Group();
+  let m = null;
+  if (kind === 'bone') { m = buildBoneProp(2.4); }
+  else if (kind === 'egg') { m = buildEgg(1.6); m.position.y = -0.35; }
+  else if (kind === 'glider') { m = buildGlider(); m.scale.setScalar(1.5); }
+  else if (kind === 'flight') { m = buildWing(); m.scale.setScalar(1.3); }
+  else if (kind === 'truck') { m = buildFireTruck(); m.scale.setScalar(0.17); m.rotation.y = Math.PI * 0.8; }
+  else m = toMesh([P(sph(0.34, 14, 10), 0xffd23f)], { thin: true });
+  g.add(m);
   const halo = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.62, 28), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.8, side: THREE.DoubleSide })); g.add(halo); g.userData.halo = halo;
   return g;
 }

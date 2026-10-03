@@ -4,7 +4,7 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json' };
-export function serve(dir, port = 4199) {
+export function serve(dir, port = +(process.env.PORT || 4199)) {
   const srv = http.createServer((req, res) => {
     let f = path.join(dir, decodeURIComponent(req.url.split('?')[0]));
     if (f.endsWith('/')) f += 'index.html';
