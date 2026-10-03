@@ -17,7 +17,7 @@ async function open(viewport = { width: 1560, height: 720 }) {
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
-  await waitGame(page, 'http://localhost:4199/?renderer=canvas');
+  await waitGame(page, 'http://localhost:4199/?renderer=canvas&2d');
   const tap = async (gx, gy) => {
     const m = await page.evaluate(() => { const r = document.querySelector('canvas').getBoundingClientRect(); return { x: r.left, y: r.top, s: r.width / 1560 }; });
     await page.touchscreen.tap(m.x + gx * m.s, m.y + gy * m.s);
@@ -33,7 +33,7 @@ async function open(viewport = { width: 1560, height: 720 }) {
   await tap(1150, 190); await sleep(200);
   let saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ian-e-seus-amigos:v1')));
   check('toque no cartão Desafio salva o modo', saved.mode === 'desafio', JSON.stringify(saved.mode));
-  await page.goto('http://localhost:4199/?renderer=canvas'); await page.waitForFunction(() => window.__ian && window.__ian.game.scene.isActive('Menu'));
+  await page.goto('http://localhost:4199/?renderer=canvas&2d'); await page.waitForFunction(() => window.__ian && window.__ian.game.scene.isActive('Menu'));
   await sleep(300);
   check('modo escolhido persiste após reabrir', await page.evaluate(() => window.__ian.game.scene.getScene('Menu').mode) === 'desafio');
   await tap(410, 190); await sleep(150);

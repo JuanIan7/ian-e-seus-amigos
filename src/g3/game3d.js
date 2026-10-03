@@ -910,6 +910,7 @@ export class Game3D {
   }
 
   destroy() {
+    if (this.dead) return; this.dead = true;
     cancelAnimationFrame(this.raf); window.removeEventListener('resize', this.onResize); document.removeEventListener('visibilitychange', this.onHidden);
     window.removeEventListener('keydown', this.kd); window.removeEventListener('keyup', this.ku);
     stopMusic(); silenceVoice(); if (this.mini) { this.mini.destroy(); this.mini = null; } this.hud.destroy();

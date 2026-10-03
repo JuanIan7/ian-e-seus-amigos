@@ -8,8 +8,10 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host --port 4173",
-    "test": "node tests/sim.mjs",
-    "test:ui": "node tests/ui.mjs"
+    "test": "node tests/sim3d.mjs && node tests/mini3d.mjs && node tests/ctrl3d.mjs",
+    "test:ui": "node tests/ui.mjs",
+    "test:2d": "node tests/sim.mjs",
+    "test:fases": "node tests/phases3d.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

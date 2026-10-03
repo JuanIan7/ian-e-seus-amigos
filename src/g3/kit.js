@@ -33,7 +33,11 @@ const OUT_MAT_THIN = outlineMaterial(0.02);
 
 // ---- formas (todas suaves; baixa contagem de polígonos) ----
 export const sph = (r = 0.5, w = 14, h = 10) => new THREE.SphereGeometry(r, w, h);
-export const box = (w = 1, h = 1, d = 1, r = 0.06) => new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001));
+export const box = (w = 1, h = 1, d = 1, r = 0.06) => {
+  const rr = Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001);
+  if (rr <= 0.004) return new THREE.BoxGeometry(w, h, d);                 // cantos vivos: 12 triângulos (era 300)
+  return new RoundedBoxGeometry(w, h, d, rr < 0.12 ? 1 : 2, rr);           // bordas pequenas: 1 segmento basta
+};
 export const cyl = (rt = 0.5, rb = 0.5, h = 1, seg = 14) => new THREE.CylinderGeometry(rt, rb, h, seg);
 export const cone = (r = 0.5, h = 1, seg = 14) => new THREE.ConeGeometry(r, h, seg);
 export const cap = (r = 0.2, len = 0.5, seg = 6, rad = 12) => new THREE.CapsuleGeometry(r, len, seg, rad);
@@ -107,7 +111,7 @@ export function blobShadow(w = 1, d = w) { const m = new THREE.Mesh(shadowGeo, s
 export class Particles {
   constructor(parent, n = 220) {
     this.n = n;
-    this.mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 6, 5), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }), n);
+    this.mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }), n);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.mesh.frustumCulled = false; this.mesh.renderOrder = 5;
     this.p = Array.from({ length: n }, () => ({ life: 0, max: 1, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, s: 0.1, g: 0, grow: 0, col: 0xffffff }));

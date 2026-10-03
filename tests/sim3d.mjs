@@ -4,7 +4,7 @@ import { serve, launch } from './helpers.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
-const srv = await serve(path.join(here, '..', 'dist'));
+const srv = await serve(process.env.DIST ? path.resolve(process.env.DIST) : path.join(here, '..', 'dist'));
 const { browser, errors } = await launch({ viewport: { width: 1280, height: 600 } });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 600 }, hasTouch: true });
 const page = await ctx.newPage();
@@ -13,7 +13,7 @@ let fails = 0;
 const ok = (c, msg, extra = '') => { console.log((c ? '  ok  ' : ' FALHA ') + msg + (extra ? '  [' + extra + ']' : '')); if (!c) fails++; };
 
 async function start(mode, phase = 1, free = true) {
-  await page.goto('http://localhost:4199/?renderer=canvas');
+  await page.goto(`http://localhost:${process.env.PORT || 4199}/?renderer=canvas`);
   await page.waitForFunction(() => window.__ian && window.__ian.game.scene.isActive('Menu'), null, { timeout: 20000 });
   await page.evaluate(() => { try { localStorage.setItem('ian-e-seus-amigos:v1', JSON.stringify({ tut: { jump: true, water: true } })); } catch (e) {} });
   await page.evaluate(([mode, phase, free]) => {
