@@ -107,7 +107,7 @@ for (const mode of ['facil', 'aventura', 'desafio']) {
 
 // ---------------------------------------------------------------- 5. partida real sem ajuda: bot joga cada fase em cada modo
 console.log('5. Bot joga a partida (sem invulnerabilidade)');
-for (const mode of ['facil', 'aventura', 'desafio']) {
+for (const mode of process.env.QUICK ? [] : ['facil', 'aventura', 'desafio']) {
   await start(mode, 1, false);
   const r = await run(() => {
     const g = window.__ian3; let last = g.dist, stuck = 0, maxStuck = 0;

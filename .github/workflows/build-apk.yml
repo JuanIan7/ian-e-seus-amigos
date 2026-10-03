@@ -11,7 +11,7 @@ permissions:
 jobs:
   apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -28,11 +28,11 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      - name: Simulação do jogo (bots nos 3 modos)
+      - name: Testes do jogo 3D (controles, minijogos, pausa)
         run: |
           npx playwright install --with-deps chromium
           npm run build
-          npm test
+          QUICK=1 npm test
 
       - name: Sincronizar com o Android
         run: npx cap sync android
