@@ -5,14 +5,15 @@
 import { THREE, P, sph, box, cyl, cone, toMesh } from './kit.js';
 import { buildKid, poseKid } from './kid.js';
 import { buildDog, buildCat, buildBunny, buildDino, animCreature, buildCrates, buildShelter, buildNest, buildEgg, buildTent, buildHeli, buildBasket, DOGS3 } from './creatures.js';
-import { buildBin } from './props.js';
+import { buildBin, buildHouse } from './props.js';
+import { buildLifeRing, buildWaterPatch, buildRescueBoat, buildFloatCrate, buildLavaFlow, buildLavaIsland, buildHut } from './creatures.js';
 
 const ease = (x) => x * x * (3 - 2 * x);
 const npc = (outfit, skin, hair, hairColor, eyes = 0) => { const k = buildKid({ skin, face: 1, hair, hairColor, eyes, outfit }); k.scale.setScalar(1.15); return k; };
 
 export const ACTIONS = {
   // ícone do botão, projétil que o botão lança e frase falada
-  drop: { proj: 'water' }, bone: { proj: 'bone' }, helpHand: { proj: 'heart' }, box: { proj: 'box' }, basket: { proj: 'none' }, egg: { proj: 'egg' }, fruit: { proj: 'fruit' }, heart: { proj: 'heart' },
+  drop: { proj: 'water' }, bone: { proj: 'bone' }, ring: { proj: 'ring' }, helpHand: { proj: 'heart' }, box: { proj: 'box' }, basket: { proj: 'none' }, egg: { proj: 'egg' }, fruit: { proj: 'fruit' }, heart: { proj: 'heart' },
 };
 
 export const MISSIONS3 = {
@@ -34,7 +35,7 @@ export const MISSIONS3 = {
     onHit(m) { m.shakeT = 1; },
   },
   distract_dog: {
-    kind: 'throw', icon: 'bone', needs: 'bone', hits: () => 2, cue: 'Jogue o ossinho!', say: 'Jogue o ossinho!', cam: 0, hold: 2.4,
+    kind: 'help', icon: 'heart', hits: () => 2, cue: 'Mande um coraçãozinho para o cachorro!', say: 'Mande carinho para o cachorro!', cam: 0, hold: 2.4,
     build() { const model = new THREE.Group(), dog = buildDog('pipoca'); dog.scale.setScalar(2.4); model.add(dog); return { model, tx: 4.6, aim: [0, 1.4, -0.4], parts: { dog } }; },
     update(m, t, dt) {
       const dog = m.parts.dog;
@@ -148,6 +149,61 @@ export const MISSIONS3 = {
       if (!m.done) animCreature(baby, t, { wagAmp: 0.5, wag: 8, tilt: Math.sin(t * 5) * 0.1 });
       else { m.a = (m.a || 0) + dt; const goal = m.side * 5.2; const k = Math.min(1, m.a / 1.8); baby.position.x = goal * ease(k); baby.rotation.y = -Math.sign(goal) * Math.PI / 2; baby.position.y = Math.abs(Math.sin(m.a * 9)) * 0.35 * (k < 1 ? 1 : 0); animCreature(baby, t, { walk: k < 1 ? 1 : 0, rate: 12, wag: 14, wagAmp: 0.7 }); if (k >= 1) baby.rotation.y = 0; }
     },
+  },
+
+  // =================================================================== fase 6: resgate aquático
+  rescue_swimmer: {
+    kind: 'help', icon: 'ring', hits: (c) => Math.max(2, c.fireHits - 1), cue: 'Jogue a boia para o nadador!', say: 'Jogue a boia!', cam: 0, hold: 2.6,
+    build(side) {
+      const model = new THREE.Group(), water = buildWaterPatch(2.6), p = npc(8, 3, 3, 0); p.position.set(0, -0.9, 0); p.rotation.y = 0;
+      const ring = buildLifeRing(1.4); ring.visible = false; model.add(water, p, ring);
+      return { model, tx: 5.2, aim: [0, 0.5, 0], parts: { p, ring, water }, side };
+    },
+    update(m, t, dt) {
+      const { p, ring } = m.parts;
+      if (!m.done) { p.position.y = -0.9 + Math.sin(t * 3) * 0.08; poseKid(p, 'cheer', 0, t); p.rotation.z = Math.sin(t * 2) * 0.1; ring.visible = m.prog > 0; ring.position.set(0.3, 0.05 + Math.sin(t * 3) * 0.05, 0); }
+      else { m.a = (m.a || 0) + dt; ring.visible = true; const k = Math.min(1, m.a / 1.6); p.position.z = -k * 2.4; p.position.y = -0.9 + k * 0.9; ring.position.set(0.3, 0.05 + k * 0.4, p.position.z); poseKid(p, k < 1 ? 'idle' : 'cheer', 0, t); p.rotation.z = 0; }
+    },
+  },
+  boat_fire: {
+    kind: 'fire', icon: 'drop', needs: 'hose', hits: (c) => c.fireHits + 1, cue: 'Fogo no barco!', say: 'Fogo no barco! Use a mangueira!', cam: 1,
+    build() { const model = new THREE.Group(), boat = buildRescueBoat(0xffffff, 0x2f78e0), water = buildWaterPatch(4.2); boat.position.y = 0.0; model.add(water, boat); return { model, tx: 6.4, flames: [[-0.3, 1.6, 0.6, 1.3], [0.4, 1.3, -1.2, 1.0]], aim: [0, 1.4, 0], parts: { boat } }; },
+    update(m, t) { m.parts.boat.rotation.z = Math.sin(t * 1.6) * 0.04; m.parts.boat.position.y = Math.sin(t * 2) * 0.05; },
+  },
+  rescue_pup: {
+    kind: 'help', icon: 'heart', hits: (c) => Math.max(2, c.fireHits - 1), cue: 'Salve o cachorrinho na água!', say: 'Salve o cachorrinho!', cam: 0, hold: 2.6,
+    build(side) {
+      const model = new THREE.Group(), water = buildWaterPatch(2.6), crate = buildFloatCrate(), pup = buildDog('marola'); pup.scale.setScalar(0.85); pup.position.set(0, 0.62, 0); crate.add(pup);
+      model.add(water, crate); return { model, tx: 5.0, aim: [0, 1.0, 0], parts: { crate, pup }, side };
+    },
+    update(m, t, dt) {
+      const { crate, pup } = m.parts;
+      if (!m.done) { crate.position.y = Math.sin(t * 2.5) * 0.08; crate.rotation.z = Math.sin(t * 1.7) * 0.08; animCreature(pup, t, { wag: 6 + m.prog * 8, tilt: Math.sin(t * 3) * 0.2 }); }
+      else { m.a = (m.a || 0) + dt; const k = Math.min(1, m.a / 1.4); crate.position.z = -k * 2.2; crate.rotation.z = 0; pup.position.y = 0.62 + Math.abs(Math.sin(m.a * 8)) * 0.4 * (k < 1 ? 0.4 : 1); animCreature(pup, t, { wag: 16, wagAmp: 0.6 }); }
+    },
+  },
+  // =================================================================== fase 7: resgate no vulcão
+  cool_lava: {
+    kind: 'fire', icon: 'drop', needs: 'hose', hits: (c) => c.fireHits + 1, cue: 'Esfrie a lava com água!', say: 'A lava está bloqueando! Use a mangueira!', cam: 0,
+    build() { const flow = buildLavaFlow(); return { model: flow, tx: 4.2, flames: [[-0.8, 0.4, -0.2, 0.9], [0.6, 0.35, 0.5, 0.8], [0, 0.5, -1.0, 0.8]], aim: [0, 0.6, 0], parts: { flow } }; },
+    update(m, t) { const f = m.parts.flow.userData; if (f.lava) { const k = m.done ? 0 : m.hp / m.max; f.lava.material.color.setRGB(1, 0.42 * k + 0.55 * (1 - k), 0.1 * k + 0.55 * (1 - k)); f.glow.visible = k > 0.05; f.glow.scale.setScalar(0.9 + Math.sin(t * 4) * 0.06); } },
+  },
+  rescue_dino_lava: {
+    kind: 'help', icon: 'heart', hits: (c) => Math.max(2, c.fireHits - 1), cue: 'Ajude o dinossaurinho a sair da lava!', say: 'Ajude o dinossaurinho!', cam: 1, hold: 2.8,
+    build(side) {
+      const model = buildLavaIsland(), baby = buildDino('baby'); baby.scale.setScalar(1.6); baby.position.set(0, 0.55, 0); model.add(baby);
+      return { model, tx: 5.4, aim: [0, 1.2, 0], parts: { baby, isl: model }, side };
+    },
+    update(m, t, dt) {
+      const { baby, isl } = m.parts; const st = isl.userData.stones; const f = m.done ? 1 : m.prog;
+      st.forEach((s, i) => { const want = f * st.length > i ? 0.18 : -0.6; s.position.y += (want - s.position.y) * Math.min(1, dt * 4); });
+      if (!m.done) animCreature(baby, t, { wagAmp: 0.5, wag: 8, tilt: Math.sin(t * 5) * 0.12 });
+      else { m.a = (m.a || 0) + dt; const k = Math.min(1, m.a / 1.8); baby.position.z = -k * 3.4; baby.rotation.y = 0; baby.position.y = 0.55 + Math.abs(Math.sin(m.a * 9)) * 0.3 * (k < 1 ? 1 : 0); animCreature(baby, t, { walk: k < 1 ? 1 : 0, rate: 12, wagAmp: 0.6, wag: 14 }); }
+    },
+  },
+  hut_fire: {
+    kind: 'fire', icon: 'drop', needs: 'hose', hits: (c) => c.fireHits + 1, cue: 'Fogo na cabana!', say: 'Fogo na cabana! Apague com a mangueira!', cam: 1,
+    build() { const hut = buildHut(); return { model: hut, tx: 6.6, flames: [[-0.9, 1.0, -1.75, 1.0], [0.9, 2.4, -1.9, 1.1], [0, 3.9, -0.6, 1.3]], aim: [0, 2.2, -1.2] }; },
   },
 };
 export { DOGS3 };

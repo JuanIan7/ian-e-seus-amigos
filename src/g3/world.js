@@ -1,12 +1,12 @@
 // Mundo 3D: céu, pista em blocos reciclados, cenário lateral por tema, buracos. O jogador fica em z = 0 e o
 // mundo "corre" em direção a +z; uma posição s na pista vira z = dist - s (negativo = à frente).
-import { THREE, P, box, toMesh, mergeParts, toon, hex, mixHex, rng } from './kit.js';
+import { THREE, P, box, toMesh, mergeParts, toon, hex, mixHex, rng, lowDetail } from './kit.js';
 import { SCENERY } from './props.js';
 
 export const LANE_W = 2.1;
 export const ROAD_HALF = 3.5;
 const TILE = 3, TILES = 34, TILES_BEHIND = 3;
-const CHUNK = 12, CHUNKS = 10;
+const CHUNK = 12, CHUNKS = 8;
 
 // Cada tema: cores da pista/laterais, céu, luz e a receita do cenário.
 export const THEMES3 = {
@@ -54,6 +54,27 @@ export const THEMES3 = {
     ],
     far: ['tower', 'tower', 'cloud'],
   },
+  agua: {
+    sky: [0x29a8ff, 0xd8f4ff], fog: 0xd8f4ff, hemi: [0xe8f8ff, 0x7fb8c8, 1.2], sun: [0xfff4dc, 2.2],
+    road: [0xc99a62, 0xbf8f58], line: 0xe8c48c, edge: 0x8a5a35, curb: 0x8a5a35, walk: 0xb98a52, side: [0x2f9be0, 0x2b94da], pit: 0x1f78c8, pitName: 'mar', sideDrop: 0.45, planks: true,
+    layout: (r) => [
+      { key: 'post', x: 4.1, z: r.between(1, 11) },
+      { key: r.pick(['buoyS', 'buoyS', 'rocksea']), x: r.between(6.5, 9), z: r.between(1, 11) },
+      { key: r.pick(['boat', 'boat', 'palmisle']), x: r.between(11.5, 15), z: r.between(2, 10), face: true },
+      ...(r.frac() < 0.3 ? [{ key: 'lighthouse', x: r.between(22, 30), z: r.between(1, 11) }] : []),
+    ],
+    far: ['island', 'cloud', 'island'],
+  },
+  vulcao: {
+    sky: [0xff7a4a, 0xffd0a0], fog: 0xf0b890, hemi: [0xffe0c8, 0x8a4a3a, 1.15], sun: [0xffb070, 2.2],
+    road: [0x5a4a48, 0x534341], line: 0xff9a3a, edge: 0xff6a1a, curb: 0x3a2e2e, walk: 0x6a5450, side: [0x4a3a38, 0x463634], pit: 0xff5a1a, pitName: 'lava',
+    layout: (r) => [
+      { key: r.pick(['lavarockS', 'vent', 'deadtree']), x: r.between(5.4, 7), z: r.between(1, 11) },
+      { key: r.pick(['deadtree', 'lavarockS', 'hut']), x: r.between(9.5, 12), z: r.between(2, 10), face: true },
+      { key: 'lavapool', x: r.between(14, 20), z: r.between(1, 11) },
+    ],
+    far: ['volcano', 'darkhill', 'volcano'],
+  },
   pre: {
     sky: [0xffb347, 0xfff0c4], fog: 0xffe9b0, hemi: [0xfff1d8, 0x9a7a4a, 1.2], sun: [0xffd98a, 2.2],
     road: [0xd9b46e, 0xcfa862], line: 0xeccd8c, edge: 0x6fcf4a, curb: 0x7fd44a, walk: 0x7fcf4a, side: [0x4fc24a, 0x45b743], pit: 0x2f78c8, pitName: 'pântano',
@@ -75,6 +96,7 @@ function trackGeo(th, parity) {
   const p = [P(box(ROAD_HALF * 2, 0.5, TILE + 0.02, 0.0), road, [0, -0.25, 0])];
   [-1, 1].forEach((s) => { p.push(P(box(0.18, 0.5, TILE + 0.02, 0.0), T.edge, [s * (ROAD_HALF - 0.12), -0.25, 0])); });
   [-1, 1].forEach((s) => p.push(P(box(0.08, 0.02, 1.4, 0.0), T.line, [s * LANE_W / 2, 0.005, -0.8 + (parity ? 0.8 : 0)]), P(box(0.08, 0.02, 1.4, 0.0), T.line, [s * LANE_W / 2, 0.005, 0.7 + (parity ? 0.8 : 0)])));
+  if (T.planks) for (let i = 0; i < 5; i++) p.push(P(box(ROAD_HALF * 2 - 0.4, 0.02, 0.05, 0.0), hex(road, 0.78), [0, 0.006, -1.2 + i * 0.6]));
   if (th === 'praca') for (let i = -3; i <= 3; i++) p.push(P(box(0.9, 0.02, 0.9, 0.0), hex(road, 0.93), [i * 1.0, 0.008, (parity ? 0.7 : -0.7)]));
   if (th === 'floresta' || th === 'pre') for (let i = 0; i < 3; i++) p.push(P(new THREE.SphereGeometry(0.1, 5, 4), 0xa9763c, [(i - 1) * 2.2 + (parity ? 0.4 : -0.3), 0.02, (i % 2 ? 0.7 : -0.8)], [0, 0, 0], [1.4, 0.5, 1]));
   const g = mergeParts(p); trackGeoCache[k] = g; return g;
@@ -87,8 +109,8 @@ function sideGeo(th, parity) {
   [-1, 1].forEach((s) => {
     p.push(P(box(1.7, 3.2, TILE + 0.02, 0.0), T.walk, [s * (ROAD_HALF + 0.85), -1.6, 0]));
     p.push(P(box(0.3, 0.2, TILE + 0.02, 0.0), T.curb, [s * (ROAD_HALF + 0.15), -0.08, 0]));
-    p.push(P(box(W, 3.2, TILE + 0.02, 0.0), T.side[parity], [s * (ROAD_HALF + 1.7 + W / 2), -1.6 - (th === 'altura' ? 0 : 0.0), 0]));
-    if (th !== 'altura') p.push(P(box(W, 0.02, 1.2, 0.0), hex(T.side[parity], 1.08), [s * (ROAD_HALF + 1.7 + W / 2), 0.01, parity ? 0.7 : -0.7]));
+    p.push(P(box(W, 3.2, TILE + 0.02, 0.0), T.side[parity], [s * (ROAD_HALF + 1.7 + W / 2), -1.6 - (T.sideDrop || 0), 0]));
+    if (th !== 'altura') p.push(P(box(W, 0.02, 1.2, 0.0), hex(T.side[parity], 1.08), [s * (ROAD_HALF + 1.7 + W / 2), 0.01 - (T.sideDrop || 0), parity ? 0.7 : -0.7]));
   });
   const g = mergeParts(p); sideGeoCache[k] = g; return g;
 }
@@ -140,7 +162,7 @@ export class World {
 
   libGet(key, theme, i) {
     const id = key + i;
-    if (!this.lib[id]) { const r = rng(this.seed + id); this.lib[id] = SCENERY[key](r); }
+    if (!this.lib[id]) { const r = rng(this.seed + id); this.lib[id] = lowDetail(() => SCENERY[key](r)); }
     return this.lib[id].clone();
   }
 

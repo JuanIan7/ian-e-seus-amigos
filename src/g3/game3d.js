@@ -5,13 +5,15 @@ import { buildKid, poseKid } from './kid.js';
 import { World, LANE_W, THEMES3 } from './world.js';
 import { buildObstacle, OBSTACLES, buildStar, buildFlame, buildBin, buildHouse, buildTower, buildPickup } from './props.js';
 import { MISSIONS3, ACTIONS } from './missions3.js';
-import { buildBoneProp, buildGiftBox, buildEgg, buildFruit, buildDog, buildDino, buildLeaf, buildPlatform, buildPad, buildGlider, buildWing, animCreature } from './creatures.js';
+import { buildBoneProp, buildGiftBox, buildEgg, buildFruit, buildDog, buildDino, buildLeaf, buildPlatform, buildPad, buildGlider, buildWing, animCreature, buildRaft, buildLifeRing } from './creatures.js';
 import { buildFireTruck } from './props.js';
-import { MODES3 } from './config3.js';
-import { PHASES, POWERS, STARS_PER_POWER } from '../config.js';
+import { MODES3, PHASES3, LIVES, SHOP } from './config3.js';
+import { POWERS, STARS_PER_POWER } from '../config.js';
 import { load, save } from '../save.js';
-import { startMinigame, MINI_ICONS } from './minigames.js';
+import { startMinigame, PUZZLE_ICON } from './minigames.js';
+import { buildPuzzleStation } from './props.js';
 import { sfx, unlock, startMusic, stopMusic, speak, silenceVoice } from '../audio.js';
+const PHASES = PHASES3;
 import { createHud } from './hud.js';
 
 const STOP = 3.2;                       // distância (em z) em que o mundo para diante de uma missão
@@ -65,9 +67,11 @@ export class Game3D {
     this.p = { x: 0, y: 0, vy: 0, lane: 0, ground: true, coyote: 0, buffer: 0, invul: 0, dbl: false, dblReq: false, floating: false, floatT: 0, jumpT: -9, lastSteer: -9, rescued: false, hitT: 0, squash: 0, roll: 0, cheer: 0 };
     this.runHeld = false; this.jumpHeld = false; this.turbo = 1; this.recover = 0; this.fall = null; this.missionMul = 1;
     this.eq = { hose: this.phaseNum >= 2 };
-    this.stats = { minis: 0, minisWon: 0, hits: 0, falls: 0, jumps: 0, doubles: 0, missions: 0, stars: 0, phases: 0, powers: 0, floats: 0 };
+    this.stats = { minis: 0, minisWon: 0, puzzles: 0, puzzlesWon: 0, livesLost: 0, livesWon: 0, hits: 0, falls: 0, jumps: 0, doubles: 0, missions: 0, stars: 0, phases: 0, powers: 0, floats: 0 };
     this.ents = []; this.mission = null; this.tutorialJump = !load().tut.jump && this.phaseNum === 1; this.tutorialActive = false; this.tutWait = 0;
-    this.mini = null; this.offer = null; this.offerCd = 28; this.miniKind = 'puzzle'; this.lastOfferMissions = -1; this.lastOfferTime = -999; this.resumeMul = 1;
+    this.mini = null; this.offer = null; this.resumeMul = 1;
+    this.lives = LIVES.start; this.maxLives = LIVES.max; this.over = false; this.gameOverT = 0; this.stage = 1; this.randomMode = false;
+    this.inv = { ...(load().inv || {}) };
     this.lastTap = 0; this.sprayT = 0; this.sprayCd = 0; this.idleT = 0; this.shake = 0;
     const tt = load().tut; this.tutDouble = !tt.dbl; this.tutFloat = !tt.float; this.tutKind = null;
     this.projs = []; this.dog = null; this.dogShadow = null; this.dogBark = 0;
@@ -80,15 +84,15 @@ export class Game3D {
 
     // ---- interface ----
     this.hud = createHud(this.el, {
-      lane: (d) => this.steer(d), jump: (v) => this.setJump(v), run: (v) => this.setRun(v), action: () => this.pressAction(), pause: () => this.setPaused(true),
+      lane: (d) => this.steer(d), jump: (v) => this.setJump(v), run: (v) => this.setRun(v), action: () => this.pressAction(), pause: () => this.setPaused(true), item: (k) => this.useItem(k),
     });
-    this.hud.showRun(this.cfg.showRun); this.hud.setDots((this.phaseNum - 1) % PHASES.length, PHASES.length, this.loop);
-    this.hud.setStars(0);
+    this.hud.showRun(this.cfg.showRun); this.hud.setDots(this.phaseNum - 1, PHASES.length, 0);
+    this.hud.setStars(0); this.hud.setLives(this.lives, this.maxLives); this.hud.setInv(this.inv, SHOP);
     this.bindKeys();
     this.resize(); this.onResize = () => this.resize(); window.addEventListener('resize', this.onResize);
     this.onHidden = () => { if (document.hidden) this.setPaused(true); }; document.addEventListener('visibilitychange', this.onHidden);
     this.hud.banner('Fase ' + this.phaseNum, this.phase.name);
-    startMusic();
+    startMusic(this.phase.music);
     window.__ian3 = this;
     this.last = performance.now(); this.frames = 0; this.acc = 0;
     if (!this.manual) { this.loopFn = (now) => { this.raf = requestAnimationFrame(this.loopFn); this.frame(now); }; this.raf = requestAnimationFrame(this.loopFn); }
@@ -96,7 +100,7 @@ export class Game3D {
   }
 
   get phase() { return PHASES[(this.phaseNum - 1) % PHASES.length]; }
-  get loop() { return Math.floor((this.phaseNum - 1) / PHASES.length); }
+  get loop() { return Math.floor((this.stage - 1) / PHASES.length); }
   get baseSpeed() { const c = this.cfg; return Math.min(c.speedMax, c.speed0 + c.ramp * this.runTime) * (1 - 0.06 * this.assist); }
   get jumpV() { return this.jumpV0 * (this.powers.jump ? 1.25 : 1); }
   jumpDist(speed = this.baseSpeed) { return speed * this.cfg.airT; }
@@ -112,6 +116,7 @@ export class Game3D {
       else if (down && (c === 'ArrowRight' || c === 'KeyD')) this.steer(1);
       else if (down && (c === 'ArrowDown' || c === 'KeyX' || c === 'KeyZ')) this.pressAction();
       else if (down && (c === 'KeyP' || c === 'Escape')) { if (this.mini) this.closeMini(false); else this.setPaused(!this.paused); }
+      else if (down && /^Digit[1-8]$/.test(c)) { const it = SHOP[+c.slice(5) - 1]; if (it) this.useItem(it.key); }
     };
     this.kd = (e) => k(e, true); this.ku = (e) => k(e, false);
     window.addEventListener('keydown', this.kd); window.addEventListener('keyup', this.ku);
@@ -133,16 +138,45 @@ export class Game3D {
     if (m && !m.done && this.sprayCd <= 0) this.spray(m);
   }
   setPaused(v) {
-    if (v === this.paused) return; this.paused = v;
+    if (v === this.paused || this.over) return; this.paused = v;
     if (v) {
       stopMusic(); silenceVoice();
       this.hud.pauseUI(true, {
-        resume: () => this.setPaused(false), home: () => this.exit(),
+        resume: () => this.setPaused(false), home: () => this.endGame('quit'),
         sound: () => { const on = !load().sound; save({ sound: on }); return on; },
       }, load().sound);
-    } else { this.hud.pauseUI(false); startMusic(); this.last = performance.now(); }
+    } else { this.hud.pauseUI(false); startMusic(this.phase.music); this.last = performance.now(); }
   }
-  exit() { this.destroy(); this.onExit(); }
+  exit(action = 'menu') { const d = { action, stars: this.stars, phase: this.phaseNum }; this.destroy(); this.onExit(d); }
+  /** fim da partida (perdeu as vidas ou encerrou): as estrelas da corrida vão para a lojinha */
+  endGame(reason = 'quit') {
+    if (this.over) return; this.over = true; this.paused = false; this.hud.pauseUI(false);
+    if (this.mini) { this.mini.destroy(); this.mini = null; }
+    this.setRun(false); this.jumpHeld = false; stopMusic();
+    const earned = this.stars, st = load();
+    save({ coins: (st.coins || 0) + earned, bestStars: Math.max(st.bestStars || 0, earned) });
+    this.stats.ended = reason; reason === 'over' ? sfx.hit() : sfx.win();
+    speak(reason === 'over' ? 'Fim de jogo! Suas estrelas foram para a lojinha.' : 'Muito bem! Suas estrelas foram para a lojinha.');
+    this.hud.results({ reason, stars: earned, coins: load().coins, phase: this.phaseNum, stage: this.stage, missions: this.stats.missions },
+      { again: () => this.exit('again'), shop: () => this.exit('shop'), menu: () => this.exit('menu') });
+  }
+  // ---- vidas ----
+  loseLife() {
+    if (this.over) return;
+    this.lives = Math.max(0, this.lives - 1); this.stats.livesLost++; this.hud.setLives(this.lives, this.maxLives, 'lose');
+    if (this.lives <= 0) { this.gameOverT = 1.2; speak('Ah não! Acabaram as vidas.'); }
+    else if (this.lives === 1) speak('Cuidado! Só mais uma vida!');
+  }
+  gainLife(why) {
+    if (this.lives >= this.maxLives) { this.addStars(5); this.hud.toast('⭐', '+5'); return; }
+    this.lives++; this.stats.livesWon++; this.hud.setLives(this.lives, this.maxLives, 'gain'); this.hud.toast('❤️', why === 'puzzle' ? '+1 vida!' : 'Vida nova!');
+  }
+  // ---- poderes comprados na lojinha ----
+  useItem(k) {
+    if (this.paused || this.mini || this.over || !(this.inv[k] > 0) || this.powers[k]) return false;
+    unlock(); this.inv[k]--; const st = load(); save({ inv: { ...st.inv, [k]: Math.max(0, (st.inv[k] || 0) - 1) } }); this.hud.setInv(this.inv, SHOP);
+    const d = SHOP.find((x) => x.key === k); this.grantPower(k, d && d.dur); this.stats.used = (this.stats.used || 0) + 1; return true;
+  }
 
   // ================================================================ roteiro das fases
   scriptFor(num) {
@@ -178,7 +212,8 @@ export class Game3D {
   }
 
   tick(dt) {
-    if (this.paused || this.mini) return;
+    if (this.paused || this.mini || this.over) return;
+    if (this.gameOverT > 0) { this.gameOverT -= dt; if (this.gameOverT <= 0) { this.endGame('over'); return; } }
     const c = this.cfg, p = this.p;
     this.t += dt;
     if (p.invul > 0) p.invul -= dt; if (this.recover > 0) this.recover -= dt; if (this.sprayCd > 0) this.sprayCd -= dt;
@@ -209,6 +244,12 @@ export class Game3D {
       if (gap < 16) target = Math.max(0, Math.min(1, (gap - STOP) / 9));
       if (gap <= STOP + 0.15) { target = 0; if (!m.engaged) this.engageMission(m); }
     }
+    const pz = this.ents.find((e) => e.type === 'puzzle' && !e.done);
+    if (pz) {
+      const gap = pz.s - this.dist;
+      if (gap < 16) target = Math.min(target, Math.max(0, Math.min(1, (gap - STOP) / 9)));
+      if (gap <= STOP + 0.15 && !pz.opened && !this.fall && this.p.ground) { target = 0; this.openPuzzle(pz); }
+    }
     this.missionMul += (target - this.missionMul) * Math.min(1, dt * 5);
     if (this.focus) this.missionMul = 0;
     mul = Math.min(mul, this.missionMul);
@@ -237,7 +278,6 @@ export class Game3D {
     this.updateCamera(dt);
     this.fx.update(dt, dx);
     this.updateHud(m);
-    this.updateOffer(dt, m);
   }
 
   // ================================================================ física do personagem
@@ -324,7 +364,7 @@ export class Game3D {
 
   startFall() {
     const h = this.world.holes.find((x) => this.dist > x.s - 0.2 && this.dist < x.s + x.len + 0.2);
-    this.fall = { t: 0, s: h ? h.s : this.dist }; this.stats.falls++; sfx.hit();
+    this.fall = { t: 0, s: h ? h.s : this.dist }; this.stats.falls++; sfx.hit(); this.loseLife();
     this.hitTimes.push(this.t); this.hitTimes = this.hitTimes.filter((t) => this.t - t < 25); this.cleanTimer = 0;
     this.fx.burst(this.p.x, -0.4, 0, 14, { col: 0x8ee0ff, s: 0.16, speed: 3, up: 3, life: 0.7, g: 9 });
     if (this.hitTimes.length >= 3 && this.assist < 2) { this.assist++; this.hitTimes = []; }
@@ -406,6 +446,7 @@ export class Game3D {
       case 'flystars': return this.spawnFlyStars(s);
       case 'ptero': return this.spawnPtero(s);
       case 'mission': return this.addMission(arg, s);
+      case 'puzzle': return this.addPuzzleStation(s);
       default: return { width: 4 };
     }
   }
@@ -418,7 +459,7 @@ export class Game3D {
   }
   addPlat(kind, lane, s, len, top) {
     const th = this.phase.theme, natural = th === 'floresta' || th === 'pre';
-    const mesh = natural ? buildLeaf(1.9, len, th === 'pre' ? 0x6fcf3a : 0x3fcf5a) : buildPlatform(1.9, len);
+    const mesh = natural ? buildLeaf(1.9, len, th === 'pre' ? 0x6fcf3a : 0x3fcf5a) : th === 'agua' ? buildRaft(1.9, len) : buildPlatform(1.9, len);
     this.scene.add(mesh);
     const e = { type: 'plat', lane, x: this.laneX(lane), s, len, w: 1.9, top, mesh, natural }; this.ents.push(e); return e;
   }
@@ -451,8 +492,9 @@ export class Game3D {
     const other = [-1, 0, 1].filter((l) => l !== lane)[this.rng.int(0, 1)]; for (let i = 0; i < 3; i++) this.addStar(other, s - 1.2 + i * 1.2, 1.0);
     return { width: 6 };
   }
-  obsKinds() { return { bairro: ['cone', 'barrier', 'crate', 'hydrant'], praca: ['cone', 'bench', 'crate', 'bush'], floresta: ['log', 'rock', 'bush', 'mushroom'], altura: ['crate', 'ac', 'barrier', 'pipe'], pre: ['rock', 'log', 'bone', 'mushroom'] }[this.phase.theme]; }
+  obsKinds() { return { bairro: ['cone', 'barrier', 'crate', 'hydrant'], praca: ['cone', 'bench', 'crate', 'bush'], floresta: ['log', 'rock', 'bush', 'mushroom'], altura: ['crate', 'ac', 'barrier', 'pipe'], pre: ['rock', 'log', 'bone', 'mushroom'], agua: ['buoy', 'crate', 'rope', 'barrel'], vulcao: ['rock', 'lavarock', 'log', 'barrel'] }[this.phase.theme]; }
   spawnObstacleGroup(s) {
+    if (this.phase.calm) { this.firstObstacle = false; const l = this.rng.int(-1, 1), k = this.rng.pick(this.obsKinds().slice(0, 3)); this.addObstacle(k, l, s); for (let i = 0; i < 3; i++) this.addStar(l, s - 1.4 + i * 1.4, 1.1 + (i === 1 ? 0.9 : 0.3)); return 7; }
     if (!this.firstObstacle && this.phaseNum >= 3 && this.rng.frac() < (this.modeId === 'facil' ? 0.2 : 0.35)) return this.spawnWall(s);
     const grp = this.firstObstacle ? 'full' : this.rng.pick(this.cfg.groups); this.firstObstacle = false;
     const kinds = this.obsKinds(), r = this.rng;
@@ -501,7 +543,7 @@ export class Game3D {
 
   collide() {
     const p = this.p; if (p.invul > 0 || this.powers.fly) return;
-    const ghost = this.powers.speed || this.powers.truck;
+    const ghost = Object.keys(this.powers).some((k) => k !== 'shield');          // com qualquer poder ativo os obstáculos são afastados
     for (const o of this.ents) {
       if (o.type !== 'obs' || o.hit) continue;
       if (Math.abs(p.x - o.x) < o.w / 2 + PLAYER_R * 0.85 && Math.abs(this.dist - o.s) < o.d / 2 + 0.2 && p.y < o.h - 0.12) {
@@ -514,7 +556,7 @@ export class Game3D {
     const p = this.p; o.hit = true;
     o.fly = { t: 0, vx: (o.x >= p.x ? 1 : -1) * 4, vy: 5 };
     if (this.powers.shield) { this.removePower('shield'); sfx.star(); this.fx.burst(p.x, 0.8, 0, 16, { col: 0x4db8ff, s: 0.14, speed: 3, life: 0.6 }); p.invul = 0.7; return; }
-    p.invul = 1.5; this.recover = 1.0; this.stats.hits++; sfx.hit(); p.hitT = 0.45; this.shake = 0.18;
+    p.invul = 1.5; this.recover = 1.0; this.stats.hits++; sfx.hit(); p.hitT = 0.45; this.shake = 0.18; this.loseLife();
     this.fx.burst(p.x, 0.8, -0.2, 8, { col: 0xffffff, s: 0.16, speed: 2.4, life: 0.5 });
     this.hitTimes.push(this.t); this.hitTimes = this.hitTimes.filter((t) => this.t - t < 25); this.cleanTimer = 0;
     if (this.hitTimes.length >= 3 && this.assist < 2) { this.assist++; this.hitTimes = []; }
@@ -558,59 +600,39 @@ export class Game3D {
     for (const e of this.ents) { if (e.type === 'obs' && !e.hit) { const gap = e.s - e.d / 2 - this.dist; if (gap > -2 && gap < d) return true; } }
     return !!this.world.inHole(this.dist - 2, this.dist + d);
   }
-  updateOffer(dt, m) {
-    const p = this.p;
-    const ok = !this.focus && !this.tutorialActive && !this.tutorialJump && !this.fall && p.ground && !this.powers.fly && !this.powers.truck && this.recover <= 0 && this.runTime > 20
-      && (!m || m.s - this.dist > 45) && !this.hazardWithin(34);
-    if (this.offer) {
-      if (!ok) { this.hideOffer(8); return; }
-      this.offer.t -= dt; if (this.offer.t <= 0) this.hideOffer(40);     // ignorou: some sozinha, sem cobrança
-      return;
-    }
-    if (!ok) return;
-    this.offerCd -= dt;
-    // nunca em sequência: precisa ter havido uma missão ou bastante tempo desde a última bolha
-    if (this.offerCd <= 0 && (this.stats.missions > this.lastOfferMissions || this.runTime - this.lastOfferTime > 110)) this.showOffer();
+  // ---- desafio da fase: uma estação no caminho; ao chegar, o jogo para e o desafio abre (30 s, vale +1 vida)
+  addPuzzleStation(s) {
+    const side = this.rng.frac() < 0.5 ? -1 : 1, obj = buildPuzzleStation(PUZZLE_ICON[this.phase.puzzle] || 'puzzle');
+    obj.position.set(side * 3.3, 0, 0); obj.rotation.y = side < 0 ? -0.5 : 0.5; this.scene.add(obj);
+    this.ents.push({ type: 'puzzle', s, side, obj, kind: this.phase.puzzle, done: false, opened: false });
+    return { width: 12, extra: 0.6 };
   }
-  showOffer(kind) {
-    kind = kind || this.miniKind; this.miniKind = kind === 'puzzle' ? 'snake' : 'puzzle';
-    this.offer = { t: 10, kind }; this.lastOfferMissions = this.stats.missions; this.lastOfferTime = this.runTime;
-    this.hud.quest(MINI_ICONS[kind], () => this.openMini(kind)); speak('Toque na bolha!');
+  openPuzzle(e) {
+    if (this.mini) return; e.opened = true; this.stats.puzzles++; this.openMini(e.kind, e);
   }
-  hideOffer(cd) { this.offer = null; this.offerCd = cd; this.hud.quest(null); }
-  openMini(kind) {
-    if (this.mini || this.paused) return; this.hideOffer(60);
+  openMini(kind, station = null) {
+    if (this.mini || this.paused || this.over) return;
     this.setRun(false); this.jumpHeld = false; this.p.dblReq = false; this.stats.minis++;
-    const fx = { star: () => sfx.star(), tap: () => sfx.tap && sfx.tap(), win: () => sfx.star(), hit: () => sfx.hit() };
-    this.mini = startMinigame(this.el, kind, {
-      mode: this.modeId, rng: this.rng.frac, sfx: fx, speak,
-      onWin: () => this.closeMini(true), onClose: () => this.closeMini(false),
+    const fx = { star: () => sfx.star(), tap: () => sfx.tap && sfx.tap(), win: () => sfx.win(), hit: () => sfx.hit() };
+    const reward = this.lives < this.maxLives ? '+1 ❤️ vida!' : '+5 ⭐';
+    this.mini = startMinigame(this.el, kind || this.phase.puzzle, {
+      mode: this.modeId, rng: this.rng.frac, sfx: fx, speak, time: 30, reward, rewardSay: 'Muito bem! Você ganhou uma vida!',
+      onWin: () => this.closeMini(true), onClose: () => this.closeMini(false), onTimeout: () => this.closeMini(false),
     });
-    this.mini.kind = kind;
+    this.mini.kindName = kind; this.mini.station = station;
   }
-  /** volta ao jogo com segurança: arranque suave e proteção breve; recompensa uma única vez */
+  /** volta ao jogo com segurança: arranque suave e proteção breve; a vida é dada uma única vez */
   closeMini(won) {
     const mg = this.mini; if (!mg) return; this.mini = null; if (mg.destroy) mg.destroy();
-    this.offerCd = won ? 75 : 50; this.resumeMul = 0; this.p.invul = Math.max(this.p.invul, 2.5); this.recover = 0;
+    if (mg.station) { mg.station.done = true; mg.station.won = !!won; }
+    this.resumeMul = 0; this.p.invul = Math.max(this.p.invul, 2.5); this.recover = 0;
     this.last = performance.now(); this.acc = 0;
-    if (won && !mg.rewarded) { mg.rewarded = true; this.stats.minisWon++; this.miniReward(); }
+    if (won && !mg.rewarded) { mg.rewarded = true; this.stats.minisWon++; this.stats.puzzlesWon++; this.gainLife('puzzle'); this.p.cheer = 1.6; }
   }
-  miniReward() {
-    // sem vidas: o escudo é a recompensa mais comum; os demais poderes e estrelas completam o sorteio
-    const pool = [['shield', 4], ['stars', 3], ['jet', 1], ['jump', 1], ['glide', 1], ['magnet', 1]];
-    const cand = pool.filter(([k]) => k === 'stars' || !this.powers[k]);
-    let tot = cand.reduce((a, [, w]) => a + w, 0), r = this.rng.frac() * tot, pick = 'stars';
-    for (const [k, w] of cand) { if ((r -= w) <= 0) { pick = k; break; } }
-    this.lastReward = pick;
-    if (pick === 'stars') { this.addStars(10); this.hud.toast('⭐', '+10'); speak('Que legal! Mais estrelas!'); }
-    else this.grantPower(pick);
-    this.p.cheer = 1.6; sfx.star();
-  }
-
   // ================================================================ poderes temporários (um a cada 50 estrelas)
-  grantPower(key) {
-    if (!key) return; const d = POWERS_ALL[key]; this.stats.powers++;
-    this.powers[key] = { t: d.dur, dur: d.dur }; this.hud.toast(POWER_EMOJI[key], d.name); speak(d.say); sfx.star();
+  grantPower(key, dur) {
+    if (!key) return; const d = POWERS_ALL[key]; this.stats.powers++; dur = dur || d.dur;
+    this.powers[key] = { t: dur, dur }; this.hud.toast(POWER_EMOJI[key], d.name); speak(d.say); sfx.star();
     this.fx.burst(this.p.x, 0.9, 0, 18, { col: d.color, s: 0.15, speed: 3, life: 0.7 }); this.lastPower = key;
   }
   removePower(k) { delete this.powers[k]; if (k === 'fly' || k === 'truck') this.p.softT = 2.6; }
@@ -658,7 +680,7 @@ export class Game3D {
       sfx.hose && sfx.hose(); this.hitQueue.push({ t: 0.5, m, n: 1 });
     } else {
       sfx.jump();
-      const mesh = proj === 'bone' ? buildBoneProp(1.5) : proj === 'box' ? buildGiftBox() : proj === 'egg' ? buildEgg(1.1) : buildFruit(1.6);
+      const mesh = proj === 'bone' ? buildBoneProp(1.5) : proj === 'ring' ? buildLifeRing(0.7) : proj === 'box' ? buildGiftBox() : proj === 'egg' ? buildEgg(1.1) : buildFruit(1.6);
       mesh.position.copy(from); this.scene.add(mesh); this.projs = this.projs || []; this.projs.push({ mesh, from, to, t: 0, T: 0.6, m });
     }
   }
@@ -716,13 +738,17 @@ export class Game3D {
 
   // ================================================================ fases
   advancePhase() {
-    this.phaseNum++; this.stats.phases++;
+    this.stage++; this.stats.phases++;
+    let next;
+    if (!this.randomMode && this.phaseNum < PHASES.length) next = this.phaseNum + 1;
+    else { this.randomMode = true; next = this.rng.pick(PHASES.map((p) => p.id).filter((id) => id !== this.phaseNum)); }   // depois da última: ordem sorteada
+    this.phaseNum = next;
     const ph = this.phase; this.world.setTheme(ph.theme);
     this.queue = this.scriptFor(this.phaseNum); this.firstObstacle = false; this.setupDog();
-    save({ phase: Math.min(5, (this.phaseNum - 1) % PHASES.length + 1) });
-    this.hud.banner('Fase ' + this.phaseNum, ph.name); this.hud.setDots((this.phaseNum - 1) % PHASES.length, PHASES.length, this.loop);
+    this.hud.banner('Fase ' + this.phaseNum, ph.name); this.hud.setDots(this.phaseNum - 1, PHASES.length, this.loop);
     const th = THEMES3[ph.theme]; this.themeTarget = th; this.sunTarget = th.sun;
-    if (this.phaseNum >= 2) this.eq.hose = true;
+    this.eq.hose = true; this.eq.egg = false;
+    startMusic(ph.music); this.gainLife('fase');
     speak('Fase ' + this.phaseNum + '! ' + ph.name);
   }
 
@@ -745,6 +771,8 @@ export class Game3D {
         if (!e.taken) { e.mesh.position.set(e.x, e.y + Math.sin(t * 3 + e.spin) * 0.08, z); e.mesh.rotation.y = t * 2.4 + e.spin; }
       } else if (e.type === 'pickup') {
         if (!e.taken) { e.mesh.position.set(e.x, e.y + Math.sin(t * 3) * 0.12, z); e.mesh.rotation.y = t * 1.8; if (e.mesh.userData.halo) { e.mesh.userData.halo.rotation.y = -t * 1.8; e.mesh.userData.halo.scale.setScalar(1 + Math.sin(t * 5) * 0.08); e.mesh.userData.halo.lookAt(this.camera.position); } }
+      } else if (e.type === 'puzzle') {
+        e.obj.position.z = z; const u = e.obj.userData; if (u.icon) { u.icon.position.y = 2.9 + Math.sin(t * 3) * 0.15; u.icon.rotation.y = t * 1.5; } if (u.lid) u.lid.rotation.x = e.done ? Math.min(1.6, (u.lid.rotation.x || 0) + dt * 4) : Math.sin(t * 4) * 0.06; if (e.done && u.icon) u.icon.visible = false;
       } else if (e.type === 'mission') {
         e.obj.position.z = z;
         // chamas diminuem conforme a água acerta e tremeluzem
@@ -831,6 +859,8 @@ export class Game3D {
     this.hint.visible = show; if (show) { this.hint.position.set(h.hole ? 0 : h.x, (h.top || 0) + 1.5 + Math.sin(this.t * 9) * 0.18, this.dist - h.s); this.hint.rotation.y = this.t * 2; }
     // brilho de poderes
     if (this.powers.speed && Math.random() < 0.6) this.fx.emit(p.x + (Math.random() - 0.5) * 0.4, p.y + 0.4 + Math.random() * 0.6, 0.4, { vz: 6, s: 0.1, life: 0.35, col: 0xffb347 });
+    // correr: linhas de vento passando rápido dos lados (efeito bem visível)
+    if (this.turbo > 1.1) { const k = Math.min(1, (this.turbo - 1.1) / 0.3); for (let i = 0; i < 3; i++) if (Math.random() < k) { const sx = (Math.random() < 0.5 ? -1 : 1) * (1.2 + Math.random() * 3.2); this.fx.emit(p.x + sx, 0.4 + Math.random() * 2.8, -6 - Math.random() * 6, { vz: 26 + this.worldSpeed, s: 0.045, life: 0.32, col: 0xffffff }); } }
     if (this.turbo > 1.08 && this.p.ground && Math.random() < 0.5) this.fx.emit(p.x + (Math.random() - 0.5) * 0.5, 0.15, 0.3, { vz: 4, vy: 0.4, s: 0.12, life: 0.4, col: 0xf1ead8 });
     // poeira ao correr
     this.dustT = (this.dustT || 0) - dt; if (p.ground && this.worldSpeed > 1 && this.dustT <= 0) { this.dustT = 0.12; this.fx.emit(p.x, 0.08, 0.35, { vz: 1, vy: 0.5, s: 0.1, life: 0.4, col: 0xefe6d2, vx: (Math.random() - 0.5) * 0.4 }); }
@@ -849,7 +879,7 @@ export class Game3D {
     const dg = this.dog; if (!dg) return;
     const p = this.p, t = this.t, f = this.focus, mm = f || (this.mission && !this.mission.done && this.mission.s - this.dist < 26 ? this.mission : null);
     let tx, tz, ry = 0, lift = 0, walk = this.worldSpeed > 0.5 ? 1 : 0;
-    if (mm) { tx = mm.side * 1.6; tz = -1.5; ry = f && !f.done ? -mm.side * 0.9 : 0; }
+    if (mm) { tx = -mm.side * 2.0; tz = -2.8; ry = f && !f.done ? -mm.side * 0.9 : 0; }       // nas missões o cãozinho fica do outro lado, sem tapar a cena
     else { tx = (p.x >= 0 ? -1 : 1) * 4.3; tz = -2.4 + Math.sin(t * 0.9) * 0.9; }
     if (f && f.done) { lift = Math.abs(Math.sin(t * 9)) * 0.7; walk = 0; }
     if (this.dogBark > 0) { this.dogBark -= dt; lift = Math.max(lift, Math.abs(Math.sin(t * 15)) * 0.4); walk = 0; }
@@ -869,7 +899,7 @@ export class Game3D {
       pos = new THREE.Vector3(-m.side * 1.2, tall ? 3.4 : 2.7 + big * 1.0, tall ? 7.2 : 4.6 + big * 1.4);
       look = new THREE.Vector3(m.tx * 0.45, tall ? tall : 1.3 + big * 1.5, -3.0); fov = tall ? 68 : 56 + big * 3;
     }
-    else { pos = new THREE.Vector3(p.x * 0.55, 3.3 + Math.max(0, p.y) * 0.4, 5.7); look = new THREE.Vector3(p.x * 0.35, 1.1 + Math.max(0, p.y) * 0.3, -9); fov = 60 + (this.turbo - 1) * 16; }
+    else { pos = new THREE.Vector3(p.x * 0.55, 3.3 + Math.max(0, p.y) * 0.4, 5.7); look = new THREE.Vector3(p.x * 0.35, 1.1 + Math.max(0, p.y) * 0.3, -9); fov = 60 + (this.turbo - 1) * 34; }
     if (this.shake > 0) { this.shake -= dt; pos.y += Math.sin(this.t * 60) * 0.04 * Math.min(1, this.shake * 5); }
     const k = snap ? 1 : 1 - Math.exp(-dt * 5);
     this.camPos.lerp(pos, k); this.camLook.lerp(look, k);
@@ -904,7 +934,7 @@ export class Game3D {
     return {
       mode: this.modeId, phase: this.phaseNum, theme: this.world.nextTheme, t: this.t, dist: this.dist, stars: this.stars, speed: this.worldSpeed, base: this.baseSpeed, turbo: this.turbo,
       y: p.y, lane: p.lane, onGround: p.ground, floating: p.floating, dbl: p.dbl, assist: this.assist, powers: Object.keys(this.powers), eq: { ...this.eq },
-      falling: !!this.fall, paused: this.paused, mini: !!this.mini, offer: this.offer ? this.offer.kind : null, tutorial: this.tutorialActive, mission: m ? { key: m.key, hp: m.hp, engaged: m.engaged, done: m.done } : null, focus: !!this.focus, runTime: this.runTime,
+      falling: !!this.fall, paused: this.paused, lives: this.lives, over: this.over, stage: this.stage, inv: { ...this.inv }, mini: !!this.mini, offer: this.offer ? this.offer.kind : null, tutorial: this.tutorialActive, mission: m ? { key: m.key, hp: m.hp, engaged: m.engaged, done: m.done } : null, focus: !!this.focus, runTime: this.runTime,
       stats: { ...this.stats }, ents: this.ents.length, queue: this.queue.length,
     };
   }

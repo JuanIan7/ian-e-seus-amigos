@@ -112,6 +112,7 @@ for (const mode of process.env.QUICK ? [] : ['facil', 'aventura', 'desafio']) {
   const r = await run(() => {
     const g = window.__ian3; let last = g.dist, stuck = 0, maxStuck = 0;
     for (let i = 0; i < 60 * 150; i++) {
+      if (g.mini) g.closeMini(true);
       const p = g.p, f = g.focus;
       if (f && !f.done && i % 12 === 0) g.pressAction();
       else if (!f && p.ground) { const h = g.nextHazard(); if (g.tutorialActive || (h && h.gap < g.jumpDist() * 0.3 && h.gap > 0)) { g.setJump(true); g.setJump(false); } }
@@ -120,7 +121,7 @@ for (const mode of process.env.QUICK ? [] : ['facil', 'aventura', 'desafio']) {
     }
     return { ...g.snapshot(), maxStuck };
   });
-  ok(r.maxStuck < 12 && r.stats.missions >= 1, `${mode}: sem travar e concluiu missões`, `missões ${r.stats.missions}, quedas ${r.stats.falls}, batidas ${r.stats.hits}, fase ${r.phase}, estrelas ${r.stars}`);
+  ok(r.maxStuck < 12 && r.stats.missions >= 1 && !r.over, `${mode}: sem travar e concluiu missões`, `missões ${r.stats.missions}, quedas ${r.stats.falls}, batidas ${r.stats.hits}, vidas ${r.lives}, fase ${r.phase}, estrelas ${r.stars}`);
 }
 
 console.log('erros de página:', errors.length ? errors.slice(0, 6) : 'nenhum');

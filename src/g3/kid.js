@@ -44,9 +44,10 @@ function buildHead(look, o, id) {
     f.push(P(sph(0.029, 8, 6), 0x0d0b0a, [sx * 0.105, 0.03, fz + 0.002], [0, 0, 0], [1, 1.1, 0.5]));
     f.push(P(sph(0.018, 6, 5), 0xffffff, [sx * 0.105 - sx * 0.018, 0.058, fz - 0.004], [0, 0, 0], [1, 1, 0.5]));
     f.push(P(sph(0.009, 6, 5), 0xffffff, [sx * 0.105 + sx * 0.02, 0.0, fz - 0.004], [0, 0, 0], [1, 1, 0.5]));
-    f.push(P(cap(0.014, 0.075, 3, 6), hex(hc, 0.7), [sx * 0.105, 0.125, fz + 0.03], [0, 0, Math.PI / 2 + sx * 0.12], [1, 1, 0.8]));
+    f.push(P(cap(look.brows ? 0.022 : 0.014, 0.075, 3, 6), hex(hc, 0.7), [sx * 0.105, 0.125 + (look.brows ? 0.005 : 0), fz + 0.03], [0, 0, Math.PI / 2 + sx * 0.12], [1, 1, 0.8]));
   };
   eye(-1); eye(1);
+  if (look.freckles) [-1, 1].forEach((s) => [[0.13, -0.04], [0.17, -0.02], [0.16, -0.07], [0.2, -0.05], [0.12, -0.08]].forEach(([x, y]) => f.push(P(sph(0.011, 6, 5), hex(skin, 0.72), [s * x, y, fz + 0.045]))));
   f.push(P(sph(0.026, 8, 6), hex(skin, 0.86), [0, -0.035, fz - 0.005], [0, 0, 0], [1, 0.8, 0.8]));
   f.push(P(tor(0.062, 0.014, 6, 14, Math.PI), 0x5a1a26, [0, -0.07, fz + 0.018], [0, 0, Math.PI]));                       // sorriso
   f.push(P(sph(0.05, 8, 6), 0x7a2230, [0, -0.095, fz + 0.012], [0, 0, 0], [1.2, 0.55, 0.4]));                           // boca aberta
@@ -66,8 +67,10 @@ function buildHead(look, o, id) {
   const fringe = () => { [[-0.12, 0.17, 0.19, 0.5], [0, 0.205, 0.215, 0.2], [0.12, 0.17, 0.19, -0.5]].forEach(([x, y, z, rz]) => hp.push(P(sph(0.095, 9, 7), hc, [x, y, -z], [0.3, 0, rz], [1.15, 0.75, 0.8]))); };
   if (!covered) {
     if (style === 4) hp.push(P(sph(0.385, 14, 10), hc, [0, 0.06, 0.14], [0, 0, 0], [1, 0.98, 0.98]));
+    else if (style === 9) hp.push(P(dome(capR * 0.97, 0, 1.6, 18, 10), hc, [0, 0.01, 0.01], [0.3, 0, 0]));
     else cap1();
-    if (style !== 4 && !hat) fringe();
+    if (style !== 4 && style !== 9 && style !== 8 && !hat) fringe();
+    if (style === 8 && !hat) for (let i = 0; i < 6; i++) hp.push(P(cone(0.06, 0.16 - Math.abs(i - 2.5) * 0.02, 10), hc, [0, 0.29 - Math.abs(i - 2.5) * 0.02, -0.18 + i * 0.075], [-0.4 + i * 0.16, 0, 0]));
     if (style === 1) { hp.push(P(box(0.5, 0.62, 0.13, 0.06), hc, [0, -0.15, 0.2])); hp.push(P(cap(0.055, 0.34, 4, 8), hc, [-0.275, -0.08, 0.02]), P(cap(0.055, 0.34, 4, 8), hc, [0.275, -0.08, 0.02])); }
     if (style === 2) { [[-1, 0.0], [1, 0.0], [-1, -0.15], [1, -0.15], [0, -0.04], [-0.5, -0.13], [0.5, -0.13]].forEach(([sx, y], i) => hp.push(P(sph(0.1, 8, 6), hc, [sx * 0.24, y - 0.03, 0.1 + (sx === 0 || Math.abs(sx) < 1 ? 0.14 : 0)], [0, 0, 0], [1, 1.1, 1]))); }
     if (style === 3) { for (let i = 0; i < 22; i++) { const a = i * 2.399, k = Math.sqrt((i + 0.5) / 22); const y = 0.1 + (1 - k) * 0.22, rr = 0.19 + k * 0.1; const x = Math.cos(a) * rr, z = Math.sin(a) * rr + 0.03; if (z < -0.12 && y < 0.2) continue; hp.push(P(sph(0.082, 7, 6), hc, [x, y, z])); } [-1, 1].forEach((s) => hp.push(P(sph(0.085, 7, 6), hc, [s * 0.255, -0.02, 0.05]), P(sph(0.08, 7, 6), hc, [s * 0.235, -0.1, 0.1]))); }
@@ -132,6 +135,15 @@ function buildHead(look, o, id) {
       break;
     default: break;
   }
+  // --- acessórios escolhidos na personalização ---
+  const acc = look.acc || 0, fz2 = -zf;
+  if (acc === 1 || acc === 2) {
+    const rim = acc === 1 ? 0x2b3350 : 0x1b1b24, lens = acc === 1 ? 0xcfefff : 0x253046;
+    [-1, 1].forEach((s) => { hd.push(P(tor(0.065, 0.014, 8, 20), rim, [s * 0.105, 0.035, fz2 - 0.015])); if (acc === 2) hd.push(P(cyl(0.062, 0.062, 0.01, 20), lens, [s * 0.105, 0.035, fz2 - 0.018], [Math.PI / 2, 0, 0])); });
+    hd.push(P(box(0.07, 0.014, 0.014, 0.006), rim, [0, 0.045, fz2 - 0.015]), P(box(0.014, 0.014, 0.2, 0.006), rim, [-0.25, 0.04, fz2 + 0.08]), P(box(0.014, 0.014, 0.2, 0.006), rim, [0.25, 0.04, fz2 + 0.08]));
+  }
+  if (acc === 3) { const c = 0xff4f9a; hd.push(P(sph(0.06), c, [0.2, 0.24, -0.05], [0, 0, 0], [1.4, 0.9, 0.6]), P(sph(0.06), c, [0.32, 0.24, -0.05], [0, 0, 0], [1.4, 0.9, 0.6]), P(sph(0.035), hex(c, 0.8), [0.26, 0.24, -0.06])); }
+  if (acc === 4) { for (let i = 0; i < 5; i++) { const a = -0.9 + i * 0.45; hd.push(P(sph(0.035), i % 2 ? 0xffd23f : 0xff8a1f, [Math.sin(a) * 0.27, 0.27 + Math.cos(a) * 0.05, -Math.cos(a) * 0.08 + 0.02], [0, 0, 0], [1, 1, 0.5])); } hd.push(P(tor(0.27, 0.014, 6, 24, Math.PI), 0xffd23f, [0, 0.2, 0.0], [0.15, 0, 0])); }
   if (hd.length) head.add(toMesh(hd, { thin: true }));
   if (glass.length) { const gm = toMesh(glass, { outline: false, material: toonGlass }); gm.renderOrder = 3; head.add(gm); }
   return head;
@@ -230,6 +242,9 @@ function buildBody(look, id) {
   if (id === 'explorador') back.add(toMesh([P(box(0.3, 0.34, 0.14, 0.06), 0x8a5a35, [0, -0.02, 0.09]), P(cyl(0.07, 0.07, 0.34, 10), 0xd04a3a, [0, 0.2, 0.1], [0, 0, Math.PI / 2]), P(box(0.12, 0.08, 0.04, 0.02), 0x6b4a2b, [0, -0.06, 0.17])], { thin: true }));
   if (id === 'piloto') back.add(toMesh([P(cyl(0.06, 0.06, 0.3, 10), 0xff8a1f, [-0.08, -0.02, 0.09]), P(cyl(0.06, 0.06, 0.3, 10), 0xff8a1f, [0.08, -0.02, 0.09]), P(cone(0.05, 0.1, 8), 0x555a66, [-0.08, -0.22, 0.09], [Math.PI, 0, 0]), P(cone(0.05, 0.1, 8), 0x555a66, [0.08, -0.22, 0.09], [Math.PI, 0, 0])], { thin: true }));
   if (id === 'guarda') back.add(toMesh([P(sph(0.1, 10, 8), 0x8a5a35, [0.0, -0.05, 0.1], [0, 0, 0], [1, 1.15, 0.7]), P(cyl(0.04, 0.04, 0.05, 8), 0xdfe3ea, [0, 0.07, 0.1], [Math.PI / 2, 0, 0])], { thin: true }));
+  const acc = look.acc || 0;
+  if (acc === 5 && id !== 'explorador' && id !== 'astronauta') back.add(toMesh([P(box(0.3, 0.32, 0.14, 0.08), 0xff8a1f, [0, -0.04, 0.1]), P(box(0.22, 0.12, 0.05, 0.04), 0xffd23f, [0, -0.1, 0.18]), P(cap(0.02, 0.28, 4, 8), 0x2b3350, [-0.1, 0.06, -0.02], [0.2, 0, 0]), P(cap(0.02, 0.28, 4, 8), 0x2b3350, [0.1, 0.06, -0.02], [0.2, 0, 0])], { thin: true }));
+  if (acc === 6) torso.add(toMesh([P(tor(0.15, 0.05, 8, 20), 0xe8352f, [0, 0.4, 0], [Math.PI / 2, 0, 0]), P(box(0.08, 0.2, 0.05, 0.03), 0xe8352f, [0.08, 0.3, -0.13], [0, 0, 0.2]), P(tor(0.152, 0.012, 6, 20), 0xffffff, [0, 0.42, 0], [Math.PI / 2, 0, 0])], { thin: true }));
   if (id === 'equipe') back.add(toMesh([P(sph(0.05, 8, 6), 0xffffff, [0, 0.12, 0.0], [0, 0, 0], [1, 0.4, 0.2])], { outline: false }));
 
   // equipamento de mangueira (nas costas) e bocal (na mão)
@@ -289,3 +304,8 @@ export function poseKid(kid, st, ph, t, o = {}) {
     pos.needsUpdate = true; g.computeVertexNormals(); cape.rotation.x = st === 'run' ? 0.25 : st === 'float' ? 0.5 : 0.1;
   }
 }
+
+// opções da personalização (3D)
+export const HAIR_STYLES3 = ['Curto liso', 'Longo liso', 'Ondulado', 'Cacheado', 'Crespo', 'Rabo de cavalo', 'Trança', 'Coquinhos', 'Moicano', 'Raspadinho'];
+export const ACCESSORIES = ['Nenhum', 'Óculos', 'Óculos escuros', 'Laço', 'Tiara de estrelas', 'Mochila', 'Cachecol'];
+export { OUTFIT_IDS };

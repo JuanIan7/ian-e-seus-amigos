@@ -3,7 +3,7 @@ const css = `
 .g3{position:fixed;inset:0;overflow:hidden;background:#8fd3ff;touch-action:none;-webkit-user-select:none;user-select:none;font-family:'Arial Black',Arial,sans-serif}
 .g3 canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 .g3 .ui{position:absolute;inset:0;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-.g3 .btn{position:absolute;pointer-events:auto;border-radius:50%;border:5px solid #1b2a49;display:flex;align-items:center;justify-content:center;box-shadow:0 7px 0 rgba(27,42,73,.55),inset 0 8px 0 rgba(255,255,255,.28);touch-action:none;transition:transform .06s;cursor:pointer}
+.g3 .btn{position:absolute;pointer-events:auto;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:none;border-radius:50%;border:5px solid #1b2a49;display:flex;align-items:center;justify-content:center;box-shadow:0 7px 0 rgba(27,42,73,.55),inset 0 8px 0 rgba(255,255,255,.28);touch-action:none;transition:transform .06s;cursor:pointer}
 .g3 .btn svg{width:56%;height:56%;pointer-events:none;filter:drop-shadow(0 3px 0 rgba(0,0,0,.25))}
 .g3 .btn.on{transform:translateY(5px) scale(.95);box-shadow:0 2px 0 rgba(27,42,73,.55),inset 0 6px 0 rgba(255,255,255,.2)}
 .g3 .btn.off{opacity:.38;filter:grayscale(.6)}
@@ -38,7 +38,7 @@ const css = `
 .g3 .toast span{font-size:min(6.5vh,38px)}
 @keyframes g3toast{0%{opacity:0;transform:translateX(-50%) scale(.6)}12%{opacity:1;transform:translateX(-50%) scale(1.05)}20%{transform:translateX(-50%) scale(1)}85%{opacity:1}100%{opacity:0}}
 .g3 .hand{position:absolute;width:min(14vh,80px);height:min(14vh,80px);pointer-events:none;display:none;animation:g3hand .7s ease-in-out infinite;filter:drop-shadow(0 4px 0 rgba(0,0,0,.35))}
-@keyframes g3hand{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes g3hand{0%,100%{translate:0 0}50%{translate:-14px 0}}
 .g3 .prog{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 3vh);transform:translateX(-50%);display:none;gap:10px;pointer-events:none}
 .g3 .prog span{width:min(6vh,34px);height:min(6vh,34px);border-radius:50%;background:rgba(255,255,255,.4);border:4px solid #1b2a49}
 .g3 .prog span.f{background:#4db8ff}
@@ -47,6 +47,27 @@ const css = `
 .g3 .quest{background:radial-gradient(circle at 35% 30%,#fff 0,#bfe8ff 45%,#6cc8ff 100%);width:min(20vh,100px);height:min(20vh,100px);right:calc(env(safe-area-inset-right) + 2vw);top:calc(env(safe-area-inset-top) + 2vh + min(14vh,70px));animation:g3float 1.4s ease-in-out infinite;display:none}
 .g3 .quest svg{width:62%;height:62%}
 @keyframes g3float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.07)}}
+.g3 .run{background:#9b5cff}
+.g3 .run.on{background:#c38bff;box-shadow:0 0 0 6px rgba(255,255,255,.55),0 2px 0 rgba(27,42,73,.55)}
+.g3 .lives{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 2vh + min(5vh,28px));transform:translateX(-50%);display:flex;gap:4px;pointer-events:none;font-size:min(6vh,32px);line-height:1;filter:drop-shadow(0 2px 0 #1b2a49)}
+.g3 .lives b{font-weight:400;transition:transform .2s}
+.g3 .lives b.off{filter:grayscale(1) brightness(1.6);opacity:.45}
+.g3 .lives.lose{animation:g3shake .5s}
+.g3 .lives.gain b:last-child{animation:g3pop .6s}
+@keyframes g3shake{0%,100%{transform:translateX(-50%)}25%{transform:translateX(calc(-50% - 10px))}75%{transform:translateX(calc(-50% + 10px))}}
+@keyframes g3pop{0%{transform:scale(.2)}60%{transform:scale(1.5)}100%{transform:scale(1)}}
+.g3 .inv{position:absolute;right:calc(env(safe-area-inset-right) + 2vw + min(13vh,66px));top:calc(env(safe-area-inset-top) + 2vh);display:flex;gap:8px;pointer-events:none}
+.g3 .inv .it{position:relative;pointer-events:auto;width:min(11vh,56px);height:min(11vh,56px);border-radius:16px;background:#fff6d8;border:4px solid #1b2a49;display:flex;align-items:center;justify-content:center;font-size:min(6.4vh,32px);box-shadow:0 4px 0 rgba(27,42,73,.5);cursor:pointer}
+.g3 .inv .it i{position:absolute;right:-8px;bottom:-8px;min-width:24px;height:24px;border-radius:12px;background:#e8352f;color:#fff;font:700 15px/24px Arial,sans-serif;font-style:normal;text-align:center;border:3px solid #1b2a49}
+.g3 .inv .it.act{background:#ffd23f;animation:g3pulse .6s ease-in-out infinite}
+.g3 .res{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(20,34,64,.7);pointer-events:auto;z-index:30}
+.g3 .res .box{background:linear-gradient(#fff6d8,#ffe2a0);border:6px solid #1b2a49;border-radius:30px;padding:2vh 4vw 3vh;text-align:center;color:#1b2a49;min-width:min(70vw,560px);box-shadow:0 10px 0 rgba(27,42,73,.5)}
+.g3 .res h1{margin:0;font-size:min(10vh,56px)}
+.g3 .res .big{font-size:min(14vh,80px);margin:1vh 0}
+.g3 .res .big span{font-size:min(9vh,52px)}
+.g3 .res p{margin:0 0 2vh;font-size:min(5vh,26px)}
+.g3 .res .row{display:flex;gap:4vw;justify-content:center}
+.g3 .res .btn{position:static;width:min(22vh,110px);height:min(22vh,110px)}
 .g3 .veil{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;gap:5vw;pointer-events:auto}
 .g3 .veil .btn{position:static;width:min(24vh,120px);height:min(24vh,120px)}
 .g3 .veil .big{width:min(34vh,170px);height:min(34vh,170px);background:#3ecb6b}
@@ -57,7 +78,7 @@ export const ICONS = {
   up: svg('<path d="M50 8 L92 52 H66 V90 H34 V52 H8 Z" fill="#fff"/>'),
   left: svg('<path d="M8 50 L52 8 V34 H92 V66 H52 V92 Z" fill="#fff"/>'),
   right: svg('<path d="M92 50 L48 8 V34 H8 V66 H48 V92 Z" fill="#fff"/>'),
-  run: svg('<path d="M50 6 L88 40 H66 L88 70 H64 V94 H36 V70 H12 L34 40 H12 Z" fill="#fff"/>'),
+  run: svg('<path d="M14 18 L50 50 L14 82 Z M50 18 L86 50 L50 82 Z" fill="#fff" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>'),
   drop: svg('<path d="M50 6 C50 6 18 44 18 64 A32 32 0 0 0 82 64 C82 44 50 6 50 6 Z" fill="#fff"/><path d="M34 66 A16 16 0 0 0 48 80" stroke="#7fd0ff" stroke-width="7" fill="none" stroke-linecap="round"/>'),
   hand: svg('<path d="M40 8 a8 8 0 0 1 16 0 V46 L70 42 a7 7 0 0 1 8 6 L80 60 C80 80 70 94 52 94 C36 94 28 84 20 66 L14 50 a7 7 0 0 1 12-6 L34 56 V18 a8 8 0 0 1 6-10 Z" fill="#fff" stroke="#1b2a49" stroke-width="5" stroke-linejoin="round"/>'),
   pause: svg('<rect x="22" y="14" width="19" height="72" rx="6" fill="#fff"/><rect x="59" y="14" width="19" height="72" rx="6" fill="#fff"/>'),
@@ -73,6 +94,10 @@ export const ICONS = {
   basket: svg('<path d="M50 4 V38" stroke="#fff" stroke-width="8" stroke-linecap="round"/><path d="M14 44 H86 L74 90 H26 Z" fill="#fff" stroke="#1b2a49" stroke-width="4" stroke-linejoin="round"/><path d="M24 62 H76 M30 78 H70" stroke="#c2864a" stroke-width="5"/>'),
   egg: svg('<ellipse cx="50" cy="56" rx="30" ry="38" fill="#fff"/><circle cx="40" cy="42" r="6" fill="#6fcf6a"/><circle cx="60" cy="58" r="7" fill="#6fcf6a"/><circle cx="42" cy="72" r="5" fill="#6fcf6a"/>'),
   fruit: svg('<circle cx="50" cy="58" r="32" fill="#fff"/><path d="M50 28 C50 14 58 8 68 8 C68 20 60 28 50 28 Z" fill="#3ecb6b" stroke="#1b2a49" stroke-width="3"/>'),
+  shop: svg('<path d="M14 40 H86 L80 88 H20 Z" fill="#fff" stroke="#1b2a49" stroke-width="4" stroke-linejoin="round"/><path d="M32 40 V30 A18 18 0 0 1 68 30 V40" fill="none" stroke="#fff" stroke-width="8"/><path d="M50 52 L55 63 L67 64 L58 72 L61 84 L50 78 L39 84 L42 72 L33 64 L45 63 Z" fill="#ffd23f"/>'),
+  again: svg('<path d="M50 14 A36 36 0 1 1 16 50" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round"/><path d="M50 0 L72 16 L50 32 Z" fill="#fff"/>'),
+  flag: svg('<path d="M24 8 V94" stroke="#fff" stroke-width="10" stroke-linecap="round"/><path d="M28 12 H84 L72 32 L84 52 H28 Z" fill="#fff"/>'),
+  ring: svg('<circle cx="50" cy="50" r="34" fill="none" stroke="#fff" stroke-width="18"/><path d="M50 16 V34 M50 66 V84 M16 50 H34 M66 50 H84" stroke="#e8352f" stroke-width="18"/>'),
   heart: svg('<path d="M50 90 C10 60 6 34 26 24 C40 18 50 28 50 36 C50 28 60 18 74 24 C94 34 90 60 50 90 Z" fill="#fff"/>'),
 };
 
@@ -82,8 +107,9 @@ export function createHud(root, h) {
   const mk = (cls, icon, down, up) => {
     const b = document.createElement('div'); b.className = 'btn ' + cls; b.innerHTML = icon; ui.appendChild(b);
     let held = false;
-    const on = (e) => { e.preventDefault(); e.stopPropagation(); if (held) return; held = true; b.classList.add('on'); try { b.setPointerCapture(e.pointerId); } catch (x) { /* ignora */ } down && down(); };
-    const off = (e) => { e.preventDefault(); e.stopPropagation(); if (!held) return; held = false; b.classList.remove('on'); up && up(); };
+    let pid = null;
+    const on = (e) => { e.preventDefault(); e.stopPropagation(); if (held) return; held = true; pid = e.pointerId; b.classList.add('on'); try { b.setPointerCapture(e.pointerId); } catch (x) { /* ignora */ } down && down(); };
+    const off = (e) => { e.preventDefault(); e.stopPropagation(); if (!held || (pid !== null && e.pointerId !== pid)) return; held = false; pid = null; b.classList.remove('on'); up && up(); };
     b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
     b.addEventListener('contextmenu', (e) => e.preventDefault());
     return b;
@@ -108,6 +134,9 @@ export function createHud(root, h) {
   const equip = document.createElement('div'); equip.className = 'equip'; ui.appendChild(equip);
   const prog = document.createElement('div'); prog.className = 'prog'; ui.appendChild(prog);
   const veil = document.createElement('div'); veil.className = 'veil'; ui.appendChild(veil);
+  const lives = document.createElement('div'); lives.className = 'lives'; ui.appendChild(lives);
+  const inv = document.createElement('div'); inv.className = 'inv'; ui.appendChild(inv);
+  const res = document.createElement('div'); res.className = 'res'; ui.appendChild(res);
 
   // deslizar o dedo para os lados também muda de faixa
   let sx = null, sy = null, st = 0;
@@ -132,6 +161,28 @@ export function createHud(root, h) {
     setEquip(list) { const k = list.join(''); if (equip.dataset.k === k) return; equip.dataset.k = k; equip.innerHTML = list.map((e) => '<b>' + e + '</b>').join(''); },
     setProg(done, total) { if (total <= 0) { prog.style.display = 'none'; prog.dataset.k = ''; return; } const k = done + '/' + total; if (prog.dataset.k === k) return; prog.dataset.k = k; prog.style.display = 'flex'; prog.innerHTML = Array.from({ length: total }, (_, i) => '<span class="' + (i < done ? 'f' : '') + '"></span>').join(''); },
     quest(icon, on) { if (!icon) { els.quest.style.display = 'none'; els.quest._tap = null; return; } els.quest.innerHTML = icon; els.quest._tap = on; els.quest.style.display = 'flex'; },
+    setLives(n, max, fx) {
+      lives.innerHTML = Array.from({ length: Math.max(n, 3) }, (_, i) => `<b class="${i < n ? '' : 'off'}">❤️</b>`).join('');
+      lives.dataset.n = n;
+      if (fx) { lives.classList.remove('lose', 'gain'); void lives.offsetWidth; lives.classList.add(fx); }
+    },
+    setInv(items, list) {
+      const ICON = { shield: '🛡️', truck: '🚒', fly: '🪽', glide: '🪂', magnet: '🧲', jump: '🦘', speed: '⚡', jet: '💦' };
+      const k = list.map((x) => x.key + (items[x.key] || 0)).join(',');
+      if (inv.dataset.k === k) return; inv.dataset.k = k; inv.innerHTML = '';
+      list.filter((x) => items[x.key] > 0).forEach((x) => {
+        const b = document.createElement('div'); b.className = 'it'; b.dataset.key = x.key; b.innerHTML = `${ICON[x.key] || '⭐'}<i>${items[x.key]}</i>`;
+        b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); h.item && h.item(x.key); });
+        inv.appendChild(b);
+      });
+    },
+    results(r, cb) {
+      res.style.display = 'flex';
+      res.innerHTML = `<div class="box"><h1>${r.reason === 'over' ? 'Fim de jogo!' : 'Muito bem!'}</h1><div class="big">⭐ <span>${r.stars}</span></div><p>estrelas foram para a lojinha · total: ⭐ ${r.coins}</p><div class="row"></div></div>`;
+      const row = res.querySelector('.row');
+      const add = (icon, bg, fn, key) => { const b = document.createElement('div'); b.className = 'btn'; b.dataset.k = key; b.style.background = bg; b.innerHTML = icon; b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); fn(); }); row.appendChild(b); };
+      add(ICONS.home, '#2f9bff', cb.menu, 'menu'); add(ICONS.again, '#3ecb6b', cb.again, 'again'); add(ICONS.shop, '#ff8a1f', cb.shop, 'shop');
+    },
     pulseJump(v) { els.jump.classList.toggle('pulse', !!v); },
     showRun(v) { els.run.style.display = v ? 'flex' : 'none'; },
     setRunActive(v) { els.run.classList.toggle('on', !!v); },
@@ -142,13 +193,13 @@ export function createHud(root, h) {
     hand(btn, on) {
       if (!on) { hand.style.display = 'none'; return; }
       const r = btn.getBoundingClientRect(), rr = root.getBoundingClientRect();
-      hand.style.display = 'block'; hand.style.left = (r.left - rr.left + r.width / 2 - hand.offsetWidth / 2) + 'px'; hand.style.top = (r.top - rr.top - hand.offsetHeight - 6) + 'px'; hand.style.transform = 'rotate(180deg)';
+      hand.style.display = 'block'; hand.style.left = (r.left - rr.left - hand.offsetWidth - 4) + 'px'; hand.style.top = (r.top - rr.top + r.height / 2 - hand.offsetHeight / 2) + 'px'; hand.style.transform = 'rotate(90deg)';
     },
     pauseUI(show, handlers, soundOn) {
       if (!show) { veil.style.display = 'none'; veil.innerHTML = ''; return; }
       veil.style.display = 'flex'; veil.innerHTML = '';
       const add = (cls, icon, fn) => { const b = document.createElement('div'); b.className = 'btn ' + cls; b.innerHTML = icon; b.style.background = cls.includes('big') ? '#3ecb6b' : '#2f9bff'; b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); fn(b); }); veil.appendChild(b); return b; };
-      add('', ICONS.home, handlers.home);
+      add('', ICONS.flag, handlers.home);
       add('big', ICONS.play, handlers.resume);
       add('', soundOn ? ICONS.sound : ICONS.mute, (b) => { const on = handlers.sound(); b.innerHTML = on ? ICONS.sound : ICONS.mute; });
     },

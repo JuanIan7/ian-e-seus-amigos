@@ -3,9 +3,9 @@
 import { serve, launch } from './helpers.mjs';
 import path from 'node:path'; import fs from 'node:fs'; import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url)); const out = path.join(here, 'out', 'phases3d'); fs.mkdirSync(out, { recursive: true });
-const phases = (process.argv[2] || '1,2,3,4,5').split(',').map(Number), modes = (process.argv[3] || 'facil,aventura,desafio').split(','), shots = process.argv[4] === '1';
-const EXPECT = { 1: ['fire_bin', 'fire_house', 'fire_building'], 2: ['rescue_cat', 'distract_dog', 'person_safe', 'fire_dog'], 3: ['rescue_bunny', 'supplies'], 4: ['rescue_roof', 'fire_building'], 5: ['distract_dino', 'nest', 'baby_free', 'baby_reunite'] };
-const srv = await serve(path.join(here, '..', 'dist'));
+const phases = (process.argv[2] || '1,2,3,4,5,6,7').split(',').map(Number), modes = (process.argv[3] || 'facil,aventura,desafio').split(','), shots = process.argv[4] === '1';
+const EXPECT = { 6: ['rescue_swimmer', 'boat_fire', 'rescue_pup'], 7: ['cool_lava', 'rescue_dino_lava', 'hut_fire'], 1: ['fire_bin', 'fire_house', 'fire_building'], 2: ['rescue_cat', 'distract_dog', 'person_safe', 'fire_dog'], 3: ['rescue_bunny', 'supplies'], 4: ['rescue_roof', 'fire_building'], 5: ['distract_dino', 'nest', 'baby_free', 'baby_reunite'] };
+const srv = await serve(process.env.DIST ? path.resolve(process.env.DIST) : path.join(here, '..', 'dist'));
 const { browser, errors } = await launch({ viewport: { width: 1280, height: 600 } });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 600 }, hasTouch: true });
 const page = await ctx.newPage();
@@ -17,6 +17,7 @@ const BOT = () => {
   window.__step = (n) => {
     const g = window.__ian3, b = window.__bot, done = [];
     for (let i = 0; i < n; i++) {
+      if (g.mini) { g.closeMini(true); }                                 // o robô "resolve" o desafio da fase
       const p = g.p, f = g.focus;
       if (f && !f.done) { if (g.t - b.lastAct > 0.2 && g.sprayCd <= 0) { g.pressAction(); b.lastAct = g.t; } g.setJump(false); }
       else if (g.powers.fly) { g.setJump(p.y < 2.2 || g.dist % 7 < 3.5); }
@@ -55,10 +56,12 @@ for (const phase of phases) for (const mode of modes) {
     if (shots && s.focus === false && s.stats.missions > 0 && shotsTaken < 0) shotsTaken++;
     if (Math.abs(s.dist - lastDist) < 0.05 && !s.focus && !s.tutorial && !s.paused) { stuck++; maxStuck = Math.max(maxStuck, stuck); } else stuck = 0;
     lastDist = s.dist;
-    if (s.phase > phase || (s.stats.missions >= EXPECT[phase].length && s.mission === null && !s.focus && s.queue === 0)) break;
+    if (s.over) break;
+    if (s.phase !== phase || (s.stats.missions >= EXPECT[phase].length && s.mission === null && !s.focus && s.queue === 0)) break;
   }
   const got = s.stats.missions;
-  ok(s.phase > phase || got >= EXPECT[phase].length, `fase ${phase} ${mode}: missões ${got}/${EXPECT[phase].length}, fase atual ${s.phase}`, `t=${s.t.toFixed(0)}s quedas ${s.stats.falls} batidas ${s.stats.hits} pulos ${s.stats.jumps} duplos ${s.stats.doubles} planar ${s.stats.floats} quicadas ${s.stats.bounces || 0} estrelas ${s.stars}`);
+  ok(!s.over && s.stats.puzzles >= 1, `fase ${phase} ${mode}: desafio da fase aberto e vidas restantes`, `desafios ${s.stats.puzzles} vidas ${s.lives} perdidas ${s.stats.livesLost}`);
+  ok(s.phase !== phase || got >= EXPECT[phase].length, `fase ${phase} ${mode}: missões ${got}/${EXPECT[phase].length}, fase atual ${s.phase}`, `t=${s.t.toFixed(0)}s quedas ${s.stats.falls} batidas ${s.stats.hits} pulos ${s.stats.jumps} duplos ${s.stats.doubles} planar ${s.stats.floats} quicadas ${s.stats.bounces || 0} estrelas ${s.stars}`);
   ok(maxStuck < 5, `fase ${phase} ${mode}: sem travar`, 'maxStuck=' + maxStuck);
 }
 console.log('erros de página:', errors.length ? errors.slice(0, 8) : 'nenhum'); if (errors.length) fails++;
