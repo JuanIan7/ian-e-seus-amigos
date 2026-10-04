@@ -25,4 +25,14 @@ Imagens geradas por `node tests/showcase.mjs` (página `showcase.html`). Modelos
 | Obstáculos da praça (banco, arbusto) | 3 |
 
 ## Fase 3 — Aventura na floresta
+| Elemento | Escolha |
+|---|---|
+| Pinheiro | 3 |
+| Árvore grande | 3 |
+| Plantas do chão (samambaia, cogumelos, pedra) | 3 |
+| Obstáculos (tronco, pedra, cogumelo) | 3 |
+| Folha gigante e plataforma de impulso | 2 |
+| Coelhinho | 3 |
+
+## Fase 4 — Resgate nas alturas
 (aguardando escolha)

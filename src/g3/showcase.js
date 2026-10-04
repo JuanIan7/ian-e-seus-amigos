@@ -5,7 +5,8 @@ import { SCENERY, buildBin, buildFlame, buildFireTruck, buildObstacle } from './
 import { HQ, TEX } from './hq.js';
 import { HQ2 } from './hq2.js';
 import { HQ3 } from './hq3.js';
-import { buildLeaf, buildPad } from './creatures.js';
+import { HQ4 } from './hq4.js';
+import { buildLeaf, buildPad, buildHeli, buildBasket, buildPlatform } from './creatures.js';
 
 const q = new URLSearchParams(location.search);
 const el = q.get('el') || 'tree', lvl = q.get('q') || 'atual';
@@ -54,10 +55,14 @@ function atual() {
     case 'ground': { const g = new THREE.Group(); const f = SCENERY.fern(r); g.add(f); const m = SCENERY.mushroom(rng('m2')); m.position.x = 1.7; g.add(m); const k = SCENERY.rock(rng('k1')); k.position.x = -1.9; k.scale.setScalar(0.6); g.add(k); return g; }
     case 'obs3': { const g = new THREE.Group(); ['log', 'rock', 'mushroom'].forEach((k, i) => { const o = buildObstacle(k); o.position.x = [-2.4, 0, 2.2][i]; g.add(o); }); return g; }
     case 'leafpad': { const g = new THREE.Group(); const l = buildLeaf(); l.position.set(-1.6, 3, 0); g.add(l); const p = buildPad(); p.position.x = 2.2; g.add(p); return g; }
+    case 'heli': return buildHeli();
+    case 'roof': { const g = new THREE.Group(); const t = SCENERY.tank(r); g.add(t); const b = SCENERY.billboard(rng('bb')); b.position.x = 3.6; g.add(b); return g; }
+    case 'obs4': { const g = new THREE.Group(); ['ac', 'pipe'].forEach((k, i) => { const o = buildObstacle(k); o.position.x = [-1.3, 1.3][i]; g.add(o); }); return g; }
+    case 'plat': { const g = new THREE.Group(); const p = buildPlatform(2.4, 3.0); p.position.set(-1.4, 4, 0); g.add(p); const b = buildBasket(); b.position.set(1.9, 4.2, 0); g.add(b); return g; }
     case 'obstacles': { const g = new THREE.Group(); ['cone', 'hydrant', 'barrier', 'crate'].forEach((k, i) => { const o = buildObstacle(k); o.position.x = [-2.4, -0.8, 0.9, 2.5][i]; g.add(o); }); return g; }
   }
 }
-const ALL = { ...HQ, ...HQ2, ...HQ3 };
+const ALL = { ...HQ, ...HQ2, ...HQ3, ...HQ4 };
 let obj = lvl === 'atual' && !(ALL[el] && ALL[el].atual) ? atual() : ALL[el][lvl]();
 if (el === 'binfire' && lvl !== 'atual') obj.scale.setScalar(1.7);
 scene.add(obj);
