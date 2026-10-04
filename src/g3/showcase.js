@@ -3,6 +3,7 @@ import { THREE, rng } from './kit.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { SCENERY, buildBin, buildFlame, buildFireTruck, buildObstacle } from './props.js';
 import { HQ, TEX } from './hq.js';
+import { HQ2 } from './hq2.js';
 
 const q = new URLSearchParams(location.search);
 const el = q.get('el') || 'tree', lvl = q.get('q') || 'atual';
@@ -42,10 +43,15 @@ function atual() {
     case 'lamp': return SCENERY.lamp(r);
     case 'binfire': { const g = new THREE.Group(); const b = buildBin(); b.scale.setScalar(1.7); g.add(b); const f = buildFlame(); f.position.set(0, 2.3, 0); f.scale.setScalar(1.9); g.add(f); return g; }
     case 'truck': return buildFireTruck();
+    case 'shop': return SCENERY.shop(rng('s4'));
+    case 'fountain': return SCENERY.fountain(r);
+    case 'plaza': { const g = new THREE.Group(); const b = SCENERY.bench(r); g.add(b); const f = SCENERY.flowers(rng('f2')); f.position.x = 2.6; g.add(f); const f2 = SCENERY.flowers(rng('f3')); f2.position.x = -2.4; f2.scale.setScalar(0.5); g.add(f2); return g; }
+    case 'obs2': { const g = new THREE.Group(); ['bench', 'bush'].forEach((k, i) => { const o = buildObstacle(k); o.position.x = [-1.2, 1.2][i]; g.add(o); }); return g; }
     case 'obstacles': { const g = new THREE.Group(); ['cone', 'hydrant', 'barrier', 'crate'].forEach((k, i) => { const o = buildObstacle(k); o.position.x = [-2.4, -0.8, 0.9, 2.5][i]; g.add(o); }); return g; }
   }
 }
-let obj = lvl === 'atual' ? atual() : HQ[el][lvl]();
+const ALL = { ...HQ, ...HQ2 };
+let obj = lvl === 'atual' && !(ALL[el] && ALL[el].atual) ? atual() : ALL[el][lvl]();
 if (el === 'binfire' && lvl !== 'atual') obj.scale.setScalar(1.7);
 scene.add(obj);
 if (muito) obj.traverse((o) => { if (o.isMesh && !o.material.transparent && !(o.material instanceof THREE.MeshBasicMaterial)) { o.castShadow = true; o.receiveShadow = true; } });
@@ -53,7 +59,7 @@ if (muito) obj.traverse((o) => { if (o.isMesh && !o.material.transparent && !(o.
 // enquadramento automático: frente do objeto virada para a câmera (como no jogo)
 obj.updateMatrixWorld(true); const bb = new THREE.Box3(); obj.traverse((o) => { if (o.isMesh && !o.isSprite && !(o.material && o.material.isShaderMaterial)) bb.expandByObject(o, true); }); if (el === 'binfire') bb.max.y += 1.6; const c = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3());
 const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 200);
-const rad = Math.max(sz.x * (el === 'obstacles' ? 0.4 : 0.62), sz.y * 0.64, sz.z * 0.5) + 0.3, dist = rad / Math.tan(THREE.MathUtils.degToRad(15)) * 0.98;
+const rad = Math.max(sz.x * (el === 'obstacles' || el === 'dogs' || el === 'plaza' ? 0.42 : 0.62), sz.y * 0.64, sz.z * 0.5) + 0.3, dist = rad / Math.tan(THREE.MathUtils.degToRad(15)) * 0.98;
 const yaw = +(q.get('yaw') || 0.55);
 cam.position.set(c.x + Math.sin(yaw) * dist, c.y + dist * 0.14, c.z - Math.cos(yaw) * dist); cam.lookAt(c.x, c.y, c.z);
 if (sun.castShadow) { sun.target.position.copy(c); scene.add(sun.target); }

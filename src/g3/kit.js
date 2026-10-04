@@ -132,7 +132,9 @@ function outlineGeo(geo) {
 }
 
 /** malha com contorno escuro (casca invertida). Retorna um Group com 2 malhas. */
+export const PART_HOOK = { fn: null };   // usado só pela página de comparação de qualidade
 export function toMesh(parts, { outline = true, thin = false, material = toon } = {}) {
+  if (PART_HOOK.fn) { const r = PART_HOOK.fn(parts, { outline, thin, material }); if (r) return r; }
   const geo = mergeParts(parts);
   const g = new THREE.Group();
   const m = new THREE.Mesh(geo, material); g.add(m);
