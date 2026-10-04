@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; }
+  html,body { margin:0; background:#f2f2f2; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .wrap { display:flex; align-items:flex-start; gap:40px; padding:30px; width:fit-content; }
+  .col { display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .label { font-weight:800; font-size:20px; color:#1b2a49; }
+  .icon-frame { width:220px; height:220px; border-radius:46px; overflow:hidden; box-shadow:0 6px 18px rgba(0,0,0,0.18); }
+  .phone { width:270px; height:560px; border-radius:34px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.25); border:8px solid #111; position:relative; }
+</style></head>
+<body>
+<div class="wrap" id="wrap"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const c = q.get('c') || 'a';
+
+// ---------- paletas e nomes ----------
+const CFG = {
+  a: { name: 'A — Emblema de resgate', bg1: '#e8352f', bg2: '#c42620', splashBg: ['#e8352f','#ff7a52'] },
+  b: { name: 'B — Mascote correndo',   bg1: '#2f9bff', bg2: '#8fd3ff', splashBg: ['#2f9bff','#bfe8ff'] },
+  c: { name: 'C — Trio de amigos',     bg1: '#ffe29a', bg2: '#fff3d6', splashBg: ['#ffd23f','#fff3d6'] },
+};
+
+function svgNS(tag, attrs) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+// ---------- desenho do ícone (512x512 viewBox) ----------
+function drawIcon(svg, concept) {
+  const g = svgNS('g', {});
+  svg.appendChild(g);
+  const bgGrad = svgNS('radialGradient', { id: 'bgI', cx: '35%', cy: '30%', r: '75%' });
+  bgGrad.appendChild(svgNS('stop', { offset: '0%', 'stop-color': CFG[concept].bg2 }));
+  bgGrad.appendChild(svgNS('stop', { offset: '100%', 'stop-color': CFG[concept].bg1 }));
+  svg.appendChild(bgGrad);
+  g.appendChild(svgNS('rect', { x: 0, y: 0, width: 512, height: 512, fill: 'url(#bgI)' }));
+
+  if (concept === 'a') {
+    // emblema: capacete + escudo com pata + espinhos de dino na base
+    g.appendChild(svgNS('circle', { cx: 256, cy: 256, r: 190, fill: 'none', stroke: '#ffffff', 'stroke-width': 16 }));
+    g.appendChild(svgNS('path', { d: 'M256 120 a140 140 0 0 1 140 140 l0 20 -280 0 0 -20 a140 140 0 0 1 140 -140 z', fill: '#7a1f1a' }));
+    g.appendChild(svgNS('rect', { x: 110, y: 278, width: 292, height: 26, rx: 13, fill: '#ffd23f' }));
+    g.appendChild(svgNS('circle', { cx: 256, cy: 236, r: 70, fill: '#ffd23f' }));
+    g.appendChild(svgNS('circle', { cx: 256, cy: 236, r: 70, fill: 'none', stroke: '#7a1f1a', 'stroke-width': 8 }));
+    // pata (pata estilizada genérica, sem referência a personagem existente)
+    const pawC = '#7a1f1a';
+    [[-26,-6],[-9,-26],[9,-26],[26,-6]].forEach(([dx,dy]) => g.appendChild(svgNS('ellipse', { cx: 256+dx, cy: 236+dy, rx: 12, ry: 15, fill: pawC })));
+    g.appendChild(svgNS('ellipse', { cx: 256, cy: 252, rx: 22, ry: 18, fill: pawC }));
+    // espinhos de dino na base do capacete
+    [-70,-35,0,35,70].forEach((dx) => g.appendChild(svgNS('polygon', { points: `${256+dx-16},320 ${256+dx},280 ${256+dx+16},320`, fill: '#58c248', stroke:'#3f8f36', 'stroke-width':4 })));
+    g.appendChild(svgNS('rect', { x: 60, y: 320, width: 392, height: 60, rx: 20, fill: '#2b2b2b' }));
+  } else if (concept === 'b') {
+    // mascote: busto de criança com capacete, correndo, com ícones orbitando
+    g.appendChild(svgNS('circle', { cx: 256, cy: 256, r: 220, fill: 'rgba(255,255,255,0.14)' }));
+    // chama
+    g.appendChild(svgNS('path', { d: 'M400 150 c18 24 10 46 -4 56 c6 -22 -6 -34 -14 -40 c4 20 -10 34 -10 50 a20 20 0 1 0 40 0 c0 -28 -6 -46 -12 -66 z', fill: '#ffb23f' }));
+    // pata
+    const pawC = '#ffffff';
+    [[76,380],[94,360],[112,360],[130,380]].forEach(([x,y]) => g.appendChild(svgNS('ellipse', { cx:x, cy:y, rx:10, ry:13, fill: pawC, opacity:0.95 })));
+    g.appendChild(svgNS('ellipse', { cx: 103, cy: 398, rx:18, ry:15, fill: pawC, opacity:0.95 }));
+    // folha
+    g.appendChild(svgNS('path', { d: 'M400 380 q50 -10 46 40 q-50 10 -46 -40 z', fill: '#58c248' }));
+    // busto da criança
+    g.appendChild(svgNS('circle', { cx: 256, cy: 300, r: 86, fill: '#f5c9a0' }));
+    g.appendChild(svgNS('path', { d: 'M256 210 a90 90 0 0 1 90 70 l-180 0 a90 90 0 0 1 90 -70 z', fill: '#e8352f' }));
+    g.appendChild(svgNS('rect', { x: 166, y: 268, width: 180, height: 16, rx: 8, fill: '#ffd23f' }));
+    [-1,1].forEach((s) => { g.appendChild(svgNS('circle', { cx: 256+s*30, cy: 300, r: 14, fill: '#2b2b2b' })); g.appendChild(svgNS('circle', { cx: 256+s*30-4, cy: 294, r: 4, fill:'#fff' })); });
+    g.appendChild(svgNS('path', { d: 'M226 336 a30 22 0 0 0 60 0', fill: 'none', stroke: '#7a2230', 'stroke-width': 10, 'stroke-linecap':'round' }));
+    g.appendChild(svgNS('rect', { x: 150, y: 380, width: 212, height: 90, rx: 30, fill: '#e8352f' }));
+  } else {
+    // trio: capacete + orelha de cão + cabeça de dino, estilo squircle adaptativo
+    g.appendChild(svgNS('rect', { x:0, y:0, width:512, height:512, rx:120, fill:'url(#bgI)' }));
+    // capacete (topo)
+    g.appendChild(svgNS('circle', { cx: 256, cy: 178, r: 86, fill: '#e8352f', stroke:'#ffffff', 'stroke-width':10 }));
+    g.appendChild(svgNS('rect', { x: 206, y: 150, width: 100, height: 14, rx:7, fill:'#ffd23f' }));
+    // cão (esquerda)
+    g.appendChild(svgNS('circle', { cx: 164, cy: 344, r: 78, fill: '#f6ead0', stroke:'#ffffff', 'stroke-width':10 }));
+    g.appendChild(svgNS('ellipse', { cx: 104, cy: 318, rx: 26, ry: 40, fill:'#1fb8ae', transform:'rotate(-25 104 318)' }));
+    [-1,1].forEach((s)=> g.appendChild(svgNS('circle', { cx:164+s*18, cy:344, r:7, fill:'#2b2b2b' })));
+    g.appendChild(svgNS('ellipse', { cx:164, cy:366, rx:12, ry:8, fill:'#7a2230' }));
+    // dino (direita)
+    g.appendChild(svgNS('circle', { cx: 350, cy: 344, r: 78, fill: '#58c248', stroke:'#ffffff', 'stroke-width':10 }));
+    [-26,0,26].forEach((dx)=> g.appendChild(svgNS('polygon', { points: `${350+dx-12},280 ${350+dx},254 ${350+dx+12},280`, fill:'#3f8f36' })));
+    [-1,1].forEach((s)=> g.appendChild(svgNS('circle', { cx:350+s*18, cy:344, r:7, fill:'#1a1410' })));
+  }
+}
+
+// ---------- desenho do splash (300x640 viewBox) ----------
+function drawSplash(svg, concept) {
+  const cfg = CFG[concept];
+  const grad = svgNS('linearGradient', { id: 'bgS', x1:'0', y1:'0', x2:'0', y2:'1' });
+  grad.appendChild(svgNS('stop', { offset:'0%', 'stop-color': cfg.splashBg[0] }));
+  grad.appendChild(svgNS('stop', { offset:'100%', 'stop-color': cfg.splashBg[1] }));
+  svg.appendChild(grad);
+  svg.appendChild(svgNS('rect', { x:0, y:0, width:300, height:640, fill:'url(#bgS)' }));
+
+  // logo pequeno (reaproveita o ícone, reduzido e centralizado)
+  const logo = svgNS('svg', { x: 60, y: 150, width: 180, height: 180, viewBox: '0 0 512 512' });
+  drawIcon(logo, concept);
+  const frame = svgNS('clipPath', { id: 'clipLogo' + concept });
+  frame.appendChild(svgNS('rect', { x:0, y:0, width:512, height:512, rx:110 }));
+  svg.appendChild(frame);
+  logo.setAttribute('clip-path', `url(#clipLogo${concept})`);
+  svg.appendChild(logo);
+  svg.appendChild(svgNS('rect', { x: 50, y: 140, width: 200, height: 200, rx: 46, fill:'none', stroke:'#ffffff', 'stroke-width':8, opacity:0.85 }));
+
+  // nome do app (duas linhas, para não estourar a largura)
+  const title = svgNS('text', { x: 150, y: 372, 'text-anchor':'middle', 'font-size':26, 'font-weight':900, fill:'#ffffff', style:'font-family:Segoe UI, system-ui, sans-serif; paint-order: stroke; stroke:#00000030; stroke-width:1px' });
+  const t1 = svgNS('tspan', { x: 150, dy: 0 }); t1.textContent = 'Ian e Seus';
+  const t2 = svgNS('tspan', { x: 150, dy: 30 }); t2.textContent = 'Amigos';
+  title.appendChild(t1); title.appendChild(t2);
+  svg.appendChild(title);
+
+  // indicador de carregando (3 bolinhas temáticas)
+  const cols = ['#ffd23f', '#ff8a1f', '#58c248'];
+  cols.forEach((c2, i) => svg.appendChild(svgNS('circle', { cx: 150 + (i-1)*26, cy: 440, r: 9, fill: c2, opacity: i===1 ? 1 : 0.65 })));
+  const sub = svgNS('text', { x: 150, y: 478, 'text-anchor':'middle', 'font-size':15, 'font-weight':600, fill:'#ffffffcc' });
+  sub.textContent = 'carregando a aventura...';
+  svg.appendChild(sub);
+}
+
+const wrap = document.getElementById('wrap');
+const col1 = document.createElement('div'); col1.className = 'col';
+col1.innerHTML = `<div class="label">${CFG[c].name} — ícone</div>`;
+const iconFrame = document.createElement('div'); iconFrame.className = 'icon-frame';
+const iconSvg = svgNS('svg', { width:220, height:220, viewBox:'0 0 512 512' }); drawIcon(iconSvg, c); iconFrame.appendChild(iconSvg);
+col1.appendChild(iconFrame); wrap.appendChild(col1);
+
+const col2 = document.createElement('div'); col2.className = 'col';
+col2.innerHTML = `<div class="label">${CFG[c].name} — tela de carregamento</div>`;
+const phone = document.createElement('div'); phone.className = 'phone';
+const splashSvg = svgNS('svg', { width:270, height:560, viewBox:'0 0 300 640' }); drawSplash(splashSvg, c); phone.appendChild(splashSvg);
+col2.appendChild(phone); wrap.appendChild(col2);
+
+window.__ready = true;
+</script>
+</body></html>
