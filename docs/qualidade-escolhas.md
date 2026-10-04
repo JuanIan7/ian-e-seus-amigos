@@ -53,4 +53,14 @@ Imagens geradas por `node tests/showcase.mjs` (página `showcase.html`). Modelos
 | Osso e fóssil | 2 |
 
 ## Fase 6 — Resgate na água
+| Elemento | Escolha |
+|---|---|
+| Mar (água e pedras) | 3 |
+| Barco de resgate | 2 |
+| Farol e ilha com coqueiro | 2 |
+| Obstáculos na água (boia, barril, corda) | 2 |
+| Jangada e boia salva-vidas | 3 |
+| Píer e barquinho de passeio | 2 |
+
+## Fase 7 — Resgate no vulcão
 (aguardando escolha)
