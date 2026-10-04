@@ -15,9 +15,10 @@ export function noise3(x, y, z) {
   return L(L(L(h(0, 0, 0), h(1, 0, 0), u), L(h(0, 1, 0), h(1, 1, 0), u), v), L(L(h(0, 0, 1), h(1, 0, 1), u), L(h(0, 1, 1), h(1, 1, 1), u), v), w);
 }
 /** tufos: desloca a superfície em mechinhas arredondadas (pelo de pelúcia) */
+export const FUR = { shells: 14, seg: [44, 30], len: 0.045, merged: false };
 export function tuft(geo, amp, freq, part = null, feats = []) {
   let g = geo;
-  if (g.type === 'SphereGeometry') { const q = g.parameters; g = new THREE.SphereGeometry(q.radius, 44, 30, q.phiStart, q.phiLength, q.thetaStart, q.thetaLength); }
+  if (g.type === 'SphereGeometry') { const q = g.parameters; g = new THREE.SphereGeometry(q.radius, FUR.seg[0], FUR.seg[1], q.phiStart, q.phiLength, q.thetaStart, q.thetaLength); }
   else g = g.clone();
   g.computeBoundingSphere(); const R = g.boundingSphere.radius, a = amp * R;
   if (!g.attributes.normal) g.computeVertexNormals();
@@ -68,21 +69,47 @@ function furMaterial(shell, frac) {
   m.customProgramCacheKey = () => 'fur-shell';
   return m;
 }
+// todas as camadas de pelo numa só malha (atributo 'shell' de 0 a 1): uma chamada de desenho por parte do corpo
+let FUR_MAT = null, REST_MAT = null;
+function furMergedMaterial() {
+  if (FUR_MAT) return FUR_MAT;
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uLen = { value: FUR.len };
+    sh.vertexShader = 'uniform float uLen; attribute float furLen; attribute float shell; varying vec3 vLp; varying float vFl; varying float vSh;\n' + sh.vertexShader.replace('#include <begin_vertex>', 'vec3 transformed = position + normal * uLen * shell * furLen; vLp = position; vFl = furLen; vSh = shell;');
+    sh.fragmentShader = 'varying vec3 vLp; varying float vFl; varying float vSh;\n' + sh.fragmentShader
+      .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+        vec3 cc = floor(vLp * 95.0); float hh = fract(sin(dot(cc, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+        float fr = vSh * 0.92; if (vSh > 0.001 && (hh < fr || vFl < 0.3)) discard;`)
+      .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= mix(1.0, mix(0.55, 1.08, clamp(vSh * 1.15, 0.0, 1.0)), clamp(vFl, 0.0, 1.0));');
+  };
+  m.customProgramCacheKey = () => 'fur-merged';
+  return (FUR_MAT = m);
+}
+function shellGeo(geo, N) {
+  const n = geo.attributes.position.count, out = new THREE.BufferGeometry();
+  ['position', 'normal', 'color', 'furLen'].forEach((k) => { const a = geo.attributes[k], sz = a.itemSize, arr = new Float32Array(n * sz * (N + 1)); for (let s = 0; s <= N; s++) arr.set(a.array, s * n * sz); out.setAttribute(k, new THREE.BufferAttribute(arr, sz)); });
+  const sh = new Float32Array(n * (N + 1)); for (let s = 0; s <= N; s++) sh.fill(s / N, s * n, (s + 1) * n); out.setAttribute('shell', new THREE.BufferAttribute(sh, 1));
+  return out;
+}
 function hookMuito(fur) {
   return (parts) => {
     const g = new THREE.Group();
     const feats = featuresOf(parts, fur); const furP = parts.filter((p) => isFur(fur, p)).map((p) => ({ ...p, geo: tuft(p.geo, 0.07, 3.2, p, feats) }));
     const rest = parts.filter((p) => !isFur(fur, p));
     PART_HOOK.fn = null;
-    if (rest.length) { const m = new THREE.Mesh(toMesh(rest, { outline: false }).userData.main.geometry, new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.32, clearcoat: 0.6, clearcoatRoughness: 0.2 })); m.castShadow = m.receiveShadow = true; g.add(m); }
+    if (rest.length) { const m = new THREE.Mesh(toMesh(rest, { outline: false }).userData.main.geometry, REST_MAT || (REST_MAT = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.32, clearcoat: 0.6, clearcoatRoughness: 0.2 }))); m.castShadow = m.receiveShadow = true; g.add(m); }
     if (furP.length) {
       const geo = toMesh(furP, { outline: false }).userData.main.geometry;
       const pa = geo.attributes.position, fl = new Float32Array(pa.count), v = new THREE.Vector3();
       for (let i = 0; i < pa.count; i++) fl[i] = maskAt(v.fromBufferAttribute(pa, i), feats);
       geo.setAttribute('furLen', new THREE.BufferAttribute(fl, 1));
+      if (FUR.merged) { const m = new THREE.Mesh(shellGeo(geo, FUR.shells), furMergedMaterial()); m.receiveShadow = true; g.add(m); }
+      else {
       const base = new THREE.Mesh(geo, furMaterial(0, 0)); base.castShadow = base.receiveShadow = true; g.add(base);
-      const N = 14, L = 0.045;
+      const N = FUR.shells, L = FUR.len;
       for (let i = 1; i <= N; i++) { const s = new THREE.Mesh(geo, furMaterial(L * i / N, i / (N + 1))); s.renderOrder = 1; s.receiveShadow = true; g.add(s); }
+      }
     }
     PART_HOOK.fn = hookMuito(fur);
     g.userData.main = g.children[0];
@@ -125,7 +152,7 @@ function shopAlta() {
   g.add(toMesh(p, { thin: true }));
   return g;
 }
-function shopMuito() {
+export function shopMuito() {
   const g = new THREE.Group(), fz = -2.0, std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
   const mesh = (geo, m, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1]) => { const x = new THREE.Mesh(geo, m); x.position.set(...p); x.rotation.set(...r); x.scale.set(...s); x.castShadow = x.receiveShadow = true; g.add(x); return x; };
   const wallM = std(0xffffff, { map: TEX.plaster('#ffcf9a', [3, 2]), bumpMap: TEX.plaster('#ffcf9a', [3, 2]), bumpScale: 1, roughness: 0.9 });
@@ -147,7 +174,7 @@ function shopMuito() {
 }
 
 // =================================================================== CHAFARIZ
-function fountainAlta() {
+export function fountainAlta() {
   const p = [], g = new THREE.Group();
   p.push(P(lathe([[0.0001, 0], [2.0, 0], [2.05, 0.1], [1.95, 0.55], [2.05, 0.62], [1.85, 0.66], [1.7, 0.3], [0.0001, 0.3]], 48), 0xd9dde6));
   for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; p.push(P(box(0.5, 0.42, 0.12, 0.04), i % 2 ? 0xcfd5e0 : 0xe1e5ec, [Math.cos(a) * 1.98, 0.3, Math.sin(a) * 1.98], [0, -a + Math.PI / 2, 0])); }
@@ -213,7 +240,7 @@ function plazaAlta() {
   g.add(toMesh(p, { thin: true }));
   return g;
 }
-function plazaMuito() {
+export function plazaMuito() {
   const g = new THREE.Group(), std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
   const add = (geo, m, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1]) => { const x = new THREE.Mesh(geo, m); x.position.set(...p); x.rotation.set(...r); x.scale.set(...s); x.castShadow = x.receiveShadow = true; g.add(x); return x; };
   const wood = std(0xffffff, { map: TEX.wood([2, 1], '#c98a42'), roughness: 0.6 }), iron = std(0x1f2633, { metalness: 0.8, roughness: 0.35 });
@@ -224,7 +251,7 @@ function plazaMuito() {
   add(new THREE.CylinderGeometry(1.0, 1.05, 0.3, 48, 1, true), brick, [2.6, 0.15, 0]); add(new THREE.CylinderGeometry(0.98, 0.98, 0.04, 48), std(0x5a3a22, { roughness: 1 }), [2.6, 0.3, 0]);
   add(new THREE.BoxGeometry(1.3, 0.25, 0.8), brick, [-2.4, 0.12, 0]); add(new THREE.BoxGeometry(1.2, 0.05, 0.7), std(0x5a3a22, { roughness: 1 }), [-2.4, 0.25, 0]);
   // flores: pétalas com material de "veludo" (sheen) e folhagem
-  const petal = new THREE.SphereGeometry(0.055, 14, 10), stem = new THREE.CylinderGeometry(0.012, 0.015, 1, 6), leaf = new THREE.SphereGeometry(0.06, 12, 8);
+  const petal = new THREE.SphereGeometry(0.055, 8, 6), stem = new THREE.CylinderGeometry(0.012, 0.015, 1, 5), leaf = new THREE.SphereGeometry(0.06, 8, 6);
   const pm = {}; const PM = (c) => pm[c] || (pm[c] = new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.55, sheen: 1, sheenColor: new THREE.Color(0xffffff), sheenRoughness: 0.4 }));
   const green = std(0x2f9a3e, { roughness: 0.6 }), center = std(0xffc22a, { roughness: 0.5 });
   [[2.6, 0, 26, 0.8, 5], [-2.4, 0, 14, 0.4, 9]].forEach(([cx, cz, n, R, seed]) => {
@@ -253,7 +280,7 @@ function obsAlta() {
   const m2 = toMesh(s, { outline: false }); m2.position.x = 1.2; g.add(m2);
   return g;
 }
-function obsMuito() {
+export function obs2Muito() {
   const g = new THREE.Group(), std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...o });
   const add = (geo, m, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1]) => { const x = new THREE.Mesh(geo, m); x.position.set(...p); x.rotation.set(...r); x.scale.set(...s); x.castShadow = x.receiveShadow = true; g.add(x); return x; };
   const wood = std(0xffffff, { map: TEX.wood([2, 1], '#c98a42'), roughness: 0.6 }), iron = std(0x1f2633, { metalness: 0.8, roughness: 0.35 });
@@ -284,5 +311,5 @@ export const HQ2 = {
   shop: { alta: shopAlta, muito: shopMuito },
   fountain: { alta: fountainAlta, muito: fountainMuito },
   plaza: { alta: plazaAlta, muito: plazaMuito },
-  obs2: { alta: obsAlta, muito: obsMuito },
+  obs2: { alta: obsAlta, muito: obs2Muito },
 };

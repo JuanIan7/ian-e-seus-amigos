@@ -14,7 +14,7 @@ function glow(col, size, op = 0.7) {
 }
 // textura de lava: placas escuras de crosta separadas por veios brilhantes
 const texC = {};
-function lavaTex(key, vein = 6, rep = 2) {
+export function lavaTex(key, vein = 6, rep = 2) {
   if (texC[key]) return texC[key];
   const N = 256, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d'), r = R0(key.length + 3), im = x.createImageData(N, N);
   const pts = []; for (let i = 0; i < 36; i++) pts.push([r() * N, r() * N]);
@@ -58,12 +58,12 @@ function lavaAlta() {
   const gl = glow(0xff8a30, 6, 0.45); gl.position.y = 0.6; g.add(gl);
   return g;
 }
-function lavaMuito() {
+export function lavaMuito(withRiver = true) {
   const g = new THREE.Group(), add = adder(g), r = R0(3), rock = basalt();
   for (let i = 0; i < 22; i++) { const a = i / 22 * 6.28, rr = 2.1 + r() * 0.2; add(rockGeo(0.32 + r() * 0.2, i, 0.25, 18, 14), rock, [Math.cos(a) * rr * 1.3, 0.1, Math.sin(a) * rr], [0, r() * 3, 0], [1.2, 0.6, 1]); }
   const lt = lavaTex('pool', 9, 1.5), lm = new THREE.MeshStandardMaterial({ map: lt, emissiveMap: lt, emissive: 0xffffff, emissiveIntensity: 0.7, roughness: 0.55, toneMapped: false });
   const pool = add(new THREE.CircleGeometry(1, 64), lm, [0, 0.05, 0], [-Math.PI / 2, 0, 0], [2.6, 2.0, 1]); pool.castShadow = false;
-  const river = add(new THREE.CircleGeometry(1, 48), lm, [2.9, 0.04, -2.3], [-Math.PI / 2, 0, 0.75], [0.8, 3.0, 1]); river.castShadow = false;
+  if (withRiver) { const river = add(new THREE.CircleGeometry(1, 48), lm, [2.9, 0.04, -2.3], [-Math.PI / 2, 0, 0.75], [0.8, 3.0, 1]); river.castShadow = false; }
   // bolhas brilhantes e calor
   const bub = std(0xffb040, { emissive: 0xff8a20, emissiveIntensity: 2, roughness: 0.3 }); for (let i = 0; i < 8; i++) { const a = r() * 6.28, rr = r() * 1.6; const b = add(new THREE.SphereGeometry(0.06 + r() * 0.08, 16, 10, 0, 6.28, 0, 1.6), bub, [Math.cos(a) * rr, 0.06, Math.sin(a) * rr * 0.8]); b.castShadow = false; }
   const pl = new THREE.PointLight(0xff6a20, 30, 8, 1.5); pl.position.set(0, 1.0, 0); g.add(pl);
@@ -81,7 +81,7 @@ function islandAlta() {
   const lava = lavaSurfaceAlta(3.6, 4.6); lava.position.set(0, 0.04, -1.2); g.add(lava);
   return g;
 }
-function islandMuito() {
+export function islandMuito() {
   const g = new THREE.Group(), add = adder(g), rock = basalt();
   add(rockGeo(1.15, 2, 0.2, 40, 28), rock, [0, 0.1, 0], [0, 0, 0], [1, 0.5, 1]); add(rockGeo(0.5, 6, 0.2, 24, 18), rock, [0.5, 0.45, 0.3], [0, 0, 0], [1, 0.6, 1]);
   for (let i = 0; i < 4; i++) add(rockGeo(0.42, i + 3, 0.15, 24, 16), rock, [Math.sin(i) * 0.25, 0.05, -1.6 - i * 0.75], [0, 0, 0], [1, 0.45, 0.9]);
@@ -109,7 +109,7 @@ function hutAlta() {
   g.add(toMesh(p, { thin: true }));
   return g;
 }
-function hutMuito() {
+export function hutMuito() {
   const g = new THREE.Group(), add = adder(g), r = R0(7);
   const strawT = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#c9a050'; x.fillRect(0, 0, 128, 128); for (let i = 0; i < 700; i++) { x.strokeStyle = `rgba(${r() < 0.5 ? '120,85,30' : '245,215,140'},${0.3 + r() * 0.4})`; x.lineWidth = 1 + r(); const px = r() * 128, py = r() * 128; x.beginPath(); x.moveTo(px, py); x.lineTo(px + (r() - 0.5) * 4, py + 10 + r() * 14); x.stroke(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 2); return t; })();
   const straw = std(0xffffff, { map: strawT, bumpMap: strawT, bumpScale: 4, roughness: 1 }), log = std(0xffffff, { map: TEX.bark([1, 2]), bumpMap: TEX.bark([1, 2]), bumpScale: 3, color: 0xe0c090, roughness: 0.95 });
@@ -133,7 +133,7 @@ function hutMuito() {
 }
 
 // =================================================================== ÁRVORE SECA E FUMAROLA
-function deadVentAlta() {
+export function deadVentAlta() {
   const g = new THREE.Group(), p = [], sm = [], r = R0(9);
   const tr = [[0, 0, 0], [0.1, 1.2, 0], [-0.1, 2.4, 0.05], [0.05, 3.2, 0]]; p.push(P(taper(tr, [0.32, 0.22, 0.16, 0.08], 16, 12), 0x3a2e28));
   [[0.6, 1.6, 0.9, 1], [2.2, 2.0, 0.8, -1], [4.0, 2.6, 0.6, 1], [1.4, 2.8, 0.5, -1]].forEach(([a, y, len, s]) => { const t = [Math.cos(a) * len, y + 0.6, Math.sin(a) * len]; p.push(P(taper([[0, y, 0], [t[0] * 0.5, y + 0.4, t[2] * 0.5], t], [0.1, 0.07, 0.03], 12, 8), 0x3a2e28)); p.push(P(taper([[t[0] * 0.7, y + 0.5, t[2] * 0.7], [t[0] * 0.9 + s * 0.2, y + 0.9, t[2] * 0.9], [t[0] + s * 0.3, y + 1.1, t[2]]], [0.04, 0.03, 0.01], 10, 6), 0x3a2e28)); });
@@ -171,7 +171,7 @@ function lavarockAlta() {
   g.add(toMesh(p, { thin: true }));
   return g;
 }
-function lavarockMuito() {
+export function lavarockMuito() {
   const g = new THREE.Group(), add = adder(g), lt = lavaTex('rock', 4, 1.2);
   const m = new THREE.MeshStandardMaterial({ map: lt, emissiveMap: lt, emissive: 0xffffff, emissiveIntensity: 0.6, roughness: 0.85, bumpMap: lt, bumpScale: 4 });
   add(rockGeo(0.62, 3.1, 0.25, 40, 28), m, [0, 0.38, 0], [0, 0.4, 0], [1.1, 0.8, 0.9]); add(rockGeo(0.4, 5.3, 0.25, 32, 24), m, [0.5, 0.26, 0.15], [0, 0.2, 0], [1, 0.8, 0.9]);

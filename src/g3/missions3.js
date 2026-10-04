@@ -4,9 +4,8 @@
 // as posições "ao longo da pista" usam side * distância.
 import { THREE, P, sph, box, cyl, cone, toMesh } from './kit.js';
 import { buildKid, poseKid } from './kid.js';
-import { buildDog, buildCat, buildBunny, buildDino, animCreature, buildCrates, buildShelter, buildNest, buildEgg, buildTent, buildHeli, buildBasket, DOGS3 } from './creatures.js';
-import { buildBin, buildHouse } from './props.js';
-import { buildLifeRing, buildWaterPatch, buildRescueBoat, buildFloatCrate, buildLavaFlow, buildLavaIsland, buildHut } from './creatures.js';
+import { animCreature, buildCrates, buildShelter, buildTent, DOGS3, buildFloatCrate } from './creatures.js';
+import { buildDog, buildCat, buildBunny, buildDino, buildNest, buildEgg, buildHeli, buildBasket, buildBin, buildHouse, buildLifeRing, buildWaterPatch, buildRescueBoat, buildLavaFlow, buildLavaIsland, buildHut } from './final.js';
 
 const ease = (x) => x * x * (3 - 2 * x);
 const npc = (outfit, skin, hair, hairColor, eyes = 0) => { const k = buildKid({ skin, face: 1, hair, hairColor, eyes, outfit }); k.scale.setScalar(1.15); return k; };

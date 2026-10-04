@@ -42,17 +42,17 @@ export function seaMuito() {
   return g;
 }
 /** espuma em volta de um objeto na água */
-function foamRing(level, r, add) {
+export function foamRing(level, r, add) {
   if (level === 'alta') { const m = toMesh([P(tor(r, 0.06, 6, 40), 0xffffff, [0, -0.22, 0], [Math.PI / 2, 0, 0], [1, 1, 1]), P(tor(r * 1.25, 0.04, 6, 44), 0xe8f8ff, [0, -0.24, 0], [Math.PI / 2, 0, 0])], { outline: false }); return m; }
   const m = new THREE.Mesh(new THREE.RingGeometry(r * 0.92, r * 1.2, 64), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, roughness: 0.9, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = -0.2; return m;
 }
-function seaShowcase(level) { const g = new THREE.Group(); const r = R0(2);
+export function seaShowcase(level) { const g = new THREE.Group(); const r = R0(2);
   const rocks = level === 'alta' ? toMesh([P(rockGeo(1.1, 3, 0.25, 22, 16), 0x8f98ab, [0, 0.0, 0], [0, 0.5, 0], [1.3, 0.7, 1]), P(rockGeo(0.6, 5, 0.25, 18, 12), 0xa9b1c4, [1.1, -0.1, 0.4]), P(rockGeo(0.5, 9, 0.2), 0x5fae4a, [-0.1, 0.55, 0], [0, 0, 0], [1.4, 0.3, 1.1])], { thin: true }) : (() => { const q = new THREE.Group(), add = adder(q), rm = std(0xffffff, { map: TEX.plaster('#8f98ab', [2, 2]), bumpMap: TEX.plaster('#8f98ab', [2, 2]), bumpScale: 4, roughness: 0.85 }); add(rockGeo(1.1, 3, 0.25, 32, 24), rm, [0, 0, 0], [0, 0.5, 0], [1.3, 0.7, 1]); add(rockGeo(0.6, 5, 0.25, 24, 18), rm, [1.1, -0.1, 0.4]); return q; })();
   g.add(rocks); g.add(foamRing(level, 1.7)); return g; }
 
 // =================================================================== BARCO DE RESGATE
 const HULL = [[0.0001, -0.55], [0.45, -0.52], [0.8, -0.32], [0.98, -0.05], [1.02, 0.25], [0.0001, 0.25]];
-function boatAlta() {
+export function boatAlta() {
   const g = new THREE.Group(), p = [], W = 0xffffff, R = 0xe8352f, N = 0x1b2a49;
   p.push(P(lathe(HULL, 40), W, [0, 0, 0.1], [0, 0, 0], [1.05, 1, 2.3]), P(lathe([[0.0001, -0.4], [0.6, -0.3], [0.85, -0.12], [0.0001, -0.12]], 40), N, [0, 0, 0.1], [0, 0, 0], [1.06, 1, 2.32]));
   p.push(P(tor(0.98, 0.12, 10, 44), 0xff8a1f, [0, 0.08, 0.1], [Math.PI / 2, 0, 0], [1.07, 2.32, 1])); // boia em volta (defensa)
@@ -100,7 +100,7 @@ function palmTree(p, x, z, lean, r) {
     for (let j = 1; j < 14; j++) { const t = j / 14, q = cv.getPoint(t), tg = cv.getTangent(t); [-1, 1].forEach((s) => { const sd = new THREE.Vector3(-tg.z, 0, tg.x).normalize().multiplyScalar(s * 0.25 * Math.sin((1 - t) * 2.6 + 0.3)); p.push(P(new THREE.SphereGeometry(0.1, 8, 5), hex(0x3fcf5a, 0.8 + t * 0.3), [q.x + sd.x, q.y - 0.08, q.z + sd.z], [0, -Math.atan2(sd.z, sd.x), -0.5 * s], [2.6 * Math.sin((1 - t) * 2.6 + 0.3), 0.12, 0.38])); }); } }
   [[0.2, 0], [-0.2, 0.15], [0, -0.2]].forEach(([dx, dz]) => p.push(P(sph(0.2), 0x7a5a2e, [tx + dx, ty - 0.3, z + dz])));
 }
-function lightAlta() {
+export function lightAlta() {
   const g = new THREE.Group(), p = [], leaves = [], r = R0(6);
   p.push(P(rockGeo(3.2, 2, 0.15, 26, 16), 0xf2d79a, [0, -0.9, 0], [0, 0, 0], [1.4, 0.45, 1.2]));
   for (let i = 0; i < 6; i++) { const a = r() * 6.28; p.push(P(rockGeo(0.6, i, 0.25), 0x8f98ab, [Math.cos(a) * 3.8, 0.0, Math.sin(a) * 3.0])); }
@@ -147,7 +147,7 @@ function lightMuito() {
 }
 
 // =================================================================== OBSTÁCULOS NA ÁGUA (boia, barril, corda)
-function obsAlta() {
+export function obs6Alta() {
   const g = new THREE.Group();
   const b = [P(lathe([[0.0001, -0.1], [0.3, -0.05], [0.45, 0.2], [0.44, 0.55], [0.3, 0.75], [0.0001, 0.8]], 32), 0xe8352f), P(cyl(0.46, 0.46, 0.18, 32), 0xffffff, [0, 0.42, 0]), P(tor(0.46, 0.03, 6, 32), 0xffffff, [0, 0.2, 0], [Math.PI / 2, 0, 0])];
   b.push(P(cyl(0.05, 0.07, 0.5, 12), 0x59616e, [0, 1.0, 0]), P(box(0.3, 0.3, 0.04, 0.02), 0xffd23f, [0, 1.15, 0]), P(sph(0.1), 0xfff2a8, [0, 1.38, 0]), P(tor(0.08, 0.02, 6, 14), 0x59616e, [0.45, 0.6, 0], [0, Math.PI / 2, 0]));
@@ -191,15 +191,16 @@ function raftAlta() {
   const r = toMesh(ring, { thin: true }); r.position.set(1.8, -0.15, 0); r.scale.setScalar(1.4); g.add(r); g.add(at(foamRing('alta', 1.0), 1.8));
   return g;
 }
-function raftMuito() {
-  const g = new THREE.Group(), add = adder(g), w = 2.0, len = 3.4, X = -1.4;
+export function raftMuito(w = 2.0, len = 3.4, X = -1.4, withSail = true) {
+  const g = new THREE.Group(), add = adder(g);
   const log = std(0xffffff, { map: TEX.bark([2, 1]), bumpMap: TEX.bark([2, 1]), bumpScale: 3, color: 0xd0b090, roughness: 0.9 }), cut = std(0xffffff, { map: TEX.wood([1, 1], '#e8c48c') });
   for (let i = 0; i < 5; i++) { const x = X - w / 2 + 0.2 + i * (w - 0.4) / 4; add(new THREE.CylinderGeometry(0.22, 0.22, len, 24), log, [x, -0.15, 0], [Math.PI / 2, 0, 0]); [-1, 1].forEach((s) => add(new THREE.CircleGeometry(0.22, 24), cut, [x, -0.15, s * (len / 2 + 0.005)], [0, s > 0 ? 0 : Math.PI, 0])); }
   const rope = std(0xd9b47a, { roughness: 0.95 });
   [-len * 0.35, len * 0.35].forEach((z) => { add(new THREE.BoxGeometry(w + 0.1, 0.08, 0.2), std(0xffffff, { map: TEX.wood([2, 1], '#8a5a35') }), [X, 0.1, z]); for (let i = 0; i < 5; i++) add(new THREE.TorusGeometry(0.12, 0.035, 8, 18), rope, [X - w / 2 + 0.2 + i * (w - 0.4) / 4, 0.05, z], [0, Math.PI / 2, 0]); });
+  if (withSail) {
   add(new THREE.CylinderGeometry(0.06, 0.07, 2.2, 12), log, [X, 1.1, 0.6]);
   const sail = new THREE.Shape(); sail.moveTo(0, 0); sail.quadraticCurveTo(0.7, 0.6, 1.1, 0.1); sail.lineTo(0, 1.6); sail.closePath();
-  add(new THREE.ShapeGeometry(sail, 16), new THREE.MeshPhysicalMaterial({ color: 0xf6f0e0, roughness: 0.8, side: THREE.DoubleSide, sheen: 0.5 }), [X + 0.05, 0.4, 0.6], [0, Math.PI / 2, 0]);
+  add(new THREE.ShapeGeometry(sail, 16), new THREE.MeshPhysicalMaterial({ color: 0xf6f0e0, roughness: 0.8, side: THREE.DoubleSide, sheen: 0.5 }), [X + 0.05, 0.4, 0.6], [0, Math.PI / 2, 0]); }
   g.add(at(foamRing('muito', 1.8), X));
   const rr = new THREE.Group(); rr.position.set(1.8, -0.15, 0); rr.scale.setScalar(1.4); g.add(rr);
   for (let i = 0; i < 8; i++) { const t = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.14, 20, 16, Math.PI / 4 + 0.01), paint(i % 2 ? 0xf6f6f6 : 0xd8241c, { roughness: 0.45 })); t.rotation.set(Math.PI / 2, 0, i * Math.PI / 4); t.castShadow = true; rr.add(t); }
@@ -209,7 +210,7 @@ function raftMuito() {
 }
 
 // =================================================================== PÍER E BARQUINHO DE PASSEIO
-function pierAlta() {
+export function pierAlta() {
   const g = new THREE.Group(), p = [];
   for (let i = 0; i < 4; i++) { p.push(P(taper([[-2.6, -1, i * 1.2 - 1.8], [-2.62, 0.5, i * 1.2 - 1.8], [-2.6, 1.6, i * 1.2 - 1.8]], [0.16, 0.17, 0.15], 10, 14), 0x8a5a35)); p.push(P(cyl(0.17, 0.17, 0.04, 14), 0xc99a62, [-2.6, 1.62, i * 1.2 - 1.8])); p.push(P(tor(0.2, 0.05, 8, 16), 0xd9b47a, [-2.6, 1.0, i * 1.2 - 1.8], [Math.PI / 2, 0, 0])); }
   for (let i = 0; i < 9; i++) p.push(P(box(1.4, 0.08, 0.4, 0.03), i % 2 ? 0xc99a62 : 0xb98a52, [-1.9, 0.6, -2.0 + i * 0.44]));
@@ -240,7 +241,7 @@ export const HQ6 = {
   sea: { alta: () => seaShowcase('alta'), muito: () => seaShowcase('muito') },
   rboat: { alta: boatAlta, muito: boatMuito },
   lighthouse: { alta: lightAlta, muito: lightMuito },
-  obs6: { alta: obsAlta, muito: obsMuito },
+  obs6: { alta: obs6Alta, muito: obsMuito },
   raft: { alta: raftAlta, muito: raftMuito },
   pier: { alta: pierAlta, muito: pierMuito },
 };

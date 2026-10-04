@@ -17,7 +17,7 @@ function glow(col, size, op = 0.8) {
 const HELI_BODY = [[0.0001, -1.45], [0.35, -1.38], [0.62, -1.15], [0.82, -0.75], [0.9, -0.2], [0.88, 0.3], [0.75, 0.75], [0.5, 1.05], [0.3, 1.2], [0.0001, 1.25]];
 
 // =================================================================== HELICÓPTERO
-function heliAlta() {
+export function heliAlta() {
   const g = new THREE.Group(), p = [], C = 0x8a4fd9, D = 0x6a35b5, W = 0xffffff, Y = 0xffd23f, M = 0x59616e;
   p.push(P(L(HELI_BODY, 36), C, [0, 0, 0], [Math.PI / 2, 0, 0], [1, 1, 0.92]));
   p.push(P(box(1.86, 0.12, 2.2, 0.05), W, [0, -0.15, 0.1]), P(box(1.88, 0.06, 2.0, 0.03), Y, [0, -0.32, 0.1]));
@@ -39,7 +39,7 @@ function heliAlta() {
   rotor.rotation.y = 0.5; g.add(rotor);
   return g;
 }
-function heliMuito() {
+export function heliMuito() {
   const g = new THREE.Group(), add = adder(g), C = paint(0x7a3fd0), D = paint(0x55279a), W = paint(0xf6f6f6), Y = paint(0xffcc22), M = std(0x3a404c, { metalness: 0.8, roughness: 0.3 }), CH = chrome();
   add(L(HELI_BODY, 64), C, [0, 0, 0], [Math.PI / 2, 0, 0], [1, 1, 0.92]);
   add(box(1.86, 0.12, 2.2, 0.05), W, [0, -0.15, 0.1]); add(box(1.88, 0.06, 2.0, 0.03), Y, [0, -0.32, 0.1]);
@@ -57,7 +57,8 @@ function heliMuito() {
   const tb = add(new THREE.CircleGeometry(0.34, 32), blur, [0.27, 0.95, 3.15], [0, Math.PI / 2, 0]); tb.castShadow = false;
   add(L([[0.32, 0], [0.26, 0.18], [0.12, 0.3], [0.1, 0.45]], 32), D, [0, 0.82, 0]); add(cyl(0.18, 0.18, 0.14, 24), CH, [0, 1.3, 0]);
   const md = add(new THREE.CircleGeometry(2.3, 64), blur, [0, 1.42, 0], [-Math.PI / 2, 0, 0]); md.castShadow = false;
-  [0.5, 0.5 + Math.PI / 2].forEach((a) => add(new THREE.BoxGeometry(4.5, 0.04, 0.24), std(0xc8ced8, { metalness: 0.6, roughness: 0.35 }), [0, 1.4, 0], [0, a, 0]));
+  const rotor = new THREE.Group(); rotor.position.y = 1.4; g.add(rotor); g.userData.rotor = rotor; g.remove(md); md.position.y = 0.02; rotor.add(md);
+  [0.5, 0.5 + Math.PI / 2].forEach((a) => { const b = add(new THREE.BoxGeometry(4.5, 0.04, 0.24), std(0xc8ced8, { metalness: 0.6, roughness: 0.35 }), [0, 0, 0], [0, a, 0]); g.remove(b); rotor.add(b); });
   [-1, 1].forEach((s) => { add(taper([[s * 0.68, -1.0, -1.25], [s * 0.68, -1.02, 0.4], [s * 0.68, -0.98, 0.9], [s * 0.68, -0.85, 1.05]], [0.06, 0.06, 0.06, 0.05], 32, 12), CH); [-0.5, 0.45].forEach((z) => add(taper([[s * 0.68, -0.98, z], [s * 0.6, -0.75, z], [s * 0.45, -0.55, z]], [0.04, 0.04, 0.04], 12, 10), M)); });
   // farol e luzes de navegação com brilho e luz real
   add(new THREE.SphereGeometry(0.09, 16, 12), std(0xfff6d0, { emissive: 0xfff6d0, emissiveIntensity: 3 }), [0, -0.45, -1.32]); const hl = glow(0xfff2c0, 0.9); hl.position.set(0, -0.45, -1.4); g.add(hl);
@@ -68,7 +69,7 @@ function heliMuito() {
 }
 
 // =================================================================== TELHADO (caixa d'água, outdoor, antena, grade)
-function roofAlta() {
+export function roofAlta() {
   const g = new THREE.Group(), p = [];
   // caixa d'água sobre torre treliçada com escadinha
   p.push(P(cyl(1.0, 1.0, 1.8, 32), 0xdfe6f1, [0, 2.4, 0]));
@@ -93,7 +94,7 @@ function roofAlta() {
   const bulbs = new THREE.Group(); for (let i = 0; i < 4; i++) { const s = glow(0xfff2c0, 0.6, 0.6); s.position.set(bx - 1.5 + i, 4.65, -0.3); bulbs.add(s); } g.add(bulbs);
   return g;
 }
-function roofMuito() {
+export function roofMuito() {
   const g = new THREE.Group(), add = adder(g), metal = std(0x59616e, { metalness: 0.7, roughness: 0.4 }), yel = paint(0xffc61a);
   const tankM = std(0xffffff, { map: (() => { const c = document.createElement('canvas'); c.width = 128; c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#e4e9f0'; x.fillRect(0, 0, 128, 64); for (let i = 0; i < 16; i++) { x.fillStyle = 'rgba(120,130,150,.25)'; x.fillRect(i * 8, 0, 2, 64); } for (let i = 0; i < 600; i++) { x.fillStyle = `rgba(140,100,60,${Math.random() * 0.08})`; x.fillRect(Math.random() * 128, Math.random() * 64, 2, 3); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.repeat.set(3, 1); return t; })(), metalness: 0.5, roughness: 0.45 });
   add(new THREE.CylinderGeometry(1.0, 1.0, 1.8, 48), tankM, [0, 2.4, 0]);
@@ -117,7 +118,7 @@ function roofMuito() {
 }
 
 // =================================================================== OBSTÁCULOS DO TELHADO (ar-condicionado, cano)
-function obsAlta() {
+export function obs4Alta() {
   const g = new THREE.Group(), a = [];
   a.push(P(box(1.3, 0.85, 0.9, 0.1), 0xdfe6f1, [0, 0.47, 0]), P(box(1.4, 0.08, 1.0, 0.03), 0xb5bfcf, [0, 0.04, 0]));
   for (let i = 0; i < 9; i++) a.push(P(box(1.0, 0.035, 0.05, 0.01), 0x8b94a6, [-0.05, 0.2 + i * 0.065, -0.46], [0.4, 0, 0]));
@@ -132,7 +133,7 @@ function obsAlta() {
   const m2 = toMesh(c, { thin: true }); m2.position.x = 1.3; g.add(m2);
   return g;
 }
-function obsMuito() {
+export function obsMuito() {
   const g = new THREE.Group(), add = adder(g), white = std(0xe8ecf2, { metalness: 0.4, roughness: 0.35 }), metal = std(0x59616e, { metalness: 0.8, roughness: 0.3 });
   add(box(1.3, 0.85, 0.9, 0.1), white, [-1.3, 0.47, 0]); add(new THREE.BoxGeometry(1.4, 0.08, 1.0), metal, [-1.3, 0.04, 0]);
   for (let i = 0; i < 9; i++) add(new THREE.BoxGeometry(1.0, 0.035, 0.05), metal, [-1.35, 0.2 + i * 0.065, -0.46], [0.4, 0, 0]);
@@ -167,15 +168,17 @@ function platAlta() {
   const b = toMesh(bk, { thin: true }); b.position.set(1.9, 4.2, 0); g.add(b);
   return g;
 }
-function platMuito() {
-  const g = new THREE.Group(), add = adder(g), w = 2.4, len = 3.0, X = -1.4, Y = 4;
-  const plate = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#8b929c'; x.fillRect(0, 0, 128, 128); for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) { x.fillStyle = 'rgba(255,255,255,.25)'; x.save(); x.translate(i * 16 + 8, j * 16 + 8); x.rotate((i + j) % 2 ? 0.7 : -0.7); x.fillRect(-5, -1.5, 10, 3); x.restore(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 4); return t; })();
+let PLATE = null;
+export function platMuito(w = 2.4, len = 3.0, X = -1.4, Y = 4, withBasket = true) {
+  const g = new THREE.Group(), add = adder(g);
+  const plate = PLATE || (PLATE = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#8b929c'; x.fillRect(0, 0, 128, 128); for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) { x.fillStyle = 'rgba(255,255,255,.25)'; x.save(); x.translate(i * 16 + 8, j * 16 + 8); x.rotate((i + j) % 2 ? 0.7 : -0.7); x.fillRect(-5, -1.5, 10, 3); x.restore(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 4); return t; })());
   const plateM = std(0xffffff, { map: plate, bumpMap: plate, bumpScale: 2, metalness: 0.8, roughness: 0.35 }), yel = paint(0xffc61a), steel = std(0x586380, { metalness: 0.8, roughness: 0.35 });
   add(new THREE.BoxGeometry(w, 0.3, len), plateM, [X, Y - 0.15, 0]);
   const hz = std(0xffffff, { map: TEX.stripes('#ffc61a', '#1e2230', 10), roughness: 0.5 }); hz.map.rotation = 0.6; add(new THREE.BoxGeometry(w + 0.1, 0.08, 0.3), hz, [X, Y + 0.02, -len / 2 + 0.1]);
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => add(new THREE.CylinderGeometry(0.09, 0.09, 4, 20), steel, [X + a * (w / 2 - 0.2), Y - 2.1, b * (len / 2 - 0.2)]));
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => add(new THREE.CylinderGeometry(0.09, 0.09, 6, 20), steel, [X + a * (w / 2 - 0.2), Y - 3.1, b * (len / 2 - 0.2)]));
   [-1, 1].forEach((s) => { add(cap(0.04, len - 0.2, 4, 10), yel, [X + s * (w / 2 - 0.05), Y + 0.9, 0], [Math.PI / 2, 0, 0]); for (let k = 0; k < 4; k++) add(new THREE.CylinderGeometry(0.035, 0.035, 0.9, 10), yel, [X + s * (w / 2 - 0.05), Y + 0.45, -len / 2 + 0.15 + k * (len - 0.3) / 3]); });
-  add(cap(0.04, w - 0.1, 4, 10), yel, [X, Y + 0.9, len / 2 - 0.05], [0, 0, Math.PI / 2]);
+  if (withBasket) add(cap(0.04, w - 0.1, 4, 10), yel, [X, Y + 0.9, len / 2 - 0.05], [0, 0, Math.PI / 2]);
+  if (!withBasket) return g;
   // cesta: rede de cabos (tubos) sobre aro, laranja de resgate
   const bx = 1.9, by = 4.2, orange = paint(0xff7a12);
   add(L([[0.42, -0.22], [0.48, 0.12], [0.44, 0.14], [0.38, -0.18], [0.0001, -0.18]], 48), orange, [bx, by, 0]);
@@ -189,6 +192,6 @@ function platMuito() {
 export const HQ4 = {
   heli: { alta: heliAlta, muito: heliMuito },
   roof: { alta: roofAlta, muito: roofMuito },
-  obs4: { alta: obsAlta, muito: obsMuito },
+  obs4: { alta: obs4Alta, muito: obsMuito },
   plat: { alta: platAlta, muito: platMuito },
 };

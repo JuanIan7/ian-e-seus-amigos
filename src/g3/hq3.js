@@ -37,7 +37,7 @@ function pineAlta() {
   for (let i = 0; i < 5; i++) { const a = i * 1.9; p.push(P(lathe([[0.0001, 0], [0.07, 0.04], [0.08, 0.14], [0.0001, 0.22]], 10), 0x8a5a2e, [Math.cos(a) * 1.1, 1.5 + (i % 3) * 0.8, Math.sin(a) * 1.1], [Math.PI, 0, 0])); }
   return toMesh(p, { thin: true });
 }
-function pineMuito() {
+export function pineMuito() {
   const g = new THREE.Group(), add = adder(g), r = R0(4);
   add(taper([[0, 0, 0], [0.04, 2.5, 0], [0, 5.2, 0]], [0.32, 0.2, 0.05], 24, 18), std(0xffffff, { map: TEX.bark([3, 2]), bumpMap: TEX.bark([3, 2]), bumpScale: 3, roughness: 0.95 }));
   // núcleo escuro em camadas + ~2600 raminhos de agulhas
@@ -72,7 +72,7 @@ function bigtreeAlta() {
   for (let i = 0; i < 6; i++) { const a = i * 1.1; leaf.push(P(taper([[Math.cos(a) * 2.2, 4.4, Math.sin(a) * 2.0], [Math.cos(a) * 2.3, 3.6, Math.sin(a) * 2.1], [Math.cos(a) * 2.25, 2.9, Math.sin(a) * 2.05]], [0.03, 0.025, 0.02], 10, 6), 0x3f9a3a)); } // cipós
   const g = new THREE.Group(); g.add(toMesh(wood, { thin: true }), toMesh(leaf, { outline: false })); return g;
 }
-function bigtreeMuito() {
+export function bigtreeMuito() {
   const r = R0(7), g = new THREE.Group(), add = adder(g), bark = std(0xffffff, { map: TEX.bark([4, 2]), bumpMap: TEX.bark([4, 2]), bumpScale: 4, roughness: 0.95 });
   [BIG_TRUNK, ...bigRoots(), ...bigBranches()].forEach((b) => add(taper(b.pts, b.r, 28, 22), bark));
   const pf = bigCanopy(r), core = std(0x16502a, { roughness: 1 });
@@ -115,7 +115,7 @@ function groundAlta() {
   for (let i = 0; i < 40; i++) { const a = r() * 6.28, rr = 0.5 + r() * 2.2; fp.push(P(cone(0.03, 0.3, 5), hex(0x3fbf5a, 0.8 + r() * 0.4), [Math.cos(a) * rr, 0.14, Math.sin(a) * rr - 0.6], [r() * 0.4 - 0.2, 0, r() * 0.4 - 0.2])); }
   const g = new THREE.Group(); g.add(toMesh(p, { thin: true }), toMesh(fp, { outline: false })); return g;
 }
-function groundMuito() {
+export function groundMuito() {
   const g = new THREE.Group(), add = adder(g), r = R0(2);
   // samambaia: 12 folhas recortadas (textura), curvadas
   const fg = new THREE.PlaneGeometry(0.42, 1.6, 1, 12); fg.translate(0, 0.8, 0);
@@ -155,7 +155,7 @@ function obsAlta() {
   const m3 = toMesh(mu, { thin: true }); m3.position.x = 2.2; g.add(m3);
   return g;
 }
-function obsMuito() {
+export function obs3Muito() {
   const g = new THREE.Group(), add = adder(g), barkM = std(0xffffff, { map: TEX.bark([4, 1]), bumpMap: TEX.bark([4, 1]), bumpScale: 4, roughness: 0.95 }), ringM = std(0xffffff, { map: TX.rings(), roughness: 0.85 });
   add(taper([[-0.95, 0.34, 0], [0, 0.37, 0.02], [0.95, 0.34, 0]], [0.34, 0.37, 0.33], 28, 32), barkM, [-2.4, 0, 0]);
   [-0.96, 0.96].forEach((x) => add(new THREE.CircleGeometry(0.345, 32), ringM, [-2.4 + x, 0.34, 0], [0, Math.sign(x) * Math.PI / 2, 0]));
@@ -172,7 +172,7 @@ function obsMuito() {
 // =================================================================== FOLHA GIGANTE + PLATAFORMA DE IMPULSO
 function leafShape(w, len) { const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24; pts.push([Math.sin(t * Math.PI) ** 0.75 * w / 2 * (1 + 0.05 * Math.sin(t * 40)), -len / 2 + t * len]); } for (let i = 23; i > 0; i--) { const t = i / 24; pts.push([-(Math.sin(t * Math.PI) ** 0.75) * w / 2 * (1 + 0.05 * Math.sin(t * 40 + 1)), -len / 2 + t * len]); } return pts; }
 function bendLeaf(geo, len) { const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setY(i, p.getY(i) + 0.12 * x * x - 0.05 * (z / len) ** 2 * 4); } geo.computeVertexNormals(); return geo; }
-function leafPadAlta() {
+export function leafPadAlta() {
   const g = new THREE.Group(), w = 2.2, len = 3.4, col = 0x3fcf5a;
   const sl = slab(leafShape(w, len), 0.1, 0.05); sl.rotateX(Math.PI / 2); bendLeaf(sl, len);
   const p = [P(sl, col, [0, -0.05, 0]), P(cap(0.045, len * 0.9, 4, 8), hex(col, 1.3), [0, 0.06, 0], [Math.PI / 2, 0, 0])];
@@ -209,13 +209,13 @@ function leafPadMuito() {
 }
 
 // =================================================================== COELHINHO
-const bunny = (level) => { const b = level === 'atual' ? buildBunny() : withLevel(level, new Set([0xf4f0ee, 0xffffff]), () => buildBunny()); b.scale.setScalar(2.4); return b; };
+export const bunny = (level) => { const b = level === 'atual' ? buildBunny() : withLevel(level, new Set([0xf4f0ee, 0xffffff]), () => buildBunny()); b.scale.setScalar(2.4); return b; };
 
 export const HQ3 = {
   pine: { alta: pineAlta, muito: pineMuito },
   bigtree: { alta: bigtreeAlta, muito: bigtreeMuito },
   ground: { alta: groundAlta, muito: groundMuito },
-  obs3: { alta: obsAlta, muito: obsMuito },
+  obs3: { alta: obsAlta, muito: obs3Muito },
   leafpad: { alta: leafPadAlta, muito: leafPadMuito },
   bunny: { atual: () => bunny('atual'), alta: () => bunny('alta'), muito: () => bunny('muito') },
 };

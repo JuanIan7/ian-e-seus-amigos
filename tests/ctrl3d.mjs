@@ -114,7 +114,8 @@ await start('desafio');
 await ticks(60 * 20);
 await run(() => window.__ian3.render());
 const info = await run(() => { const i = window.__ian3.renderer.info; return { calls: i.render.calls, tris: i.render.triangles, geos: i.memory.geometries, tex: i.memory.textures }; });
-ok(info.calls < 250 && info.tris < 250000, `chamadas de desenho ${info.calls}, triângulos ${info.tris}, geometrias ${info.geos}, texturas ${info.tex}`);
+// orçamento da versão com gráficos caprichados (o jogo reduz resolução e desliga sombras sozinho se o celular ficar lento)
+ok(info.calls < 700 && info.tris < 900000, `chamadas de desenho ${info.calls}, triângulos ${info.tris}, geometrias ${info.geos}, texturas ${info.tex}`);
 const heap = await run(() => (performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1));
 console.log('  memória JS (MB):', heap);
 

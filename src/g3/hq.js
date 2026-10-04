@@ -113,8 +113,8 @@ export function treeAlta(c = 0x3bc65e) {
   const g = grp(toMesh(wood, { thin: true }), toMesh(leaf, { outline: false }));
   return g;
 }
-export function treeMuito(c = 0x3aa852) {
-  const sk = treeSkeleton(3), g = new THREE.Group(), bark = std(0xffffff, { map: T.bark([3, 1]), bumpMap: T.bark([3, 1]), bumpScale: 3, roughness: 0.95 });
+export function treeMuito(c = 0x3aa852, seed = 3) {
+  const sk = treeSkeleton(seed), g = new THREE.Group(), bark = std(0xffffff, { map: T.bark([3, 1]), bumpMap: T.bark([3, 1]), bumpScale: 3, roughness: 0.95 });
   [sk.trunk, ...sk.roots].forEach((b) => g.add(mesh(taper(b.pts, b.r, 24, 18), bark)));
   sk.branches.slice(0, 6).forEach((b) => g.add(mesh(taper(b.pts.map(([x, y, z]) => [x * 0.6, Math.min(y, 2.9), z * 0.6]), b.r, 14, 12), bark)));
   // miolo escuro (dá profundidade) + 3200 folhas individuais distribuídas na casca de cada tufo
@@ -389,7 +389,8 @@ export function truckAlta() {
     p.push(P(tor(0.62, 0.1, 8, 22, Math.PI), D, [x, 0.52, z], [0, Math.PI / 2, 0], [1, 1, 2.2]));
   });
   g.add(toMesh(p, { thin: true }));
-  [[-0.55, 0x4db8ff], [0.55, 0xff3b3b], [-0.18, 0x4db8ff], [0.18, 0xff3b3b]].forEach(([x, c]) => { const l = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10), new THREE.MeshBasicMaterial({ color: c })); l.position.set(x, 2.44, -1.75); g.add(l); const s = glowSprite(c, 0.9, 0.7); s.position.copy(l.position); g.add(s); });
+  const lg = [new THREE.Group(), new THREE.Group()]; g.add(lg[0], lg[1]); g.userData.lights = lg;
+  [[-0.55, 0x4db8ff], [0.55, 0xff3b3b], [-0.18, 0x4db8ff], [0.18, 0xff3b3b]].forEach(([x, c], i) => { const l = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 10), new THREE.MeshBasicMaterial({ color: c })); l.position.set(x, 2.44, -1.75); lg[i % 2].add(l); const s = glowSprite(c, 0.9, 0.7); s.position.copy(l.position); lg[i % 2].add(s); });
   return g;
 }
 export function truckMuito() {

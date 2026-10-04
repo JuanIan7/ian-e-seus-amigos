@@ -1,7 +1,12 @@
 // Mundo 3D: céu, pista em blocos reciclados, cenário lateral por tema, buracos. O jogador fica em z = 0 e o
 // mundo "corre" em direção a +z; uma posição s na pista vira z = dist - s (negativo = à frente).
 import { THREE, P, box, toMesh, mergeParts, toon, hex, mixHex, rng, lowDetail } from './kit.js';
-import { SCENERY } from './props.js';
+import { SCENERY, buildSea, animateSea, SEA_TILE } from './final.js';
+import { SCENERY as SCENERY_LO } from './props.js';
+
+// a partir desta distância o cenário troca para a versão simples (o detalhe fino não aparece de longe)
+const LOD_FAR = 28;
+const LO_KEY = { treefern: 'cycad', horsetail: 'cycad' };
 
 export const LANE_W = 2.1;
 export const ROAD_HALF = 3.5;
@@ -80,8 +85,8 @@ export const THEMES3 = {
     road: [0xd9b46e, 0xcfa862], line: 0xeccd8c, edge: 0x6fcf4a, curb: 0x7fd44a, walk: 0x7fcf4a, side: [0x4fc24a, 0x45b743], pit: 0x2f78c8, pitName: 'pântano',
     layout: (r) => [
       { key: r.pick(['fern', 'mushroom', 'bones', 'rock']), x: r.between(5.6, 7), z: r.between(1, 11) },
-      { key: r.pick(['cycad', 'cycad', 'fern']), x: r.between(8, 11), z: 3 }, { key: r.pick(['cycad', 'bigtree', 'mushroom']), x: r.between(8.5, 12), z: 9 },
-      { key: r.pick(['cycad', 'rock', 'bigtree']), x: r.between(14, 20), z: r.between(1, 11) },
+      { key: r.pick(['cycad', 'horsetail', 'fern']), x: r.between(8, 11), z: 3 }, { key: r.pick(['cycad', 'treefern', 'bigtree', 'mushroom']), x: r.between(8.5, 12), z: 9 },
+      { key: r.pick(['treefern', 'cycad', 'rock', 'bigtree']), x: r.between(14, 20), z: r.between(1, 11) },
       ...(r.frac() < 0.22 ? [{ key: 'dino', x: r.between(24, 32), z: r.between(1, 11), face: true }] : []),
     ],
     far: ['volcano', 'hill', 'hill'],
@@ -124,9 +129,11 @@ export class World {
     this.tiles = [];
     for (let i = 0; i < TILES; i++) {
       const track = new THREE.Mesh(trackGeo(themeName, 0), toon), side = new THREE.Mesh(sideGeo(themeName, 0), toon);
-      track.userData.k = null; track.userData.th = themeName;
+      track.userData.k = null; track.userData.th = themeName; track.receiveShadow = side.receiveShadow = true;
       this.root.add(track, side); this.tiles.push({ track, side, k: null, th: null });
     }
+    // ---- mar da fase da água (superfície que reflete o céu; anda junto com a câmera) ----
+    this.sea = buildSea(); this.sea.position.y = -0.4; this.sea.visible = themeName === 'agua'; this.root.add(this.sea); this.seaT = 0;
     // ---- cenário em blocos ----
     this.lib = {};
     this.chunks = [];
@@ -162,7 +169,11 @@ export class World {
 
   libGet(key, theme, i) {
     const id = key + i;
-    if (!this.lib[id]) { const r = rng(this.seed + id); this.lib[id] = lowDetail(() => SCENERY[key](r)); }
+    if (!this.lib[id]) {
+      const hq = lowDetail(() => SCENERY[key](rng(this.seed + id))), lk = LO_KEY[key] || key;
+      if (SCENERY_LO[lk] && SCENERY_LO[lk] !== SCENERY[key]) { const lod = new THREE.LOD(); lod.addLevel(hq, 0); lod.addLevel(lowDetail(() => SCENERY_LO[lk](rng(this.seed + id))), LOD_FAR); this.lib[id] = lod; }
+      else this.lib[id] = hq;
+    }
     return this.lib[id].clone();
   }
 
@@ -223,6 +234,9 @@ export class World {
       if (ch.c !== c) { ch.c = c; this.fillChunk(ch, c, this.nextTheme); }
       ch.g.position.z = dist - c * CHUNK;
     }
+    // ---- mar ----
+    this.sea.visible = this.nextTheme === 'agua' || this.tiles.some((t) => t.th === 'agua');
+    if (this.sea.visible) { this.sea.position.z = (((dist % SEA_TILE) + SEA_TILE) % SEA_TILE) - SEA_TILE * 9; this.seaT += dt; animateSea(this.seaT); }
     // ---- buracos ----
     for (let i = this.holes.length - 1; i >= 0; i--) {
       const h = this.holes[i]; h.g.position.z = dist - (h.s + h.len / 2);

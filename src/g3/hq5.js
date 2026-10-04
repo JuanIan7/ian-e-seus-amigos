@@ -69,7 +69,7 @@ function hookMuito(parts) {
   g.userData.main = g.children[0];
   return g;
 }
-function dinoAt(level, kind) { if (level === 'atual') return buildDino(kind); PART_HOOK.fn = level === 'alta' ? hookAlta : hookMuito; try { return buildDino(kind); } finally { PART_HOOK.fn = null; } }
+export function dinoAt(level, kind) { if (level === 'atual') return buildDino(kind); PART_HOOK.fn = level === 'alta' ? hookAlta : hookMuito; try { return buildDino(kind); } finally { PART_HOOK.fn = null; } }
 
 function bigDinos(level) {
   const g = new THREE.Group();
@@ -104,18 +104,18 @@ function nestAlta() {
   const baby = dinoAt('alta', 'baby'); baby.scale.setScalar(1.6); baby.position.set(1.9, 0, -0.2); baby.rotation.y = -0.5; g.add(baby);
   return g;
 }
-function nestMuito() {
+export function nestMuito(withEggs = true, withBaby = true) {
   const g = new THREE.Group(), add = adder(g), r = R0(3);
   const twig = [std(0x7a4a26, { roughness: 0.95 }), std(0x8f5f33, { roughness: 0.95 }), std(0x6a4024, { roughness: 0.95 })];
   for (let i = 0; i < 110; i++) { const a = r() * 6.28, rr = 0.7 + r() * 0.2, y = 0.1 + r() * 0.36, l = 0.35 + r() * 0.35; add(new THREE.CylinderGeometry(0.018 + r() * 0.012, 0.024, l, 6), twig[i % 3], [Math.cos(a) * rr, y, Math.sin(a) * rr], twigRot(a, r)); }
   add(new THREE.CylinderGeometry(0.85, 0.65, 0.22, 48), std(0xffffff, { map: TEX.wood([3, 1], '#d8b670'), roughness: 1 }), [0, 0.14, 0]);
   const straw = std(0xf0d38a, { roughness: 0.9 }); for (let i = 0; i < 60; i++) { const a = r() * 6.28, rr = r() * 0.75; add(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 4), straw, [Math.cos(a) * rr, 0.27, Math.sin(a) * rr], [Math.PI / 2, a, (r() - 0.5) * 0.3]); }
   const shellM = new THREE.MeshPhysicalMaterial({ color: 0xf8ecc8, roughness: 0.35, clearcoat: 0.5, sheen: 0.4, sheenColor: new THREE.Color(0xffffff) });
-  [[-0.25, 0.1, 0, 0x5fbf5a], [0.25, -0.05, 0.4, 0x3a8fe0], [0.05, 0.25, -0.5, 0xff8a2a]].forEach(([x, z, rot, sc]) => {
+  if (withEggs) [[-0.25, 0.1, 0, 0x5fbf5a], [0.25, -0.05, 0.4, 0x3a8fe0], [0.05, 0.25, -0.5, 0xff8a2a]].forEach(([x, z, rot, sc]) => {
     const e = add(L([[0.0001, 0], [0.2, 0.04], [0.27, 0.22], [0.24, 0.48], [0.13, 0.66], [0.0001, 0.7]], 48), shellM, [x, 0.22, z], [0, 0, rot * 0.4]);
     for (let k = 0; k < 9; k++) { const a = k * 2.1, y = 0.12 + (k % 5) * 0.11, rr = 0.27 - Math.abs(y - 0.3) * 0.3; const s = new THREE.Mesh(new THREE.SphereGeometry(0.04 + (k % 2) * 0.02, 12, 8), std(sc, { roughness: 0.4 })); s.position.set(Math.cos(a) * rr, y, Math.sin(a) * rr); s.scale.set(0.35, 1, 1); s.rotation.y = -a; e.add(s); }
   });
-  const baby = dinoAt('muito', 'baby'); baby.scale.setScalar(1.6); baby.position.set(1.9, 0, -0.2); baby.rotation.y = -0.5; g.add(baby);
+  if (withBaby) { const baby = dinoAt('muito', 'baby'); baby.scale.setScalar(1.6); baby.position.set(1.9, 0, -0.2); baby.rotation.y = -0.5; g.add(baby); }
   return g;
 }
 
@@ -138,7 +138,7 @@ function plantsAlta() {
   g.add(toMesh(p, { thin: true }), toMesh(leaves, { outline: false }));
   return g;
 }
-function plantsMuito() {
+export function plantsMuito() {
   const g = new THREE.Group(), add = adder(g), r = R0(5);
   const fernT = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 256; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(30, 0, 4, 256); for (let i = 0; i < 30; i++) { const y = 6 + i * 8.2, Lw = 29 * Math.sin((1 - i / 30) * Math.PI * 0.9 + 0.2); [-1, 1].forEach((s) => { x.beginPath(); x.ellipse(32 + s * Lw / 2, y + 3, Lw / 2, 3.2, s * 0.3, 0, 6.28); x.fill(); }); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
   const frondGeo = (len) => { const f = new THREE.PlaneGeometry(0.55, len, 1, 14); f.translate(0, len / 2, 0); const ps = f.attributes.position; for (let i = 0; i < ps.count; i++) { const y = ps.getY(i), t = y / len; ps.setZ(i, -Math.pow(t, 2) * len * 0.45); } f.computeVertexNormals(); return f; };
@@ -157,7 +157,7 @@ function plantsMuito() {
 }
 
 // =================================================================== VULCÃO (fundo)
-function volcanoAlta() {
+export function volcanoAlta() {
   const p = [], r = R0(8);
   const prof = [[14, 0], [12.5, 2], [11, 4], [8.5, 8], [6.5, 11], [4.8, 13.6], [4.4, 14.2], [3.6, 14.4], [3.2, 13.6], [0.0001, 13.6]];
   const geo = new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)), 64); const ps = geo.attributes.position;
@@ -190,7 +190,7 @@ function volcanoMuito() {
 }
 
 // =================================================================== OSSOS (obstáculo) E FÓSSIL
-function bonesAlta() {
+export function bonesAlta() {
   const g = new THREE.Group(), p = [], ivory = 0xfff3dc, sh = 0xe9dcbc;
   // osso obstáculo: haste com leve curva e cabeças duplas arredondadas
   p.push(P(taper([[-0.55, 0.3, 0], [0, 0.33, 0], [0.55, 0.3, 0]], [0.13, 0.11, 0.13], 16, 16), ivory));
