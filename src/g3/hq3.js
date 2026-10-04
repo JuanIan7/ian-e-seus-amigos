@@ -1,7 +1,7 @@
 // Comparação de qualidade — fase 3 (floresta).
 import { THREE, P, sph, box, cyl, cone, cap, tor, dome, lathe, taper, slab, rockGeo, toMesh, hex } from './kit.js';
 import { buildBunny } from './creatures.js';
-import { TEX } from './hq.js';
+import { TEX, leafN, leafS } from './hq.js';
 import { withLevel } from './hq2.js';
 
 const R0 = (seed) => { let s = seed * 9301 + 49297; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
@@ -43,9 +43,9 @@ export function pineMuito() {
   // núcleo escuro em camadas + ~2600 raminhos de agulhas
   const core = std(0x0f4a24, { roughness: 1 });
   for (let i = 0; i < 6; i++) { const k = 1 - i * 0.15; add(new THREE.ConeGeometry(1.4 * k, 1.1 * k, 24), core, [0, 1.45 + i * 0.68, 0]); }
-  const geo = new THREE.PlaneGeometry(0.42, 0.6); geo.translate(0, 0.28, 0);
+  const geo = new THREE.PlaneGeometry(0.42 * leafS(), 0.6 * leafS()); geo.translate(0, 0.28 * leafS(), 0);
   const mat = std(0xffffff, { map: TX.needles(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.7 });
-  const N = 2600, inst = new THREE.InstancedMesh(geo, mat, N), d = new THREE.Object3D(), col = new THREE.Color();
+  const N = leafN(2600), inst = new THREE.InstancedMesh(geo, mat, N), d = new THREE.Object3D(), col = new THREE.Color();
   for (let i = 0; i < N; i++) {
     const t = Math.pow(r(), 1.3), y = 0.95 + t * 4.2, R = (1 - t) * 1.85 + 0.04, a = r() * Math.PI * 2, rr = R * (0.55 + r() * 0.5);
     d.position.set(Math.cos(a) * rr, y - (rr / 1.85) * 0.25, Math.sin(a) * rr); d.rotation.set(0, -a + Math.PI / 2, 0); d.rotateX(-1.2 - r() * 0.5); d.rotateY((r() - 0.5) * 0.8);
@@ -77,9 +77,9 @@ export function bigtreeMuito() {
   [BIG_TRUNK, ...bigRoots(), ...bigBranches()].forEach((b) => add(taper(b.pts, b.r, 28, 22), bark));
   const pf = bigCanopy(r), core = std(0x16502a, { roughness: 1 });
   pf.forEach(([x, y, z, rr], i) => add(rockGeo(rr * 0.82, i * 1.3, 0.12, 16, 12), core, [x, y, z]));
-  const geo = new THREE.PlaneGeometry(0.4, 0.4); geo.translate(0, 0.16, 0);
+  const geo = new THREE.PlaneGeometry(0.4 * leafS(), 0.4 * leafS()); geo.translate(0, 0.16 * leafS(), 0);
   const mat = std(0xffffff, { map: TEX.leaf(), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 });
-  const N = 6000, inst = new THREE.InstancedMesh(geo, mat, N), d = new THREE.Object3D(), col = new THREE.Color(), n = new THREE.Vector3();
+  const N = leafN(6000), inst = new THREE.InstancedMesh(geo, mat, N), d = new THREE.Object3D(), col = new THREE.Color(), n = new THREE.Vector3();
   for (let i = 0; i < N; i++) {
     const [px, py, pz, rr0] = pf[i % pf.length], u = r() * 2 - 1, th = r() * 6.28, s = Math.sqrt(1 - u * u); n.set(Math.cos(th) * s, u, Math.sin(th) * s);
     const rr = rr0 * (0.85 + r() * 0.25); d.position.set(px + n.x * rr, py + n.y * rr, pz + n.z * rr); d.lookAt(d.position.x + n.x + (r() - 0.5), d.position.y + n.y + 0.6, d.position.z + n.z + (r() - 0.5)); d.rotateZ(r() * 6.28);

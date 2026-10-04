@@ -50,6 +50,9 @@ const T = {
   stripes: (a, b, n = 4) => canvasTex('stripes' + a + b + n, 64, 64, (x, w, h) => { for (let i = 0; i < n; i++) { x.fillStyle = i % 2 ? b : a; x.fillRect(0, i * h / n, w, h / n); } }),
 };
 export const TEX = T;
+/** quantidade de folhas individuais (o jogo usa menos e maiores; a página de comparação usa todas) */
+export const LEAVES = { k: 1 };
+export const leafN = (n) => Math.round(n * LEAVES.k), leafS = () => 1 / Math.sqrt(LEAVES.k);
 
 // ------------------------------------------------------------------ materiais físicos
 const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0, ...o });
@@ -120,9 +123,9 @@ export function treeMuito(c = 0x3aa852, seed = 3) {
   // miolo escuro (dá profundidade) + 3200 folhas individuais distribuídas na casca de cada tufo
   const puffs = canopyPuffs(sk.R), core = std(hex(c, 0.42), { roughness: 1 });
   puffs.forEach(([x, y, z, r], i) => g.add(mesh(rockGeo(r * 0.82, i * 1.7, 0.12, 16, 12), core, [x, y, z])));
-  const leafGeo = new THREE.PlaneGeometry(0.3, 0.3); leafGeo.translate(0, 0.12, 0);
+  const leafGeo = new THREE.PlaneGeometry(0.3 * leafS(), 0.3 * leafS()); leafGeo.translate(0, 0.12 * leafS(), 0);
   const leafMat = std(0xffffff, { map: T.leaf(), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 });
-  const N = 3200, inst = new THREE.InstancedMesh(leafGeo, leafMat, N), d = new THREE.Object3D(), col = new THREE.Color(), n = new THREE.Vector3();
+  const N = leafN(3200), inst = new THREE.InstancedMesh(leafGeo, leafMat, N), d = new THREE.Object3D(), col = new THREE.Color(), n = new THREE.Vector3();
   for (let i = 0; i < N; i++) {
     const [px, py, pz, r] = puffs[i % puffs.length], u = sk.R() * 2 - 1, th = sk.R() * Math.PI * 2, s = Math.sqrt(1 - u * u);
     n.set(Math.cos(th) * s, u, Math.sin(th) * s); const rr = r * (0.82 + sk.R() * 0.28);

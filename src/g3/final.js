@@ -5,7 +5,7 @@ import { THREE, PART_HOOK, toMesh, hex } from './kit.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as B from './props.js';
 import * as C from './creatures.js';
-import { HQ, treeMuito, houseAlta, towerAlta, lampAlta, truckAlta, TEX } from './hq.js';
+import { HQ, treeMuito, houseAlta, towerAlta, lampAlta, truckAlta, TEX, LEAVES } from './hq.js';
 import { HQ2, withLevel, FUR, shopMuito, fountainAlta, plazaMuito, obs2Muito } from './hq2.js';
 import { pineMuito, bigtreeMuito, groundMuito, obs3Muito, leafPadAlta } from './hq3.js';
 import { heliMuito, roofAlta, obs4Alta, platMuito } from './hq4.js';
@@ -14,6 +14,7 @@ import { boatAlta, lightAlta, obs6Alta, raftMuito, pierAlta, foamRing, seaShowca
 import { lavaMuito, islandMuito, hutMuito, deadVentAlta, lavarockMuito } from './hq7.js';
 
 // pelo dos bichinhos: menos camadas e esferas mais leves no jogo
+LEAVES.k = 0.45;
 FUR.shells = 6; FUR.seg = [22, 15]; FUR.len = 0.04; FUR.merged = true;
 
 // ------------------------------------------------------------------ utilidades

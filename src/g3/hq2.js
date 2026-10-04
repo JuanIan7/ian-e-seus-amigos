@@ -4,7 +4,7 @@
 //  - 'muito': materiais físicos + pelo de verdade (camadas de fios), sombras projetadas.
 import { THREE, P, sph, box, cyl, cone, cap, tor, dome, lathe, taper, slab, rockGeo, toMesh, hex, PART_HOOK, toon } from './kit.js';
 import { buildDog, buildCat } from './creatures.js';
-import { TEX } from './hq.js';
+import { TEX, leafN, leafS } from './hq.js';
 
 // ------------------------------------------------------------------ ruído 3D simples (para tufos)
 function hash3(x, y, z) { const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return s - Math.floor(s); }
@@ -290,9 +290,9 @@ export function obs2Muito() {
   // arbusto: miolo escuro + 1600 folhinhas + flores
   const core = std(0x1f6a2e, { roughness: 1 });
   [[0, 0.45, 0, 0.45], [-0.3, 0.38, 0.05, 0.32], [0.32, 0.4, -0.02, 0.34]].forEach(([x, y, z, r], i) => add(rockGeo(r, i + 2, 0.15, 18, 12), core, [x + 1.2, y, z]));
-  const lg = new THREE.PlaneGeometry(0.16, 0.16); lg.translate(0, 0.07, 0);
+  const lg = new THREE.PlaneGeometry(0.16 * leafS(), 0.16 * leafS()); lg.translate(0, 0.07 * leafS(), 0);
   const lm = new THREE.MeshStandardMaterial({ map: TEX.leaf(), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 });
-  const N = 1600, inst = new THREE.InstancedMesh(lg, lm, N), d = new THREE.Object3D(), col = new THREE.Color(), n = new THREE.Vector3(); let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  const N = leafN(1600), inst = new THREE.InstancedMesh(lg, lm, N), d = new THREE.Object3D(), col = new THREE.Color(), n = new THREE.Vector3(); let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
   const blobs = [[0, 0.45, 0, 0.5], [-0.3, 0.38, 0.05, 0.38], [0.32, 0.4, -0.02, 0.4]];
   for (let i = 0; i < N; i++) {
     const [bx, by, bz, br] = blobs[i % 3], u = rnd() * 2 - 1, th = rnd() * 6.28, s = Math.sqrt(1 - u * u); n.set(Math.cos(th) * s, Math.max(-0.2, u), Math.sin(th) * s).normalize();
