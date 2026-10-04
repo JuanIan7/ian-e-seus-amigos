@@ -259,7 +259,7 @@ function buildBody(look, id) {
 }
 
 /** Cria a criança; usa a aparência salva (look). Origem nos pés. */
-export function buildKid(look) {
+export function buildKid(look, opt = {}) {
   const id = OUTFIT_IDS[look.outfit] || 'bombeiro';
   const o = O[id];
   const group = new THREE.Group();                  // posição no mundo
@@ -267,7 +267,7 @@ export function buildKid(look) {
   const body = new THREE.Group(); spin.add(body);   // inclinação e agachar
   const { root, parts } = buildBody(look, id);
   body.add(root);
-  const head = buildHead(look, o, id); head.position.set(0, FEET + 0.4 + 0.26 + 0.02, 0); body.add(head);
+  const head = buildHead(look, o, opt.noHat ? 'semchapeu' : id); head.position.set(0, FEET + 0.4 + 0.26 + 0.02, 0); body.add(head);   // semchapeu: prévia do cabelo na personalização
   group.userData = { id, spin, body, head, ...parts, root };
   return group;
 }

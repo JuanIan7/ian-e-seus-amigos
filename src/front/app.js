@@ -118,7 +118,7 @@ export class FrontApp {
   }
   rebuildKid() {
     if (this.kid) this.scene.remove(this.kid);
-    this.kid = buildKid(load().look); this.kid.scale.setScalar(1.45); this.kid.position.y = 0.24; this.scene.add(this.kid);
+    this.kid = buildKid(load().look, { noHat: this.screen === 'editor' && (this.tab === 'hair' || this.tab === 'hairColor') }); this.kid.scale.setScalar(1.45); this.kid.position.y = 0.24; this.scene.add(this.kid);
     this.cheer = 0.9;
   }
   resize() {
@@ -156,7 +156,8 @@ export class FrontApp {
   }
   scr(name) { const d = document.createElement('div'); d.className = 'scr ' + name; this.el.appendChild(d); return d; }
   show(name) {
-    this.screen = name; this.touched = false;
+    const was = this.screen; this.screen = name; this.touched = false;
+    if (was !== name && (was === 'editor' || name === 'editor')) this.rebuildKid();
     this.el.querySelectorAll('.scr').forEach((d) => d.classList.toggle('on', d.classList.contains(name)));
     if (name === 'home') this.refreshHome();
     if (name === 'editor') this.refreshEditor();
@@ -205,7 +206,7 @@ export class FrontApp {
     this.tabsEl = document.createElement('div'); this.tabsEl.className = 'tabs'; panel.appendChild(this.tabsEl);
     this.tabName = document.createElement('div'); this.tabName.className = 'tabname'; panel.appendChild(this.tabName);
     this.optsEl = document.createElement('div'); this.optsEl.className = 'opts'; panel.appendChild(this.optsEl);
-    this.tabBtns = this.tabsDef().map((t) => { const b = this.mkBtn(this.tabsEl, 'tab', t.icon, () => { this.tab = t.id; speak(t.name); this.refreshEditor(); }); b.dataset.tab = t.id; return b; });
+    this.tabBtns = this.tabsDef().map((t) => { const b = this.mkBtn(this.tabsEl, 'tab', t.icon, () => { this.tab = t.id; speak(t.name); this.rebuildKid(); this.refreshEditor(); }); b.dataset.tab = t.id; return b; });
     const eb = document.createElement('div'); eb.className = 'ebtns'; d.appendChild(eb);
     this.mkBtn(eb, 'dice', '🎲', () => this.randomLook());
     this.mkBtn(eb, 'ok', '✔', () => { speak('Ficou lindo!'); this.show('home'); });

@@ -9,19 +9,21 @@ Jogo infantil de corrida e resgate para Android (para o Ian, 4 anos, e seus prim
 - A cada **50 estrelas** nasce um poder aleatório: escudo, ímã de estrelas, super pulo, turbo, voo ou jato forte (ícone com anel de tempo no topo).
 - Pause no canto superior direito (continuar, voltar ao menu, som).
 
-## Versão 3D (branch `feature/3d`) — estado atual
-Jogo em **Three.js real** (3D cartoon com contornos, tudo modelado por código, sem imagens externas). O 2D anterior continua disponível com `?2d` na URL.
-- **Câmera** atrás e acima da criança; **3 faixas** (setas ← → ou deslizar o dedo). No Fácil há ajuda de direção e de pulo.
-- **Controles:** pular (segurar no ar = descida lenta e limitada; **dois toques = pulo duplo** uma vez por salto, com cambalhota), **correr** (segurar acelera aos poucos até um limite seguro e solta suave), **ação** (ícone muda por missão), multitoque. Cada habilidade ganha uma demonstração antes de ser exigida (pulo, pulo duplo, planar).
-- **Velocidade:** cresce com o tempo **ativo** de jogo (pausas, missões e minijogos não contam), é mantida entre fases e na repetição após a fase 5, com teto por modo (Fácil 8,6 / Aventura 10,8 / Desafio 14,5 — configurável em `src/g3/config3.js`).
-- **Fases 1–5** em 3D na mesma sessão, com missões (fogo, resgates, entregas, ovo/filhote), trampolins, folhas, buracos, planador, voo, viatura, cães companheiros e dinossauros; após a 5 o ciclo recomeça com novas combinações.
-- **Minijogos opcionais** (bolha "toque aqui" que some sozinha; nunca em sequência nem durante missões ou perto de obstáculos): **quebra-cabeça** (Fácil 2–4 peças, Aventura 4–6, Desafio 6–9) e **caminho da cobrinha** (arrastar até a bandeira; barra de tempo só no Desafio). O jogo congela enquanto joga; ao concluir ganha **uma** recompensa (escudo é a mais provável; também jato forte, super pulo, planador, ímã ou estrelas) e volta com proteção e arranque suave. Sair pelo X não pune.
-- **Desempenho (medido por software, não em celular):** ~80 mil triângulos e ~200 chamadas de desenho por quadro; resolução dinâmica reduz a nitidez se o aparelho cair abaixo de ~44 fps.
+## Versão atual (3D) — o que tem
+Jogo em **Three.js** (3D cartoon, tudo modelado por código, sem imagens externas). A versão 2D antiga continua com `?2d` na URL.
+- **Tela inicial 3D:** personagem num palco com o cãozinho e a viatura; escolha de modo (⭐ Fácil, ⭐⭐ Aventura, ⭐⭐⭐ Desafio), fase inicial (1 a 7), **Personagem** e **Lojinha**.
+- **Personalização:** roupa (10), pele (7), rosto (3), cabelo (10, inclui moicano e raspadinho), cor do cabelo (8), olhos (6), acessório (óculos, óculos escuros, laço, tiara, mochila, cachecol), sardas e sobrancelhas. Prévia 3D que gira com o dedo; botão 🎲 sorteia.
+- **7 fases** na mesma partida: 1 Pequeno bombeiro, 2 Resgate na cidade, 3 Floresta, 4 Alturas (refeita, com menos obstáculos), 5 Dinossauros, 6 **Resgate aquático**, 7 **Resgate no vulcão**. Depois da 7ª, a próxima fase é **sorteada**. Cada fase tem **música própria**.
+- **Vidas:** 3 corações. Bater ou cair tira 1; ganha 1 ao mudar de fase e ao vencer o desafio da fase (máximo 5). Sem vidas = fim de jogo e recomeça do zero.
+- **Desafio da fase (30 s, vale +1 vida):** F1 quebra-cabeça 4×4, F2 labirinto, F3 quebra-cabeça 5×5, F4 pegar maçãs, F5 mirar a mangueira, F6 guiar o barco, F7 esfriar a lava. Abre sozinho ao chegar no baú do caminho; o jogo para enquanto isso. No Fácil metade das peças do quebra-cabeça já começa no lugar (ajustável em `src/g3/minigames.js`).
+- **Lojinha:** no fim do jogo (perdeu as vidas ou tocou em encerrar 🏁) as estrelas da corrida vão para a lojinha. Cada poder custa ⭐100 (escudo, viatura, voo, planador, ímã, super pulo, turbo, jato forte). Os comprados aparecem na **janela de poderes** (canto superior direito) e são usados com um toque. **Com qualquer poder ativo, os obstáculos são afastados** (viatura e voo também passam por cima dos buracos).
+- **Controles:** setas (faixas), pular (segurar no ar = desce devagar; dois toques = pulo duplo), ação (ícone muda: gota, coração, boia…), **⏩ correr** (segurar: até +45–55% de velocidade, com vento e câmera abrindo).
+- **Gráficos:** sombreamento cartoon suave com brilho de borda, casas com telhado de duas águas, janelas com moldura, prédios com sacadas e toldos, árvores de copa fofa, postes com luz, fogo em camadas com brilho, viatura nova, cães/gato/coelho/dinossauros remodelados com formas curvas.
+- **Desempenho (medido no computador, sem GPU):** ~130–170 mil triângulos e ~210–280 chamadas de desenho por quadro; resolução dinâmica reduz a nitidez se o celular cair abaixo de ~44 fps.
 
 ### Testes automáticos (Playwright, precisam de `npm run build` antes)
-`npm test` = `sim3d` (correr, pulo duplo, descida lenta, progressão, pausa, fases, bot) + `mini3d` (minijogos, recompensa, retorno seguro, bolha) + `ctrl3d` (multitoque, pausa, segundo plano, som salvo, saída ao menu, custo de desenho). `npm run test:fases` roda o bot nas 5 fases × 3 modos (demorado). `npm run test:2d` / `test:ui` cobrem a versão 2D (`?2d`).
-Resultado do bot (5 fases × 3 modos): todas as missões concluídas, 0 quedas, 0–2 batidas, sem travar.
-**Ainda não validado:** desempenho e toques em celular real; achados de jogabilidade com as crianças; pré-visualização 3D do personagem na tela de personalização (ainda usa o desenho 2D); sons finais.
+`npm test` = `sim3d` (controles, velocidade, fases, robô) + `mini3d` (os 7 desafios resolvidos por toque nos 3 modos, tempo esgotado, baú no caminho) + `ctrl3d` (multitoque, pausa, segundo plano, encerrar → estrelas na lojinha, 3 batidas = fim de jogo, compra e uso de poderes). `npm run test:fases` roda o robô nas 7 fases × 3 modos (demorado).
+**Ainda não validado:** desempenho e toque em celular real; equilíbrio de dificuldade com as crianças (principalmente o 5×5 em 30 s).
 
 ## Versão 2D anterior (legado, `?2d`)
 - **Fases 1–5** conectadas na mesma sessão (banner "Fase N", cenário em fusão, sem menu): bairro (bombeiro), praça (cães + gatinho, osso, caminhão), floresta (buracos, folhas, trampolim, planar, coelhinho, suprimentos), alturas (telhados, voo, resgate com helicóptero) e mundo dos dinossauros (osso para o estegossauro, ovo ao ninho, filhote e família, pterossauro). Depois da 5 volta ao tema 1 com contador (×2…), dificuldade com teto.
