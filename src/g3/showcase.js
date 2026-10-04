@@ -6,7 +6,8 @@ import { HQ, TEX } from './hq.js';
 import { HQ2 } from './hq2.js';
 import { HQ3 } from './hq3.js';
 import { HQ4 } from './hq4.js';
-import { buildLeaf, buildPad, buildHeli, buildBasket, buildPlatform } from './creatures.js';
+import { HQ5 } from './hq5.js';
+import { buildLeaf, buildPad, buildHeli, buildBasket, buildPlatform, buildNest, buildEgg, buildDino } from './creatures.js';
 
 const q = new URLSearchParams(location.search);
 const el = q.get('el') || 'tree', lvl = q.get('q') || 'atual';
@@ -59,10 +60,15 @@ function atual() {
     case 'roof': { const g = new THREE.Group(); const t = SCENERY.tank(r); g.add(t); const b = SCENERY.billboard(rng('bb')); b.position.x = 3.6; g.add(b); return g; }
     case 'obs4': { const g = new THREE.Group(); ['ac', 'pipe'].forEach((k, i) => { const o = buildObstacle(k); o.position.x = [-1.3, 1.3][i]; g.add(o); }); return g; }
     case 'plat': { const g = new THREE.Group(); const p = buildPlatform(2.4, 3.0); p.position.set(-1.4, 4, 0); g.add(p); const b = buildBasket(); b.position.set(1.9, 4.2, 0); g.add(b); return g; }
+    case 'nest': { const g = new THREE.Group(); g.add(buildNest()); [[-0.25, 0.1], [0.25, -0.05], [0.05, 0.25]].forEach(([x, z]) => { const e = buildEgg(); e.position.set(x, 0.22, z); g.add(e); }); const b = buildDino('baby'); b.scale.setScalar(1.6); b.position.set(1.9, 0, -0.2); b.rotation.y = -0.5; g.add(b); return g; }
+    case 'preplants': { const g = new THREE.Group(); g.add(SCENERY.cycad(r)); const f = SCENERY.fern(r); f.position.x = 2.3; g.add(f); const c2 = SCENERY.cycad(rng('c2')); c2.position.x = -2.4; c2.scale.setScalar(1.3); g.add(c2); return g; }
+    case 'volcano': return SCENERY.volcano(r);
+    case 'bones': { const g = new THREE.Group(); const o = buildObstacle('bone'); o.position.x = -2.2; g.add(o); const b = SCENERY.bones(r); b.position.x = 1.2; b.scale.setScalar(0.7); g.add(b); return g; }
     case 'obstacles': { const g = new THREE.Group(); ['cone', 'hydrant', 'barrier', 'crate'].forEach((k, i) => { const o = buildObstacle(k); o.position.x = [-2.4, -0.8, 0.9, 2.5][i]; g.add(o); }); return g; }
   }
 }
-const ALL = { ...HQ, ...HQ2, ...HQ3, ...HQ4 };
+if (el === 'volcano') scene.fog = null;
+const ALL = { ...HQ, ...HQ2, ...HQ3, ...HQ4, ...HQ5 };
 let obj = lvl === 'atual' && !(ALL[el] && ALL[el].atual) ? atual() : ALL[el][lvl]();
 if (el === 'binfire' && lvl !== 'atual') obj.scale.setScalar(1.7);
 scene.add(obj);
@@ -71,7 +77,7 @@ if (muito) obj.traverse((o) => { if (o.isMesh && !o.material.transparent && !(o.
 // enquadramento automático: frente do objeto virada para a câmera (como no jogo)
 obj.updateMatrixWorld(true); const bb = new THREE.Box3(); obj.traverse((o) => { if (o.isMesh && !o.isSprite && !(o.material && o.material.isShaderMaterial)) bb.expandByObject(o, true); }); if (el === 'binfire') bb.max.y += 1.6; const c = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3());
 const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 200);
-const rad = Math.max(sz.x * (['obstacles', 'dogs', 'plaza', 'obs3', 'ground'].includes(el) ? 0.42 : 0.62), sz.y * 0.64, sz.z * 0.5) + 0.3, dist = rad / Math.tan(THREE.MathUtils.degToRad(15)) * 0.98;
+const rad = Math.max(sz.x * (['obstacles', 'dogs', 'plaza', 'obs3', 'ground', 'dinos', 'bones', 'nest'].includes(el) ? 0.42 : 0.62), sz.y * 0.64, sz.z * 0.5) + 0.3, dist = rad / Math.tan(THREE.MathUtils.degToRad(15)) * 0.98;
 const yaw = +(q.get('yaw') || 0.55);
 cam.position.set(c.x + Math.sin(yaw) * dist, c.y + dist * (el === 'leafpad' ? 0.55 : 0.14), c.z - Math.cos(yaw) * dist); cam.lookAt(c.x, c.y, c.z);
 if (sun.castShadow) { sun.target.position.copy(c); scene.add(sun.target); }

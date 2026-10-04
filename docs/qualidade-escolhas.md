@@ -35,4 +35,12 @@ Imagens geradas por `node tests/showcase.mjs` (página `showcase.html`). Modelos
 | Coelhinho | 3 |
 
 ## Fase 4 — Resgate nas alturas
+| Elemento | Escolha |
+|---|---|
+| Helicóptero de resgate | 3 |
+| Telhado (caixa d'água, outdoor, antena) | 2 |
+| Obstáculos do telhado (ar-condicionado, cano) | 2 |
+| Plataforma elevada e cesta de resgate | 3 |
+
+## Fase 5 — Mundo dos dinossauros
 (aguardando escolha)

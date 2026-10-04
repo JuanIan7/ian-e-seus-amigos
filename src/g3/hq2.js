@@ -8,14 +8,14 @@ import { TEX } from './hq.js';
 
 // ------------------------------------------------------------------ ruído 3D simples (para tufos)
 function hash3(x, y, z) { const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return s - Math.floor(s); }
-function noise3(x, y, z) {
+export function noise3(x, y, z) {
   const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z), xf = x - xi, yf = y - yi, zf = z - zi;
   const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = zf * zf * (3 - 2 * zf);
   const L = (a, b, t) => a + (b - a) * t; const h = (a, b, c) => hash3(xi + a, yi + b, zi + c);
   return L(L(L(h(0, 0, 0), h(1, 0, 0), u), L(h(0, 1, 0), h(1, 1, 0), u), v), L(L(h(0, 0, 1), h(1, 0, 1), u), L(h(0, 1, 1), h(1, 1, 1), u), v), w);
 }
 /** tufos: desloca a superfície em mechinhas arredondadas (pelo de pelúcia) */
-function tuft(geo, amp, freq, part = null, feats = []) {
+export function tuft(geo, amp, freq, part = null, feats = []) {
   let g = geo;
   if (g.type === 'SphereGeometry') { const q = g.parameters; g = new THREE.SphereGeometry(q.radius, 44, 30, q.phiStart, q.phiLength, q.thetaStart, q.thetaLength); }
   else g = g.clone();
@@ -33,10 +33,10 @@ function tuft(geo, amp, freq, part = null, feats = []) {
 }
 function partMatrix(p) { return new THREE.Matrix4().compose(new THREE.Vector3(...p.p), new THREE.Quaternion().setFromEuler(new THREE.Euler(...p.r)), new THREE.Vector3(...p.s)); }
 /** 0 perto dos olhos/nariz/boca (o pelo não cobre o rosto), 1 longe */
-function maskAt(v, feats) { let k = 1; for (const f of feats) { const d = v.distanceTo(f.c) - f.r; k = Math.min(k, Math.max(0, Math.min(1, (d - 0.01) / 0.07))); } return k; }
+export function maskAt(v, feats) { let k = 1; for (const f of feats) { const d = v.distanceTo(f.c) - f.r; k = Math.min(k, Math.max(0, Math.min(1, (d - 0.01) / 0.07))); } return k; }
 const isFur = (fur, p) => fur.has(p.color) && radOf(p) > 0.11;
-function featuresOf(parts, fur) { return parts.filter((p) => !isFur(fur, p) && radOf(p) < 0.2).map((p) => { const g = p.geo; g.computeBoundingSphere(); return { c: g.boundingSphere.center.clone().applyMatrix4(partMatrix(p)), r: radOf(p) }; }); }
-const radOf = (p) => { const g = p.geo; if (!g.boundingSphere) g.computeBoundingSphere(); return g.boundingSphere.radius * Math.max(...p.s); };
+export function featuresOf(parts, fur) { return parts.filter((p) => !isFur(fur, p) && radOf(p) < 0.2).map((p) => { const g = p.geo; g.computeBoundingSphere(); return { c: g.boundingSphere.center.clone().applyMatrix4(partMatrix(p)), r: radOf(p) }; }); }
+export const radOf = (p) => { const g = p.geo; if (!g.boundingSphere) g.computeBoundingSphere(); return g.boundingSphere.radius * Math.max(...p.s); };
 
 // ------------------------------------------------------------------ alta: tufos + degradê
 function hookAlta(fur) {
