@@ -7,7 +7,8 @@ import { HQ2 } from './hq2.js';
 import { HQ3 } from './hq3.js';
 import { HQ4 } from './hq4.js';
 import { HQ5 } from './hq5.js';
-import { buildLeaf, buildPad, buildHeli, buildBasket, buildPlatform, buildNest, buildEgg, buildDino } from './creatures.js';
+import { HQ6, SEA } from './hq6.js';
+import { buildLeaf, buildPad, buildHeli, buildBasket, buildPlatform, buildNest, buildEgg, buildDino, buildRescueBoat, buildRaft, buildLifeRing } from './creatures.js';
 
 const q = new URLSearchParams(location.search);
 const el = q.get('el') || 'tree', lvl = q.get('q') || 'atual';
@@ -64,11 +65,18 @@ function atual() {
     case 'preplants': { const g = new THREE.Group(); g.add(SCENERY.cycad(r)); const f = SCENERY.fern(r); f.position.x = 2.3; g.add(f); const c2 = SCENERY.cycad(rng('c2')); c2.position.x = -2.4; c2.scale.setScalar(1.3); g.add(c2); return g; }
     case 'volcano': return SCENERY.volcano(r);
     case 'bones': { const g = new THREE.Group(); const o = buildObstacle('bone'); o.position.x = -2.2; g.add(o); const b = SCENERY.bones(r); b.position.x = 1.2; b.scale.setScalar(0.7); g.add(b); return g; }
+    case 'sea': { const k = SCENERY.rocksea(rng('rs')); k.position.y = 0.15; k.scale.setScalar(1.3); return k; }
+    case 'rboat': return buildRescueBoat();
+    case 'lighthouse': { const g = new THREE.Group(); const l = SCENERY.lighthouse(r); l.position.x = 2; g.add(l); const p = SCENERY.palmisle(rng('pi')); p.position.x = -2.2; g.add(p); return g; }
+    case 'obs6': { const g = new THREE.Group(); ['buoy', 'barrel', 'rope'].forEach((k, i) => { const o = buildObstacle(k); o.position.x = [-2.2, 0, 2.2][i]; g.add(o); }); return g; }
+    case 'raft': { const g = new THREE.Group(); const f = buildRaft(); f.position.x = -1.4; g.add(f); const l = buildLifeRing(1.4); l.position.set(1.8, -0.15, 0); g.add(l); return g; }
+    case 'pier': { const g = new THREE.Group(); for (let i = 0; i < 4; i++) { const p = SCENERY.post(r); p.position.set(-2.6, 0, i * 1.2 - 1.8); g.add(p); } const b = SCENERY.boat(rng('bt')); b.position.x = 1.2; b.scale.setScalar(0.6); g.add(b); return g; }
     case 'obstacles': { const g = new THREE.Group(); ['cone', 'hydrant', 'barrier', 'crate'].forEach((k, i) => { const o = buildObstacle(k); o.position.x = [-2.4, -0.8, 0.9, 2.5][i]; g.add(o); }); return g; }
   }
 }
 if (el === 'volcano') scene.fog = null;
-const ALL = { ...HQ, ...HQ2, ...HQ3, ...HQ4, ...HQ5 };
+if (['sea', 'rboat', 'lighthouse', 'obs6', 'raft', 'pier'].includes(el)) { scene.children.filter((o) => o.isMesh && o.geometry.type === 'PlaneGeometry').forEach((o) => scene.remove(o)); scene.add(SEA[lvl]()); }
+const ALL = { ...HQ, ...HQ2, ...HQ3, ...HQ4, ...HQ5, ...HQ6 };
 let obj = lvl === 'atual' && !(ALL[el] && ALL[el].atual) ? atual() : ALL[el][lvl]();
 if (el === 'binfire' && lvl !== 'atual') obj.scale.setScalar(1.7);
 scene.add(obj);
@@ -77,7 +85,7 @@ if (muito) obj.traverse((o) => { if (o.isMesh && !o.material.transparent && !(o.
 // enquadramento automático: frente do objeto virada para a câmera (como no jogo)
 obj.updateMatrixWorld(true); const bb = new THREE.Box3(); obj.traverse((o) => { if (o.isMesh && !o.isSprite && !(o.material && o.material.isShaderMaterial)) bb.expandByObject(o, true); }); if (el === 'binfire') bb.max.y += 1.6; const c = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3());
 const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 200);
-const rad = Math.max(sz.x * (['obstacles', 'dogs', 'plaza', 'obs3', 'ground', 'dinos', 'bones', 'nest'].includes(el) ? 0.42 : 0.62), sz.y * 0.64, sz.z * 0.5) + 0.3, dist = rad / Math.tan(THREE.MathUtils.degToRad(15)) * 0.98;
+const rad = Math.max(sz.x * (['obstacles', 'dogs', 'plaza', 'obs3', 'ground', 'dinos', 'bones', 'nest', 'obs6', 'raft', 'pier'].includes(el) ? 0.42 : 0.62), sz.y * 0.64, sz.z * 0.5) + 0.3, dist = rad / Math.tan(THREE.MathUtils.degToRad(15)) * 0.98;
 const yaw = +(q.get('yaw') || 0.55);
 cam.position.set(c.x + Math.sin(yaw) * dist, c.y + dist * (el === 'leafpad' ? 0.55 : 0.14), c.z - Math.cos(yaw) * dist); cam.lookAt(c.x, c.y, c.z);
 if (sun.castShadow) { sun.target.position.copy(c); scene.add(sun.target); }

@@ -43,4 +43,14 @@ Imagens geradas por `node tests/showcase.mjs` (página `showcase.html`). Modelos
 | Plataforma elevada e cesta de resgate | 3 |
 
 ## Fase 5 — Mundo dos dinossauros
+| Elemento | Escolha |
+|---|---|
+| Dinossauros (tricerátopo, tiranossauro, estegossauro) | 2 |
+| Pescoçudo e pterossauro | 3 |
+| Ninho, ovos e filhote | 3 |
+| Plantas pré-históricas | 3 |
+| Vulcão ao fundo | 2 |
+| Osso e fóssil | 2 |
+
+## Fase 6 — Resgate na água
 (aguardando escolha)
