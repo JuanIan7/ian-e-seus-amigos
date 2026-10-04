@@ -63,4 +63,10 @@ Imagens geradas por `node tests/showcase.mjs` (página `showcase.html`). Modelos
 | Píer e barquinho de passeio | 2 |
 
 ## Fase 7 — Resgate no vulcão
-(aguardando escolha)
+| Elemento | Escolha |
+|---|---|
+| Poça e rio de lava | 3 |
+| Ilha de pedra e pedras-ponte | 3 |
+| Cabana | 3 |
+| Árvore seca e fumarola | 2 |
+| Obstáculo pedra de lava | 3 |
