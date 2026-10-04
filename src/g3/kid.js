@@ -21,7 +21,7 @@ const R = 0.27;                 // raio da cabeça (cabeça grande = proporção
 const FEET = 0.46;              // altura do quadril
 
 function buildHead(look, o, id) {
-  const skin = SKINS[look.skin] ?? SKINS[3], hc = HAIR_COLORS[look.hairColor] ?? HAIR_COLORS[1], ec = EYE_COLORS[look.eyes] ?? EYE_COLORS[0];
+  const skin = SKINS[look.skin] ?? SKINS[3], hc = HAIR_COLORS[look.hairColor] ?? HAIR_COLORS[1], ec = EYE_COLORS[look.eyes] ?? EYE_COLORS[0], ecLight = hex(ec, 1.6);
   const head = new THREE.Group();
   const face = look.face ?? 0;
   // --- cabeça ---
@@ -35,25 +35,25 @@ function buildHead(look, o, id) {
   base.push(P(cyl(0.07, 0.08, 0.1, 10), hex(skin, 0.9), [0, -0.27, 0.01]));
   head.add(toMesh(base, { thin: true }));
 
-  // --- rosto: olhos grandes e brilhantes, sobrancelhas, nariz, sorriso aberto e bochechas ---
+  // --- rosto (estilo anime): olhos grandes com íris colorida e brilhos, sobrancelha fina, boca pequena ---
   const fz = -zf;
   const f = [];
   const eye = (sx) => {
-    f.push(P(sph(0.078, 12, 9), 0xffffff, [sx * 0.105, 0.035, fz + 0.035], [0, 0, 0], [1, 1.2, 0.55]));
-    f.push(P(sph(0.052, 10, 8), ec, [sx * 0.105, 0.03, fz + 0.012], [0, 0, 0], [1, 1.15, 0.5]));
-    f.push(P(sph(0.029, 8, 6), 0x0d0b0a, [sx * 0.105, 0.03, fz + 0.002], [0, 0, 0], [1, 1.1, 0.5]));
-    f.push(P(sph(0.018, 6, 5), 0xffffff, [sx * 0.105 - sx * 0.018, 0.058, fz - 0.004], [0, 0, 0], [1, 1, 0.5]));
-    f.push(P(sph(0.009, 6, 5), 0xffffff, [sx * 0.105 + sx * 0.02, 0.0, fz - 0.004], [0, 0, 0], [1, 1, 0.5]));
-    f.push(P(cap(look.brows ? 0.022 : 0.014, 0.075, 3, 6), hex(hc, 0.7), [sx * 0.105, 0.125 + (look.brows ? 0.005 : 0), fz + 0.03], [0, 0, Math.PI / 2 + sx * 0.12], [1, 1, 0.8]));
+    f.push(P(sph(0.1, 14, 11), 0xffffff, [sx * 0.105, 0.03, fz + 0.035], [0, 0, 0], [0.92, 1.4, 0.5]));
+    f.push(P(sph(0.075, 12, 10), ecLight, [sx * 0.105, 0.0, fz + 0.015], [0, 0, 0], [0.9, 1.3, 0.45]));
+    f.push(P(sph(0.05, 10, 8), ec, [sx * 0.105, -0.015, fz + 0.005], [0, 0, 0], [0.9, 1.2, 0.45]));
+    f.push(P(sph(0.026, 8, 6), 0x0d0b0a, [sx * 0.105, -0.02, fz - 0.002], [0, 0, 0], [0.9, 1.1, 0.45]));
+    f.push(P(sph(0.022, 6, 5), 0xffffff, [sx * 0.105 - sx * 0.02, 0.05, fz - 0.006]));
+    f.push(P(sph(0.01, 6, 5), 0xffffff, [sx * 0.105 + sx * 0.025, 0.0, fz - 0.006]));
+    f.push(P(sph(0.008, 6, 5), 0xffffff, [sx * 0.105, -0.03, fz - 0.006]));
+    f.push(P(cap(look.brows ? 0.013 : 0.009, 0.062, 3, 6), hex(hc, 0.6), [sx * 0.105, 0.14 + (look.brows ? 0.005 : 0), fz + 0.03], [0, 0, Math.PI / 2 + sx * 0.18], [1, 1, 0.8]));
   };
   eye(-1); eye(1);
   if (look.freckles) [-1, 1].forEach((s) => [[0.13, -0.04], [0.17, -0.02], [0.16, -0.07], [0.2, -0.05], [0.12, -0.08]].forEach(([x, y]) => f.push(P(sph(0.011, 6, 5), hex(skin, 0.72), [s * x, y, fz + 0.045]))));
-  f.push(P(sph(0.026, 8, 6), hex(skin, 0.86), [0, -0.035, fz - 0.005], [0, 0, 0], [1, 0.8, 0.8]));
-  f.push(P(tor(0.062, 0.014, 6, 14, Math.PI), 0x5a1a26, [0, -0.07, fz + 0.018], [0, 0, Math.PI]));                       // sorriso
-  f.push(P(sph(0.05, 8, 6), 0x7a2230, [0, -0.095, fz + 0.012], [0, 0, 0], [1.2, 0.55, 0.4]));                           // boca aberta
-  f.push(P(sph(0.026, 6, 5), 0xff7d8a, [0, -0.106, fz + 0.006], [0, 0, 0], [1.3, 0.5, 0.4]));
-  f.push(P(sph(0.045, 8, 6), 0xff7a8a, [-0.17, -0.055, fz + 0.04], [0, 0, 0], [1, 0.7, 0.35]), P(sph(0.045, 8, 6), 0xff7a8a, [0.17, -0.055, fz + 0.04], [0, 0, 0], [1, 0.7, 0.35]));
-  if (id === 'heroi') f.push(P(box(0.47, 0.1, 0.03, 0.03), 0x4a1fb0, [0, 0.035, fz + 0.03]), P(sph(0.078, 12, 9), 0xffffff, [-0.105, 0.035, fz + 0.003], [0, 0, 0], [1, 1.2, 0.5]), P(sph(0.078, 12, 9), 0xffffff, [0.105, 0.035, fz + 0.003], [0, 0, 0], [1, 1.2, 0.5]));
+  f.push(P(box(0.012, 0.02, 0.01, 0.004), hex(skin, 0.82), [0, -0.04, fz - 0.002]));                                     // nariz (traço simples)
+  f.push(P(tor(0.038, 0.007, 4, 10, Math.PI), 0x8a4a52, [0, -0.08, fz + 0.016], [0, 0, Math.PI]));                       // sorriso pequeno
+  f.push(P(sph(0.034, 8, 6), 0xff9aa6, [-0.15, -0.03, fz + 0.04], [0, 0, 0], [1, 0.55, 0.2]), P(sph(0.034, 8, 6), 0xff9aa6, [0.15, -0.03, fz + 0.04], [0, 0, 0], [1, 0.55, 0.2]));
+  if (id === 'heroi') f.push(P(box(0.47, 0.1, 0.03, 0.03), 0x4a1fb0, [0, 0.03, fz + 0.03]), P(sph(0.1, 14, 11), 0xffffff, [-0.105, 0.03, fz + 0.004], [0, 0, 0], [0.92, 1.4, 0.45]), P(sph(0.1, 14, 11), 0xffffff, [0.105, 0.03, fz + 0.004], [0, 0, 0], [0.92, 1.4, 0.45]));
   head.add(toMesh(f, { outline: false }));
 
   // --- cabelo ---
