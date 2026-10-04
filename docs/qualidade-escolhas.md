@@ -15,4 +15,14 @@ Imagens geradas por `node tests/showcase.mjs` (página `showcase.html`). Modelos
 | Obstáculos (cone, hidrante, cavalete, caixote) | 3 |
 
 ## Fase 2 — Equipe de resgate na cidade
+| Elemento | Escolha |
+|---|---|
+| Cães da equipe | 3 |
+| Gatinho | 3 (corrigir manchas da barriga se necessário) |
+| Loja | 3 |
+| Chafariz | 2 |
+| Banco e canteiros de flores | 3 |
+| Obstáculos da praça (banco, arbusto) | 3 |
+
+## Fase 3 — Aventura na floresta
 (aguardando escolha)

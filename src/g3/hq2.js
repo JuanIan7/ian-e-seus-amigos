@@ -63,7 +63,7 @@ function furMaterial(shell, frac) {
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         vec3 cc = floor(vLp * 95.0); float hh = fract(sin(dot(cc, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
         if (uFrac > 0.0 && (hh < uFrac || vFl < 0.3)) discard;`)
-      .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= mix(0.55, 1.08, clamp(uFrac * 1.25, 0.0, 1.0));');
+      .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= mix(1.0, mix(0.55, 1.08, clamp(uFrac * 1.25, 0.0, 1.0)), clamp(vFl, 0.0, 1.0));');
   };
   m.customProgramCacheKey = () => 'fur-shell';
   return m;
@@ -89,7 +89,7 @@ function hookMuito(fur) {
     return g;
   };
 }
-function withLevel(level, fur, fn) { PART_HOOK.fn = level === 'alta' ? hookAlta(fur) : hookMuito(fur); try { return fn(); } finally { PART_HOOK.fn = null; } }
+export function withLevel(level, fur, fn) { PART_HOOK.fn = level === 'alta' ? hookAlta(fur) : hookMuito(fur); try { return fn(); } finally { PART_HOOK.fn = null; } }
 
 // ------------------------------------------------------------------ cães e gato
 const DOG_FUR = { bolota: [0xe0a35a, 0x9a5a2a, 0xfff1d8], trovao: [0x5a4430, 0xd29a52, 0xe8b878], pipoca: [0xfafafa, 0x2a2a2a, 0xffffff] };
