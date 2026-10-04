@@ -7,7 +7,7 @@ export default defineConfig({
   build: {
     outDir: 'dist', chunkSizeWarningLimit: 2000,
     // viewer.html: página de apoio para conferir os modelos 3D (não é aberta pelo jogo)
-    rollupOptions: { input: { main: resolve(__dirname, 'index.html'), viewer: resolve(__dirname, 'viewer.html') } },
+    rollupOptions: { input: { main: resolve(__dirname, 'index.html'), viewer: resolve(__dirname, 'viewer.html'), showcase: resolve(__dirname, 'showcase.html') } },
   },
   server: { port: 5173 },
 });
