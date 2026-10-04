@@ -2,10 +2,11 @@
 // modo de jogo, fase inicial, personalização completa (com prévia 3D que gira com o dedo) e a lojinha de poderes.
 // Tudo funciona sem internet e sem leitura obrigatória (ícones grandes + voz).
 import { THREE, blobShadow } from '../g3/kit.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { buildKid, poseKid, HAIR_STYLES3, ACCESSORIES } from '../g3/kid.js';
 import { SKINS, HAIR_COLORS, EYE_COLORS, OUTFITS, FACES } from '../character.js';
-import { buildDog, animCreature } from '../g3/creatures.js';
-import { buildFireTruck, SCENERY } from '../g3/props.js';
+import { animCreature } from '../g3/creatures.js';
+import { buildDog, buildFireTruck, SCENERY } from '../g3/final.js';
 import { rng, lowDetail } from '../g3/kit.js';
 import { MODES3, PHASES3, SHOP } from '../g3/config3.js';
 import { load, save, DEFAULT_LOOK } from '../save.js';
@@ -93,6 +94,7 @@ export class FrontApp {
     const s = this.scene = new THREE.Scene();
     s.add(new THREE.HemisphereLight(0xeaf6ff, 0xb5a27a, 1.25));
     const sun = new THREE.DirectionalLight(0xfff2d8, 2.1); sun.position.set(-4, 8, 6); s.add(sun);
+    { const pm = new THREE.PMREMGenerator(r); s.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; s.environmentIntensity = 0.5; pm.dispose(); }
     this.camera = new THREE.PerspectiveCamera(36, 16 / 9, 0.1, 200);
     // chão com gramado, caminho e palco redondo
     const ground = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshToonMaterial({ color: 0x5fd36a })); ground.rotation.x = -Math.PI / 2; s.add(ground);

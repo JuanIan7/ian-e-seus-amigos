@@ -1,12 +1,13 @@
 // Motor do jogo 3D: corrida em 3 faixas com câmera atrás, saltos (duplo e planar), missões de resgate e fases.
 // A lógica é determinística: tick(dt) avança a simulação; render() só desenha (os testes usam os dois separados).
 import { THREE, rng, Particles, blobShadow, mixHex } from './kit.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { buildKid, poseKid } from './kid.js';
 import { World, LANE_W, THEMES3 } from './world.js';
-import { buildObstacle, OBSTACLES, buildStar, buildFlame, buildBin, buildHouse, buildTower, buildPickup } from './props.js';
+import { buildStar, buildPickup } from './props.js';
+import { buildObstacle, OBSTACLES, buildFlame, buildBin, buildHouse, buildTower, buildEgg, buildDog, buildDino, buildPlatform, buildRaft, buildLifeRing, buildFireTruck, FLAME_T } from './final.js';
 import { MISSIONS3, ACTIONS } from './missions3.js';
-import { buildBoneProp, buildGiftBox, buildEgg, buildFruit, buildDog, buildDino, buildLeaf, buildPlatform, buildPad, buildGlider, buildWing, animCreature, buildRaft, buildLifeRing } from './creatures.js';
-import { buildFireTruck } from './props.js';
+import { buildBoneProp, buildGiftBox, buildFruit, buildLeaf, buildPad, buildGlider, buildWing, animCreature } from './creatures.js';
 import { MODES3, PHASES3, LIVES, SHOP } from './config3.js';
 import { POWERS, STARS_PER_POWER } from '../config.js';
 import { load, save } from '../save.js';
@@ -48,7 +49,12 @@ export class Game3D {
     const th = THEMES3[this.phase.theme];
     this.scene.fog = new THREE.Fog(th.fog, 38, 112);
     this.hemi = new THREE.HemisphereLight(th.hemi[0], th.hemi[1], th.hemi[2]); this.scene.add(this.hemi);
-    this.sun = new THREE.DirectionalLight(th.sun[0], th.sun[1]); this.sun.position.set(-6, 14, 8); this.scene.add(this.sun);
+    this.sun = new THREE.DirectionalLight(th.sun[0], th.sun[1]); this.sun.position.set(-6, 14, 8); this.scene.add(this.sun, this.sun.target);
+    // reflexos suaves para os materiais "muito alta" (metal, vidro, água) e sombras projetadas perto da criança
+    const pm = new THREE.PMREMGenerator(this.renderer); this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; this.scene.environmentIntensity = 0.5; pm.dispose();
+    this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.sun.castShadow = true; this.sun.shadow.mapSize.set(1024, 1024); this.sun.shadow.bias = -0.0005; this.sun.shadow.normalBias = 0.03;
+    Object.assign(this.sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 60 }); this.sun.shadow.camera.updateProjectionMatrix();
     this.camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 400);
     this.camPos = new THREE.Vector3(0, 3.7, 6.4); this.camLook = new THREE.Vector3(0, 1.2, -9);
     this.world = new World(this.scene, this.phase.theme, 'w' + (o.seed || 'x'));
@@ -200,11 +206,16 @@ export class Game3D {
     this.frames++; this.fpsT = (this.fpsT || 0) + dtReal;
     if (this.fpsT > 1.5) {
       const fps = this.frames / this.fpsT; this.frames = 0; this.fpsT = 0;
+      if (fps < 36 && this.ratio <= 0.7 && this.sun.castShadow) { this.sun.castShadow = false; this.lowFx = true; }
       if (fps < 44 && this.ratio > 0.7) { this.ratio = Math.max(0.7, this.ratio * 0.85); this.renderer.setPixelRatio(this.ratio); this.resize(); }
       else if (fps > 58 && this.ratio < this.maxRatio) { this.ratio = Math.min(this.maxRatio, this.ratio * 1.08); this.renderer.setPixelRatio(this.ratio); this.resize(); }
     }
   }
-  render() { this.renderer.render(this.scene, this.camera); }
+  render() {
+    // a área de sombra acompanha a criança (mapa pequeno, nítido perto dela)
+    if (this.sun.castShadow && this.kid) { const k = this.kid.position; this.sun.position.set(k.x - 6, k.y + 14, k.z - 10); this.sun.target.position.set(k.x, k.y, k.z - 10); }
+    this.renderer.render(this.scene, this.camera);
+  }
   resize() {
     const w = this.el.clientWidth || window.innerWidth, h = this.el.clientHeight || window.innerHeight;
     this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
@@ -215,7 +226,7 @@ export class Game3D {
     if (this.paused || this.mini || this.over) return;
     if (this.gameOverT > 0) { this.gameOverT -= dt; if (this.gameOverT <= 0) { this.endGame('over'); return; } }
     const c = this.cfg, p = this.p;
-    this.t += dt;
+    this.t += dt; FLAME_T.value = this.t;
     if (p.invul > 0) p.invul -= dt; if (this.recover > 0) this.recover -= dt; if (this.sprayCd > 0) this.sprayCd -= dt;
     if (p.buffer > 0) p.buffer -= dt; if (p.coyote > 0) p.coyote -= dt; if (p.hitT > 0) p.hitT -= dt; if (p.cheer > 0) p.cheer -= dt; if (this.sprayT > 0) this.sprayT -= dt;
     this.cleanTimer += dt;
@@ -944,7 +955,11 @@ export class Game3D {
     cancelAnimationFrame(this.raf); window.removeEventListener('resize', this.onResize); document.removeEventListener('visibilitychange', this.onHidden);
     window.removeEventListener('keydown', this.kd); window.removeEventListener('keyup', this.ku);
     stopMusic(); silenceVoice(); if (this.mini) { this.mini.destroy(); this.mini = null; } this.hud.destroy();
-    this.renderer.dispose(); if (this.el.parentNode) this.el.parentNode.removeChild(this.el);
+    // libera a memória de vídeo desta partida (malhas, materiais, texturas e o próprio contexto)
+    this.scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach((m) => { Object.values(m).forEach((v) => { if (v && v.isTexture) v.dispose(); }); m.dispose(); }); });
+    if (this.world && this.world.lib) Object.values(this.world.lib).forEach((o) => o.traverse((x) => { if (x.geometry) x.geometry.dispose(); }));
+    if (this.scene.environment) this.scene.environment.dispose();
+    this.renderer.dispose(); this.renderer.forceContextLoss(); if (this.el.parentNode) this.el.parentNode.removeChild(this.el);
     if (window.__ian3 === this) window.__ian3 = null;
   }
 }

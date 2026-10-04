@@ -65,16 +65,16 @@ export const lathe = (profile, seg = 24) => LOW ? new THREE.LatheGeometry(profil
 export function taper(points, radii, tubular = 22, radial = 14) {
   if (LOW) { tubular = Math.min(tubular, 6); radial = Math.min(radial, 8); }
   const curve = new THREE.CatmullRomCurve3(points.map((q) => new THREE.Vector3(q[0], q[1], q[2])));
-  const fr = curve.computeFrenetFrames(tubular, false), pos = [], idx = [];
+  const fr = curve.computeFrenetFrames(tubular, false), pos = [], idx = [], uv = [];
   const rAt = (t) => { const f = t * (radii.length - 1), i = Math.min(radii.length - 2, Math.floor(f)), k = f - i; return radii[i] + (radii[i + 1] - radii[i]) * k; };
   for (let i = 0; i <= tubular; i++) {
     const t = i / tubular, c = curve.getPointAt(t), r = rAt(t), N = fr.normals[i], B = fr.binormals[i];
-    for (let j = 0; j <= radial; j++) { const a = j / radial * Math.PI * 2, cs = Math.cos(a), sn = -Math.sin(a); pos.push(c.x + r * (cs * N.x + sn * B.x), c.y + r * (cs * N.y + sn * B.y), c.z + r * (cs * N.z + sn * B.z)); }
+    for (let j = 0; j <= radial; j++) { const a = j / radial * Math.PI * 2, cs = Math.cos(a), sn = -Math.sin(a); pos.push(c.x + r * (cs * N.x + sn * B.x), c.y + r * (cs * N.y + sn * B.y), c.z + r * (cs * N.z + sn * B.z)); uv.push(j / radial, t * curve.getLength()); }
   }
   for (let i = 0; i < tubular; i++) for (let j = 0; j < radial; j++) { const a = i * (radial + 1) + j, b = (i + 1) * (radial + 1) + j; idx.push(a, b, a + 1, b, b + 1, a + 1); }
   // tampas arredondadas nas pontas
-  [0, tubular].forEach((i, e) => { const c = curve.getPointAt(i / tubular), ci = pos.length / 3; pos.push(c.x, c.y, c.z); for (let j = 0; j < radial; j++) { const a = i * (radial + 1) + j; e ? idx.push(ci, a + 1, a) : idx.push(ci, a, a + 1); } });
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  [0, tubular].forEach((i, e) => { const c = curve.getPointAt(i / tubular), ci = pos.length / 3; pos.push(c.x, c.y, c.z); uv.push(0.5, e ? curve.getLength() : 0); for (let j = 0; j < radial; j++) { const a = i * (radial + 1) + j; e ? idx.push(ci, a + 1, a) : idx.push(ci, a, a + 1); } });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
   return g;
 }
 /** pedra orgânica: esfera com relevo suave (o relevo depende só da posição, então não abre frestas) */
@@ -132,7 +132,9 @@ function outlineGeo(geo) {
 }
 
 /** malha com contorno escuro (casca invertida). Retorna um Group com 2 malhas. */
+export const PART_HOOK = { fn: null };   // usado só pela página de comparação de qualidade
 export function toMesh(parts, { outline = true, thin = false, material = toon } = {}) {
+  if (PART_HOOK.fn) { const r = PART_HOOK.fn(parts, { outline, thin, material }); if (r) return r; }
   const geo = mergeParts(parts);
   const g = new THREE.Group();
   const m = new THREE.Mesh(geo, material); g.add(m);

@@ -35,7 +35,7 @@ const BOT = () => {
       }
       const m0 = g.stats.missions; g.tick(1 / 60); if (g.stats.missions > m0) done.push(g.focus ? g.focus.key : 'x');
     }
-    g.render(); return g.snapshot();
+    window.__n = (window.__n || 0) + 1; if (window.__n % 4 === 0) g.render(); return g.snapshot();
   };
 };
 
@@ -49,6 +49,7 @@ for (const phase of phases) for (const mode of modes) {
   const seen = new Set(); let s, t0 = Date.now(), stuck = 0, lastDist = 0, maxStuck = 0, shotsTaken = 0;
   for (let k = 0; k < 60 * 240 / 30; k++) {
     s = await page.evaluate(() => window.__step(30));
+    if (process.env.DEBUG && k % 20 === 0) console.log('   ·', k, JSON.stringify({ t: +s.t.toFixed(1), dist: +s.dist.toFixed(0), ms: Date.now() - t0, m: s.mission && s.mission.key, f: s.focus, tut: s.tutorial, paused: s.paused, mini: s.mini, phase: s.phase, q: s.queue }));
     if (s.mission && s.mission.engaged && !seen.has(s.mission.key)) {
       seen.add(s.mission.key);
       if (shots) { await page.evaluate(() => window.__step(40)); await page.screenshot({ path: path.join(out, `p${phase}-${mode}-${s.mission.key}-a.png`) }); await page.evaluate(() => window.__step(30)); await page.screenshot({ path: path.join(out, `p${phase}-${mode}-${s.mission.key}-b.png`) }); }
