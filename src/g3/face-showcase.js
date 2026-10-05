@@ -8,7 +8,7 @@ const q = new URLSearchParams(location.search);
 const style = q.get('style') || 'normal';
 const W = +(q.get('w') || 640), H = +(q.get('h') || 640);
 
-const LABELS = { infantil: 'Desenho infantil', normal: 'Desenho normal (atual)', anime: 'Estilo anime', realista: '3D realista', ultra: '3D ultra realista' };
+const LABELS = { infantil: 'Desenho infantil', normal: 'Desenho normal (atual)', anime: 'Estilo anime', realista: '3D realista', ultra: '3D ultra realista', chibi1: 'Opção 1 — Fiel ao menino de referência', chibi2: 'Opção 2 — Anime + cabelo do menino', chibi3: 'Opção 3 — Cartoon arredondado' };
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(1); renderer.setSize(W, H); document.body.appendChild(renderer.domElement);
@@ -100,6 +100,22 @@ function eyesRealista(f, fz, ultra) {
   eye(-1); eye(1);
 }
 
+// olhos inspirados no modelo de referência (Chibi Indian child): grandes mas não "anime-gigante",
+// íris castanha quente, sobrancelha grossa e visível, sem cílios decorativos.
+function eyesChibi(f, fz, big) {
+  const eye = (sx) => {
+    const s = big ? 1.0 : 0.92;
+    f.push(P(sph(0.072 * s, 16, 13), 0xffffff, [sx * 0.105, 0.025, fz + 0.03], [0, 0, 0], [1, 1.2, 0.52]));
+    f.push(P(sph(0.05 * s, 14, 11), 0x6b4226, [sx * 0.105, 0.012, fz + 0.015], [0, 0, 0], [1, 1.1, 0.5]));
+    f.push(P(sph(0.026 * s, 12, 9), 0x1c130c, [sx * 0.105, 0.006, fz + 0.006], [0, 0, 0], [1, 1.05, 0.5]));
+    f.push(P(sph(0.016, 8, 6), 0xffffff, [sx * 0.105 - sx * 0.016, 0.042, fz - 0.003]));
+    f.push(P(sph(0.008, 6, 5), 0xffffff, [sx * 0.105 + sx * 0.02, 0.0, fz - 0.003]));
+    // sobrancelha grossa e reta, levemente inclinada, bem à frente pra não ficar escondida na cabeça
+    f.push(P(box(0.082, 0.024, 0.02, 0.008), hex(hc, 0.4), [sx * 0.105, 0.095, fz + 0.045], [0, 0, sx * -0.12]));
+  };
+  eye(-1); eye(1);
+}
+
 function noseMouthCheeks(f, fz, st) {
   if (st === 'infantil') {
     f.push(P(sph(0.018, 6, 5), hex(skin, 0.88), [0, -0.03, fz - 0.003]));
@@ -119,6 +135,12 @@ function noseMouthCheeks(f, fz, st) {
     f.push(P(box(0.012, 0.02, 0.01, 0.004), hex(skin, 0.82), [0, -0.04, fz - 0.002]));
     f.push(P(tor(0.038, 0.007, 4, 10, Math.PI), 0x8a4a52, [0, -0.08, fz + 0.016], [0, 0, Math.PI]));
     f.push(P(sph(0.034, 8, 6), 0xff9aa6, [-0.15, -0.03, fz + 0.04], [0, 0, 0], [1, 0.55, 0.2]), P(sph(0.034, 8, 6), 0xff9aa6, [0.15, -0.03, fz + 0.04], [0, 0, 0], [1, 0.55, 0.2]));
+    return;
+  }
+  if (st.startsWith('chibi')) {
+    f.push(P(sph(0.02, 8, 6), hex(skin, 0.86), [0, -0.038, fz + 0.015], [0, 0, 0], [1, 0.85, 0.75]));              // nariz, bolinha discreta
+    f.push(P(cap(0.009, 0.052, 3, 8), 0x7a3a3a, [0, -0.082, fz + 0.022], [0, 0, Math.PI / 2], [1, 0.4, 0.7]));      // boca pequena, sorriso fechado
+    if (st === 'chibi2') f.push(P(sph(0.034, 8, 6), 0xff9aa6, [-0.15, -0.03, fz + 0.04], [0, 0, 0], [1, 0.55, 0.2]), P(sph(0.034, 8, 6), 0xff9aa6, [0.15, -0.03, fz + 0.04], [0, 0, 0], [1, 0.55, 0.2])); // só a opção 2 mantém a bochecha corada
     return;
   }
   const ultra = st === 'ultra';
@@ -151,6 +173,32 @@ function hairCap(f, st) {
     f.push(P(dome(capR * 0.9, 0, 1.4, 18, 10), hex(hc, 0.95), [0, 0.03, 0.01], [0.3, 0, 0]));
     return;
   }
+  if (st === 'chibi1') {
+    // base cobrindo o topo e a nuca, testa exposta na frente (-Z)
+    f.push(P(dome(capR * 0.98, 0, 1.55, 18, 10), hc, [0, 0.02, 0.015], [0.3, 0, 0]));
+    // mechas espetadas no topo/nuca (z>=-0.05, ou seja, do meio da cabeça pra trás)
+    [[-0.13, 0.33, 0.02, 0.09, -0.22], [0.0, 0.38, 0.06, 0.1, 0.0], [0.15, 0.34, 0.0, 0.085, 0.3],
+     [-0.25, 0.25, -0.04, 0.075, -0.55], [0.25, 0.26, -0.02, 0.08, 0.5], [-0.04, 0.3, 0.1, 0.08, -0.1],
+     [0.1, 0.26, 0.11, 0.07, 0.2]].forEach(([x, y, z, r, rz]) => f.push(P(cone(r, 0.22, 9), hc, [x, y, z], [0.5, 0, rz])));
+    // franja varrendo a testa, assimétrica (z negativo = frente)
+    f.push(P(sph(0.1, 9, 7), hc, [-0.08, 0.15, -0.19], [0.3, 0, 0.35], [1.3, 0.7, 0.8]));
+    f.push(P(sph(0.085, 9, 7), hc, [0.1, 0.17, -0.18], [0.3, 0, -0.15], [1.15, 0.6, 0.8]));
+    return;
+  }
+  if (st === 'chibi2') {
+    // igual ao penteado "Curto liso" já aplicado no jogo (mechas espetadas sobre a base redonda)
+    f.push(P(dome(capR, 0, 1.78, 18, 10), hc, [0, 0.015, 0.012], [0.3, 0, 0], [1, 1.02, 1.02]));
+    [[-0.12, 0.17, 0.19, 0.5], [0, 0.205, 0.215, 0.2], [0.12, 0.17, 0.19, -0.5]].forEach(([x, y, z, rz]) => f.push(P(sph(0.095, 9, 7), hc, [x, y, -z], [0.3, 0, rz], [1.15, 0.75, 0.8])));
+    [[-0.1, 0.33, 0.06, 0.085, -0.28], [0.03, 0.36, 0.1, 0.095, 0.05], [0.16, 0.31, 0.02, 0.08, 0.35], [-0.2, 0.27, -0.02, 0.07, -0.5], [0.25, 0.24, -0.05, 0.065, 0.55]].forEach(([x, y, z, r, rz]) => f.push(P(cone(r, 0.19, 9), hc, [x, y, z], [0.5, 0, rz])));
+    return;
+  }
+  if (st === 'chibi3') {
+    // tufos arredondados (menos pontudos), visual mais "cartoon macio"
+    f.push(P(dome(capR * 1.02, 0, 1.6, 18, 10), hc, [0, 0.02, 0.015], [0.3, 0, 0]));
+    [[-0.14, 0.29, -0.03], [0.0, 0.33, 0.0], [0.15, 0.28, -0.04], [-0.24, 0.18, -0.1], [0.24, 0.19, -0.08], [-0.04, 0.25, 0.08], [0.1, 0.21, 0.08]]
+      .forEach(([x, y, z]) => f.push(P(sph(0.1, 9, 7), hc, [x, y, z], [0, 0, 0], [1, 0.85, 0.9])));
+    return;
+  }
   // normal
   f.push(P(dome(capR, 0, 1.78, 18, 10), hc, [0, 0.015, 0.012], [0.3, 0, 0], [1, 1.02, 1.02]));
   [[-0.12, 0.17, 0.19, 0.5], [0, 0.205, 0.215, 0.2], [0.12, 0.17, 0.19, -0.5]].forEach(([x, y, z, rz]) => f.push(P(sph(0.095, 9, 7), hc, [x, y, -z], [0.3, 0, rz], [1.15, 0.75, 0.8])));
@@ -170,7 +218,8 @@ function buildHead(st) {
   const f = [];
   if (st === 'infantil') eyesInfantil(f, fz);
   else if (st === 'normal') eyesNormal(f, fz);
-  else if (st === 'anime') eyesAnime(f, fz);
+  else if (st === 'anime' || st === 'chibi2') eyesAnime(f, fz);
+  else if (st === 'chibi1' || st === 'chibi3') eyesChibi(f, fz, st === 'chibi3');
   else eyesRealista(f, fz, st === 'ultra');
   noseMouthCheeks(f, fz, st);
   group.add(toMesh(f, { outline: false, material: mat }));
