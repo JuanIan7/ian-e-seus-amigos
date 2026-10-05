@@ -35,25 +35,23 @@ function buildHead(look, o, id) {
   base.push(P(cyl(0.07, 0.08, 0.1, 10), hex(skin, 0.9), [0, -0.27, 0.01]));
   head.add(toMesh(base, { thin: true }));
 
-  // --- rosto: olhos grandes e brilhantes, sobrancelhas, nariz, sorriso aberto e bochechas ---
+  // --- rosto (estilo "cartoon arredondado", inspirado no menino de referência): olhos grandes redondos,
+  // sobrancelha grossa, nariz discreto, boca pequena fechada, sem bochecha corada ---
   const fz = -zf;
   const f = [];
   const eye = (sx) => {
-    f.push(P(sph(0.078, 12, 9), 0xffffff, [sx * 0.105, 0.035, fz + 0.035], [0, 0, 0], [1, 1.2, 0.55]));
-    f.push(P(sph(0.052, 10, 8), ec, [sx * 0.105, 0.03, fz + 0.012], [0, 0, 0], [1, 1.15, 0.5]));
-    f.push(P(sph(0.029, 8, 6), 0x0d0b0a, [sx * 0.105, 0.03, fz + 0.002], [0, 0, 0], [1, 1.1, 0.5]));
-    f.push(P(sph(0.018, 6, 5), 0xffffff, [sx * 0.105 - sx * 0.018, 0.058, fz - 0.004], [0, 0, 0], [1, 1, 0.5]));
-    f.push(P(sph(0.009, 6, 5), 0xffffff, [sx * 0.105 + sx * 0.02, 0.0, fz - 0.004], [0, 0, 0], [1, 1, 0.5]));
-    f.push(P(cap(look.brows ? 0.022 : 0.014, 0.075, 3, 6), hex(hc, 0.7), [sx * 0.105, 0.125 + (look.brows ? 0.005 : 0), fz + 0.03], [0, 0, Math.PI / 2 + sx * 0.12], [1, 1, 0.8]));
+    f.push(P(sph(0.072, 16, 13), 0xffffff, [sx * 0.105, 0.025, fz + 0.03], [0, 0, 0], [1, 1.2, 0.52]));
+    f.push(P(sph(0.05, 14, 11), ec, [sx * 0.105, 0.012, fz + 0.015], [0, 0, 0], [1, 1.1, 0.5]));
+    f.push(P(sph(0.026, 12, 9), 0x1c130c, [sx * 0.105, 0.006, fz + 0.006], [0, 0, 0], [1, 1.05, 0.5]));
+    f.push(P(sph(0.016, 8, 6), 0xffffff, [sx * 0.105 - sx * 0.016, 0.042, fz - 0.003]));
+    f.push(P(sph(0.008, 6, 5), 0xffffff, [sx * 0.105 + sx * 0.02, 0.0, fz - 0.003]));
+    f.push(P(cap(look.brows ? 0.017 : 0.013, 0.07, 3, 6), hex(hc, 0.45), [sx * 0.105, 0.11 + (look.brows ? 0.006 : 0), fz + 0.035], [0, 0, Math.PI / 2 + sx * 0.14], [1, 1, 0.8]));
   };
   eye(-1); eye(1);
   if (look.freckles) [-1, 1].forEach((s) => [[0.13, -0.04], [0.17, -0.02], [0.16, -0.07], [0.2, -0.05], [0.12, -0.08]].forEach(([x, y]) => f.push(P(sph(0.011, 6, 5), hex(skin, 0.72), [s * x, y, fz + 0.045]))));
-  f.push(P(sph(0.026, 8, 6), hex(skin, 0.86), [0, -0.035, fz - 0.005], [0, 0, 0], [1, 0.8, 0.8]));
-  f.push(P(tor(0.062, 0.014, 6, 14, Math.PI), 0x5a1a26, [0, -0.07, fz + 0.018], [0, 0, Math.PI]));                       // sorriso
-  f.push(P(sph(0.05, 8, 6), 0x7a2230, [0, -0.095, fz + 0.012], [0, 0, 0], [1.2, 0.55, 0.4]));                           // boca aberta
-  f.push(P(sph(0.026, 6, 5), 0xff7d8a, [0, -0.106, fz + 0.006], [0, 0, 0], [1.3, 0.5, 0.4]));
-  f.push(P(sph(0.045, 8, 6), 0xff7a8a, [-0.17, -0.055, fz + 0.04], [0, 0, 0], [1, 0.7, 0.35]), P(sph(0.045, 8, 6), 0xff7a8a, [0.17, -0.055, fz + 0.04], [0, 0, 0], [1, 0.7, 0.35]));
-  if (id === 'heroi') f.push(P(box(0.47, 0.1, 0.03, 0.03), 0x4a1fb0, [0, 0.035, fz + 0.03]), P(sph(0.078, 12, 9), 0xffffff, [-0.105, 0.035, fz + 0.003], [0, 0, 0], [1, 1.2, 0.5]), P(sph(0.078, 12, 9), 0xffffff, [0.105, 0.035, fz + 0.003], [0, 0, 0], [1, 1.2, 0.5]));
+  f.push(P(sph(0.02, 8, 6), hex(skin, 0.86), [0, -0.038, fz + 0.015], [0, 0, 0], [1, 0.85, 0.75]));                      // nariz (bolinha discreta)
+  f.push(P(cap(0.009, 0.052, 3, 8), 0x7a3a3a, [0, -0.082, fz + 0.022], [0, 0, Math.PI / 2], [1, 0.4, 0.7]));             // boca pequena, sorriso fechado
+  if (id === 'heroi') f.push(P(box(0.47, 0.1, 0.03, 0.03), 0x4a1fb0, [0, 0.03, fz + 0.03]), P(sph(0.1, 14, 11), 0xffffff, [-0.105, 0.03, fz + 0.004], [0, 0, 0], [0.92, 1.4, 0.45]), P(sph(0.1, 14, 11), 0xffffff, [0.105, 0.03, fz + 0.004], [0, 0, 0], [0.92, 1.4, 0.45]));
   head.add(toMesh(f, { outline: false }));
 
   // --- cabelo ---
@@ -68,8 +66,14 @@ function buildHead(look, o, id) {
   if (!covered) {
     if (style === 4) hp.push(P(sph(0.385, 14, 10), hc, [0, 0.06, 0.14], [0, 0, 0], [1, 0.98, 0.98]));
     else if (style === 9) hp.push(P(dome(capR * 0.97, 0, 1.6, 18, 10), hc, [0, 0.01, 0.01], [0.3, 0, 0]));
+    else if (style === 0 && !hat) {
+      // "curto liso": tufos arredondados, inspirados no menino de referência
+      hp.push(P(dome(capR * 1.02, 0, 1.6, 18, 10), hc, [0, 0.015, 0.012], [0.3, 0, 0]));
+      [[-0.14, 0.29, -0.03], [0.0, 0.33, 0.0], [0.15, 0.28, -0.04], [-0.24, 0.18, -0.1], [0.24, 0.19, -0.08], [-0.04, 0.25, 0.08], [0.1, 0.21, 0.08]]
+        .forEach(([x, y, z]) => hp.push(P(sph(0.1, 9, 7), hc, [x, y, z], [0, 0, 0], [1, 0.85, 0.9])));
+    }
     else cap1();
-    if (style !== 4 && style !== 9 && style !== 8 && !hat) fringe();
+    if (style !== 4 && style !== 9 && style !== 8 && style !== 0 && !hat) fringe();
     if (style === 8 && !hat) for (let i = 0; i < 6; i++) hp.push(P(cone(0.06, 0.16 - Math.abs(i - 2.5) * 0.02, 10), hc, [0, 0.29 - Math.abs(i - 2.5) * 0.02, -0.18 + i * 0.075], [-0.4 + i * 0.16, 0, 0]));
     if (style === 1) { hp.push(P(box(0.5, 0.62, 0.13, 0.06), hc, [0, -0.15, 0.2])); hp.push(P(cap(0.055, 0.34, 4, 8), hc, [-0.275, -0.08, 0.02]), P(cap(0.055, 0.34, 4, 8), hc, [0.275, -0.08, 0.02])); }
     if (style === 2) { [[-1, 0.0], [1, 0.0], [-1, -0.15], [1, -0.15], [0, -0.04], [-0.5, -0.13], [0.5, -0.13]].forEach(([sx, y], i) => hp.push(P(sph(0.1, 8, 6), hc, [sx * 0.24, y - 0.03, 0.1 + (sx === 0 || Math.abs(sx) < 1 ? 0.14 : 0)], [0, 0, 0], [1, 1.1, 1]))); }

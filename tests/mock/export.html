@@ -1,0 +1,100 @@
+<!doctype html>
+<html><head><meta charset="utf-8" />
+<style>html,body{margin:0;padding:0;background:transparent}</style></head>
+<body>
+<script>
+const q = new URLSearchParams(location.search);
+const mode = q.get('mode') || 'icon';      // icon | fg | splash
+const W = +(q.get('w') || 512), H = +(q.get('h') || 512);
+
+const BG1 = '#2f9bff', BG2 = '#8fd3ff';
+
+function svgNS(tag, attrs) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+// desenha só o personagem (sem fundo) dentro de um viewBox 512x512 — usado no ícone completo e na camada "foreground" adaptativa
+function drawArt(g) {
+  g.appendChild(svgNS('path', { d: 'M400 150 c18 24 10 46 -4 56 c6 -22 -6 -34 -14 -40 c4 20 -10 34 -10 50 a20 20 0 1 0 40 0 c0 -28 -6 -46 -12 -66 z', fill: '#ffb23f' }));
+  const pawC = '#ffffff';
+  [[76,380],[94,360],[112,360],[130,380]].forEach(([x,y]) => g.appendChild(svgNS('ellipse', { cx:x, cy:y, rx:10, ry:13, fill: pawC, opacity:0.95 })));
+  g.appendChild(svgNS('ellipse', { cx: 103, cy: 398, rx:18, ry:15, fill: pawC, opacity:0.95 }));
+  g.appendChild(svgNS('path', { d: 'M400 380 q50 -10 46 40 q-50 10 -46 -40 z', fill: '#58c248' }));
+  g.appendChild(svgNS('circle', { cx: 256, cy: 300, r: 86, fill: '#f5c9a0' }));
+  g.appendChild(svgNS('path', { d: 'M256 210 a90 90 0 0 1 90 70 l-180 0 a90 90 0 0 1 90 -70 z', fill: '#e8352f' }));
+  g.appendChild(svgNS('rect', { x: 166, y: 268, width: 180, height: 16, rx: 8, fill: '#ffd23f' }));
+  [-1,1].forEach((s) => { g.appendChild(svgNS('circle', { cx: 256+s*30, cy: 300, r: 14, fill: '#2b2b2b' })); g.appendChild(svgNS('circle', { cx: 256+s*30-4, cy: 294, r: 4, fill:'#fff' })); });
+  g.appendChild(svgNS('path', { d: 'M226 336 a30 22 0 0 0 60 0', fill: 'none', stroke: '#7a2230', 'stroke-width': 10, 'stroke-linecap':'round' }));
+  g.appendChild(svgNS('rect', { x: 150, y: 380, width: 212, height: 90, rx: 30, fill: '#e8352f' }));
+}
+
+function makeIconSvg(w, h, { withBg, scale = 1 } = {}) {
+  const svg = svgNS('svg', { width: w, height: h, viewBox: '0 0 512 512', xmlns: 'http://www.w3.org/2000/svg' });
+  if (withBg) {
+    const grad = svgNS('radialGradient', { id: 'bgI', cx: '35%', cy: '30%', r: '75%' });
+    grad.appendChild(svgNS('stop', { offset: '0%', 'stop-color': BG2 }));
+    grad.appendChild(svgNS('stop', { offset: '100%', 'stop-color': BG1 }));
+    svg.appendChild(grad);
+    svg.appendChild(svgNS('rect', { x:0, y:0, width:512, height:512, fill:'url(#bgI)' }));
+    svg.appendChild(svgNS('circle', { cx: 256, cy: 256, r: 220, fill: 'rgba(255,255,255,0.14)' }));
+  }
+  // o desenho não é visualmente centrado no quadro 512x512 (mais peso embaixo), então a âncora do zoom usa o centro visual, não o centro geométrico
+  const art = svgNS('g', { transform: scale !== 1 ? `translate(260 308) scale(${scale}) translate(-260 -308)` : '' });
+  drawArt(art);
+  svg.appendChild(art);
+  return svg;
+}
+
+const root = document.body;
+if (mode === 'icon') {
+  root.appendChild(makeIconSvg(W, H, { withBg: true }));
+} else if (mode === 'fg') {
+  // camada "foreground" do ícone adaptativo: fundo transparente, arte reduzida pra caber na zona segura (~66% central)
+  root.appendChild(makeIconSvg(W, H, { withBg: false, scale: 0.72 }));
+} else if (mode === 'splash') {
+  const svg = svgNS('svg', { width: W, height: H, viewBox: '0 0 300 640', xmlns: 'http://www.w3.org/2000/svg' });
+  const grad = svgNS('linearGradient', { id: 'bgS', x1:'0', y1:'0', x2:'0', y2:'1' });
+  grad.appendChild(svgNS('stop', { offset:'0%', 'stop-color': BG1 }));
+  grad.appendChild(svgNS('stop', { offset:'100%', 'stop-color': '#bfe8ff' }));
+  svg.appendChild(grad);
+  svg.appendChild(svgNS('rect', { x:0, y:0, width:300, height:640, fill:'url(#bgS)' }));
+  const logo = svgNS('svg', { x: 60, y: 160, width: 180, height: 180, viewBox: '0 0 512 512' });
+  logo.appendChild(makeIconSvg(512, 512, { withBg: true }));
+  const clip = svgNS('clipPath', { id: 'clipLogo' });
+  clip.appendChild(svgNS('rect', { x:0, y:0, width:512, height:512, rx:110 }));
+  svg.appendChild(clip);
+  logo.firstChild.setAttribute('clip-path', 'url(#clipLogo)');
+  svg.appendChild(logo);
+  svg.appendChild(svgNS('rect', { x: 60, y: 160, width: 180, height: 180, rx: 40, fill:'none', stroke:'#ffffff', 'stroke-width':7, opacity:0.85 }));
+  const title = svgNS('text', { x: 150, y: 392, 'text-anchor':'middle', 'font-size':26, 'font-weight':900, fill:'#ffffff', style:'font-family:Segoe UI, system-ui, sans-serif' });
+  const t1 = svgNS('tspan', { x: 150, dy: 0 }); t1.textContent = 'Ian e Seus';
+  const t2 = svgNS('tspan', { x: 150, dy: 30 }); t2.textContent = 'Amigos';
+  title.appendChild(t1); title.appendChild(t2); svg.appendChild(title);
+  const cols = ['#ffd23f', '#ff8a1f', '#58c248'];
+  cols.forEach((c2, i) => svg.appendChild(svgNS('circle', { cx: 150 + (i-1)*26, cy: 450, r: 9, fill: c2, opacity: i===1 ? 1 : 0.65 })));
+  const sub = svgNS('text', { x: 150, y: 488, 'text-anchor':'middle', 'font-size':15, 'font-weight':600, fill:'#ffffffcc' });
+  sub.textContent = 'carregando a aventura...';
+  svg.appendChild(sub);
+  root.appendChild(svg);
+} else if (mode === 'splash-land') {
+  const svg = svgNS('svg', { width: W, height: H, viewBox: '0 0 640 300', xmlns: 'http://www.w3.org/2000/svg' });
+  const grad = svgNS('linearGradient', { id: 'bgS2', x1:'0', y1:'0', x2:'1', y2:'1' });
+  grad.appendChild(svgNS('stop', { offset:'0%', 'stop-color': BG1 }));
+  grad.appendChild(svgNS('stop', { offset:'100%', 'stop-color': '#bfe8ff' }));
+  svg.appendChild(grad);
+  svg.appendChild(svgNS('rect', { x:0, y:0, width:640, height:300, fill:'url(#bgS2)' }));
+  const logo = svgNS('svg', { x: 220, y: 40, width: 150, height: 150, viewBox: '0 0 512 512' });
+  logo.appendChild(makeIconSvg(512, 512, { withBg: true }));
+  const clip = svgNS('clipPath', { id: 'clipLogo2' });
+  clip.appendChild(svgNS('rect', { x:0, y:0, width:512, height:512, rx:110 }));
+  svg.appendChild(clip);
+  logo.firstChild.setAttribute('clip-path', 'url(#clipLogo2)');
+  svg.appendChild(logo);
+  const title = svgNS('text', { x: 320, y: 218, 'text-anchor':'middle', 'font-size':24, 'font-weight':900, fill:'#ffffff', style:'font-family:Segoe UI, system-ui, sans-serif' });
+  title.textContent = 'Ian e Seus Amigos';
+  svg.appendChild(title);
+  const cols = ['#ffd23f', '#ff8a1f', '#58c248'];
+  cols.forEach((c2, i) => svg.appendChild(svgNS('circle', { cx: 320 + (i-1)*24, cy: 250, r: 7, fill: c2, opacity: i===1 ? 1 : 0.65 })));
+  root.appendChild(svg);
+}
+window.__ready = true;
+</script>
+</body></html>
