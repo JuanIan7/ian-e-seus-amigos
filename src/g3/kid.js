@@ -71,6 +71,8 @@ function buildHead(look, o, id) {
     else cap1();
     if (style !== 4 && style !== 9 && style !== 8 && !hat) fringe();
     if (style === 8 && !hat) for (let i = 0; i < 6; i++) hp.push(P(cone(0.06, 0.16 - Math.abs(i - 2.5) * 0.02, 10), hc, [0, 0.29 - Math.abs(i - 2.5) * 0.02, -0.18 + i * 0.075], [-0.4 + i * 0.16, 0, 0]));
+    // mechas espetadas (estilo "curto liso", referência: cabelo bagunçado tipo anime)
+    if (style === 0 && !hat) [[-0.1, 0.33, 0.06, 0.085, -0.28], [0.03, 0.36, 0.1, 0.095, 0.05], [0.16, 0.31, 0.02, 0.08, 0.35], [-0.2, 0.27, -0.02, 0.07, -0.5], [0.25, 0.24, -0.05, 0.065, 0.55]].forEach(([x, y, z, r, rz]) => hp.push(P(cone(r, 0.19, 9), hc, [x, y, z], [0.5, 0, rz])));
     if (style === 1) { hp.push(P(box(0.5, 0.62, 0.13, 0.06), hc, [0, -0.15, 0.2])); hp.push(P(cap(0.055, 0.34, 4, 8), hc, [-0.275, -0.08, 0.02]), P(cap(0.055, 0.34, 4, 8), hc, [0.275, -0.08, 0.02])); }
     if (style === 2) { [[-1, 0.0], [1, 0.0], [-1, -0.15], [1, -0.15], [0, -0.04], [-0.5, -0.13], [0.5, -0.13]].forEach(([sx, y], i) => hp.push(P(sph(0.1, 8, 6), hc, [sx * 0.24, y - 0.03, 0.1 + (sx === 0 || Math.abs(sx) < 1 ? 0.14 : 0)], [0, 0, 0], [1, 1.1, 1]))); }
     if (style === 3) { for (let i = 0; i < 22; i++) { const a = i * 2.399, k = Math.sqrt((i + 0.5) / 22); const y = 0.1 + (1 - k) * 0.22, rr = 0.19 + k * 0.1; const x = Math.cos(a) * rr, z = Math.sin(a) * rr + 0.03; if (z < -0.12 && y < 0.2) continue; hp.push(P(sph(0.082, 7, 6), hc, [x, y, z])); } [-1, 1].forEach((s) => hp.push(P(sph(0.085, 7, 6), hc, [s * 0.255, -0.02, 0.05]), P(sph(0.08, 7, 6), hc, [s * 0.235, -0.1, 0.1]))); }
