@@ -116,8 +116,8 @@ export class Game3D {
     const k = (e, down) => {
       if (e.repeat) return;
       const c = e.code;
-      if (c === 'ArrowUp' || c === 'Space' || c === 'KeyW') { e.preventDefault(); this.setJump(down); }
-      else if (c === 'ShiftLeft' || c === 'ShiftRight' || c === 'KeyR') this.setRun(down);
+      if (c === 'ArrowUp' || c === 'Space') { e.preventDefault(); this.setJump(down); }
+      else if (c === 'ShiftLeft' || c === 'ShiftRight' || c === 'KeyR' || c === 'KeyW') this.setRun(down);
       else if (down && (c === 'ArrowLeft' || c === 'KeyA')) this.steer(-1);
       else if (down && (c === 'ArrowRight' || c === 'KeyD')) this.steer(1);
       else if (down && (c === 'ArrowDown' || c === 'KeyX' || c === 'KeyZ')) this.pressAction();
