@@ -1,7 +1,7 @@
 // Versões finais dos modelos, conforme as escolhas de qualidade (docs/qualidade-escolhas.md).
 // O jogo importa daqui (e não direto de props.js / creatures.js) os construtores de cenário, obstáculos, missões e bichinhos.
 // Cada peça "muito alta" é compactada (malhas do mesmo material juntadas) e não carrega luzes próprias, para o celular aguentar.
-import { THREE, PART_HOOK, toMesh, hex } from './kit.js';
+import { THREE, PART_HOOK, toMesh, hex, markShared } from './kit.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as B from './props.js';
 import * as C from './creatures.js';
@@ -115,6 +115,7 @@ function flameMat() {
 let glowT = null;
 function glowTex() { if (!glowT) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, '#fff'); gr.addColorStop(0.35, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); glowT = new THREE.CanvasTexture(c); } return glowT; }
 const PLANE_BIG = new THREE.PlaneGeometry(0.9, 1.25).translate(0, 0.6, 0), PLANE_CORE = new THREE.PlaneGeometry(0.55, 0.75).translate(0, 0.34, 0);
+PLANE_BIG.userData.shared = PLANE_CORE.userData.shared = true;
 export function buildFlame() {
   const g = new THREE.Group(), parts = [];
   [0.55, 0.55 + Math.PI / 2].forEach((a) => { const m = new THREE.Mesh(PLANE_BIG, flameMat()); m.rotation.y = a; m.renderOrder = 8; g.add(m); parts.push(m); });
@@ -218,7 +219,7 @@ export function buildEgg(scale = 1) {
     const e = new THREE.Group(), shell = new THREE.MeshPhysicalMaterial({ color: 0xf8ecc8, roughness: 0.35, clearcoat: 0.5, sheen: 0.4, sheenColor: new THREE.Color(0xffffff) }), dot = new THREE.MeshStandardMaterial({ color: 0x5fbf5a, roughness: 0.4 });
     e.add(new THREE.Mesh(new THREE.LatheGeometry([[0.0001, 0], [0.2, 0.04], [0.27, 0.22], [0.24, 0.48], [0.13, 0.66], [0.0001, 0.7]].map(([a, b]) => new THREE.Vector2(a, b)), 40), shell));
     for (let k = 0; k < 9; k++) { const a = k * 2.1, y = 0.12 + (k % 5) * 0.11, rr = 0.27 - Math.abs(y - 0.3) * 0.3; const s = new THREE.Mesh(new THREE.SphereGeometry(0.04 + (k % 2) * 0.02, 12, 8), dot); s.position.set(Math.cos(a) * rr, y, Math.sin(a) * rr); s.scale.set(0.35, 1, 1); s.rotation.y = -a; e.add(s); }
-    e.traverse((o) => { if (o.isMesh) o.castShadow = true; }); EGG = compact(e);
+    e.traverse((o) => { if (o.isMesh) o.castShadow = true; }); EGG = markShared(compact(e));
   }
   const g = new THREE.Group(); g.add(EGG.clone()); g.scale.setScalar(scale); return g;
 }
@@ -239,7 +240,7 @@ export function buildLavaIsland() {
 export function buildWaterPatch(r = 2.6) {
   const g = new THREE.Group();
   const pm = seaMaterial().clone(); pm.normalMap = seaNormal().clone(); pm.normalMap.repeat.set(r / 7, r / 7); pm.normalMap.needsUpdate = true;
-  const w = new THREE.Mesh(new THREE.CircleGeometry(r, 48), pm); w.rotation.x = -Math.PI / 2; w.position.y = -0.38; w.receiveShadow = true; g.add(w);
+  const w = new THREE.Mesh(new THREE.CircleGeometry(r, 48), pm); w.rotation.x = -Math.PI / 2; w.position.y = -0.38; w.receiveShadow = true; w.userData.ownMat = true; g.add(w);   // material e textura próprios: liberados com a missão
   const foam = foamRing('muito', r * 0.95); foam.position.y = -0.34; g.add(foam);
   return g;
 }

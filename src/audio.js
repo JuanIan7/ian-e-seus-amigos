@@ -120,6 +120,7 @@ const PERC = {
 function schedule() {
   if (!ctx || !curTrack) return;
   const T = TRACKS[curTrack], stepDur = 60 / T.bpm / 2;               // colcheias
+  if (nextAt < ctx.currentTime - 0.2) nextAt = ctx.currentTime + 0.05;   // depois de uma travada ou volta do segundo plano: retoma, sem tocar as notas perdidas de uma vez
   while (nextAt < ctx.currentTime + 0.25) {
     const i = stepN, t = nextAt + (i % 2 ? T.swing * stepDur : 0);
     if (on()) {
@@ -142,15 +143,21 @@ export function startMusic(name = 'menu') {
   musicTimer = setInterval(schedule, 60); schedule();
 }
 export function stopMusic() { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } curTrack = null; }
+// app em segundo plano: a música (do menu ou do jogo) para e volta sozinha ao retornar
+let pausedTrack = null;
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (curTrack) pausedTrack = curTrack; stopMusic(); silenceVoice(); }
+  else if (pausedTrack) { const t = pausedTrack; pausedTrack = null; if (!window.__ian3) { unlock(); startMusic(t); } }   // dentro do jogo a partida volta pausada: a música só retoma no botão de continuar
+});
 export function currentTrack() { return curTrack; }
 
 export function speak(text) {
   if (!on() || !('speechSynthesis' in window)) return;
   try {
-    window.speechSynthesis.cancel();
+    const ss = window.speechSynthesis; if (ss.speaking || ss.pending) ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'pt-BR'; u.rate = 0.9; u.pitch = 1.3; u.volume = 0.9;
-    window.speechSynthesis.speak(u);
+    setTimeout(() => { try { ss.speak(u); } catch (e) { /* sem voz */ } }, 0);     // falar logo depois de cancelar perde a frase em alguns Androids
   } catch (e) { /* sem voz: segue só com o visual */ }
 }
 export function silenceVoice() { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }

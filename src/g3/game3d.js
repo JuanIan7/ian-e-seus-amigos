@@ -1,6 +1,6 @@
 // Motor do jogo 3D: corrida em 3 faixas com câmera atrás, saltos (duplo e planar), missões de resgate e fases.
 // A lógica é determinística: tick(dt) avança a simulação; render() só desenha (os testes usam os dois separados).
-import { THREE, rng, Particles, blobShadow, mixHex } from './kit.js';
+import { THREE, rng, Particles, blobShadow, mixHex, markShared, disposeDeep } from './kit.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { buildKid, poseKid } from './kid.js';
 import { World, LANE_W, THEMES3 } from './world.js';
@@ -42,9 +42,16 @@ export class Game3D {
 
     // ---- desenho ----
     this.el = document.createElement('div'); this.el.className = 'g3'; this.root.appendChild(this.el);
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.maxRatio = Math.min(window.devicePixelRatio || 1, 2); this.ratio = this.maxRatio;
+    // celular: telas densas dispensam o antialias (caro) e começam com resolução menor; o ajuste dinâmico sobe se sobrar fôlego
+    const dpr = window.devicePixelRatio || 1, mobile = this.mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
+    this.renderer = new THREE.WebGLRenderer({ antialias: !mobile || dpr < 1.5, powerPreference: 'high-performance' });
+    this.maxRatio = Math.min(dpr, mobile ? 1.5 : 2); this.ratio = mobile ? Math.min(this.maxRatio, 1.25) : this.maxRatio;
     this.renderer.setPixelRatio(this.ratio); this.el.appendChild(this.renderer.domElement);
+    // se o sistema derrubar o contexto WebGL (memória baixa, app em segundo plano), o jogo pausa e volta quando ele é restaurado
+    const cv = this.renderer.domElement;
+    this.onCtxLost = (e) => { e.preventDefault(); this.ctxLost = true; this.setPaused(true); };
+    this.onCtxRestored = () => { this.ctxLost = false; this.last = performance.now(); this.acc = 0; };
+    cv.addEventListener('webglcontextlost', this.onCtxLost); cv.addEventListener('webglcontextrestored', this.onCtxRestored);
     this.scene = new THREE.Scene();
     const th = THEMES3[this.phase.theme];
     this.scene.fog = new THREE.Fog(th.fog, 38, 112);
@@ -65,7 +72,7 @@ export class Game3D {
     this.shadow = blobShadow(0.9, 0.9); this.scene.add(this.shadow);
     this.bubble = new THREE.Mesh(new THREE.SphereGeometry(0.95, 16, 12), new THREE.MeshBasicMaterial({ color: 0x4db8ff, transparent: true, opacity: 0.28, depthWrite: false })); this.bubble.visible = false; this.scene.add(this.bubble);
     this.hint = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.7, 4), new THREE.MeshBasicMaterial({ color: 0xffd23f })); this.hint.rotation.x = Math.PI; this.hint.visible = false; this.scene.add(this.hint);
-    this.tpl = {};
+    this.tpl = {}; this.starTpl = markShared(buildStar());     // estrelas são clones de um modelo só (mesma geometria na GPU)
 
     // ---- estado ----
     this.paused = false; this.t = 0; this.dist = 0; this.runTime = 0; this.worldSpeed = 0;
@@ -201,12 +208,13 @@ export class Game3D {
       while (this.acc >= 1 / 60 && n < 4) { this.tick(1 / 60); this.acc -= 1 / 60; n++; }
       if (n === 4) this.acc = 0;
     }
+    if (this.ctxLost) return;
     this.render();
     // resolução dinâmica: mantém a fluidez em celulares intermediários
     this.frames++; this.fpsT = (this.fpsT || 0) + dtReal;
     if (this.fpsT > 1.5) {
       const fps = this.frames / this.fpsT; this.frames = 0; this.fpsT = 0;
-      if (fps < 36 && this.ratio <= 0.7 && this.sun.castShadow) { this.sun.castShadow = false; this.lowFx = true; }
+      if (fps < (this.mobile ? 45 : 36) && (this.mobile || this.ratio <= 0.7) && this.sun.castShadow) { this.sun.castShadow = false; this.lowFx = true; }
       if (fps < 44 && this.ratio > 0.7) { this.ratio = Math.max(0.7, this.ratio * 0.85); this.renderer.setPixelRatio(this.ratio); this.resize(); }
       else if (fps > 58 && this.ratio < this.maxRatio) { this.ratio = Math.min(this.maxRatio, this.ratio * 1.08); this.renderer.setPixelRatio(this.ratio); this.resize(); }
     }
@@ -516,7 +524,7 @@ export class Game3D {
     for (let i = 0; i < 3; i++) this.addStar(l, s - 1.4 + i * 1.4, 1.1 + (i === 1 ? 0.9 : 0.3));
     return 5;
   }
-  tmpl(kind) { return (this.tpl[kind] ||= buildObstacle(kind)); }
+  tmpl(kind) { return (this.tpl[kind] ||= markShared(buildObstacle(kind))); }
   addObstacle(kind, lane, s) {
     const d = OBSTACLES[kind]; let mesh;
     if (kind === 'ptero') { mesh = new THREE.Group(); const b = buildDino('ptero'); b.scale.setScalar(1.15); b.rotation.y = Math.PI; mesh.add(b); mesh.userData.b = b; }
@@ -526,7 +534,7 @@ export class Game3D {
     const e = { type: 'obs', kind, lane, x: this.laneX(lane), s, w: d.w, h: d.h, d: d.d, mesh, sh, hit: false, noFloor: kind === 'ptero' }; this.ents.push(e); return e;
   }
   addStar(lane, s, y) {
-    const mesh = buildStar(); this.scene.add(mesh);
+    const mesh = this.starTpl.clone(); this.scene.add(mesh);
     this.ents.push({ type: 'star', lane, x: this.laneX(lane), s, y, mesh, spin: this.rng.frac() * 6 });
   }
   addPickup(kind, lane, s) {
@@ -708,7 +716,7 @@ export class Game3D {
       pr.t += dt; const u = Math.min(1, pr.t / pr.T);
       pr.mesh.position.set(pr.from.x + (pr.to.x - pr.from.x) * u, pr.from.y + (pr.to.y - pr.from.y) * u + Math.sin(u * Math.PI) * 1.4, pr.from.z + (pr.to.z - pr.from.z) * u);
       pr.mesh.rotation.y += dt * 9; pr.mesh.rotation.x += dt * 5;
-      if (u >= 1) { this.scene.remove(pr.mesh); pr.done = true; this.hitQueue.push({ t: 0, m: pr.m, n: 1 }); this.fx.burst(pr.to.x, pr.to.y, pr.to.z, 8, { col: 0xffe14a, s: 0.14, speed: 2, life: 0.5 }); }
+      if (u >= 1) { this.scene.remove(pr.mesh); disposeDeep(pr.mesh); pr.done = true; this.hitQueue.push({ t: 0, m: pr.m, n: 1 }); this.fx.burst(pr.to.x, pr.to.y, pr.to.z, 8, { col: 0xffe14a, s: 0.14, speed: 2, life: 0.5 }); }
     }
     this.projs = this.projs.filter((x) => !x.done);
   }
@@ -810,7 +818,7 @@ export class Game3D {
   }
   cleanup() {
     this.ents = this.ents.filter((e) => {
-      if (e.taken && e.type !== 'obs') { if (e.mesh && e.mesh.parent) e.mesh.parent.remove(e.mesh); return false; }
+      if (e.taken && e.type !== 'obs') { if (e.mesh && e.mesh.parent) e.mesh.parent.remove(e.mesh); disposeDeep(e.mesh); return false; }
       if (e.type === 'hole') return e.s + e.len > this.dist - 14;
       const far = e.s < this.dist - 22;
       if (far) {
@@ -822,9 +830,10 @@ export class Game3D {
       return true;
     });
   }
+  /** tira a entidade da cena e libera a memória de vídeo dela (modelos-base compartilhados ficam) */
   disposeEnt(e) {
-    ['mesh', 'sh', 'obj'].forEach((k) => { if (e[k] && e[k].parent) e[k].parent.remove(e[k]); });
-    if (e.cheer) e.cheer.forEach((k) => k.parent && k.parent.remove(k));
+    ['mesh', 'sh', 'obj'].forEach((k) => { if (e[k] && e[k].parent) e[k].parent.remove(e[k]); disposeDeep(e[k]); });
+    if (e.cheer) e.cheer.forEach((k) => { k.parent && k.parent.remove(k); disposeDeep(k); });
   }
 
   // ================================================================ apresentação
@@ -881,7 +890,7 @@ export class Game3D {
   }
 
   setupDog() {
-    if (this.dog) { this.scene.remove(this.dog); this.scene.remove(this.dogShadow); this.dog = null; }
+    if (this.dog) { this.scene.remove(this.dog); this.scene.remove(this.dogShadow); disposeDeep(this.dog); this.dog = null; }
     const key = this.phase.dog; if (!key) return;
     this.dog = buildDog(key); this.dog.scale.setScalar(1.45); this.dog.position.set(-4.7, 0, 1.2); this.scene.add(this.dog);
     this.dogShadow = blobShadow(1.5, 2.0); this.scene.add(this.dogShadow);
@@ -954,6 +963,7 @@ export class Game3D {
     if (this.dead) return; this.dead = true;
     cancelAnimationFrame(this.raf); window.removeEventListener('resize', this.onResize); document.removeEventListener('visibilitychange', this.onHidden);
     window.removeEventListener('keydown', this.kd); window.removeEventListener('keyup', this.ku);
+    this.renderer.domElement.removeEventListener('webglcontextlost', this.onCtxLost); this.renderer.domElement.removeEventListener('webglcontextrestored', this.onCtxRestored);
     stopMusic(); silenceVoice(); if (this.mini) { this.mini.destroy(); this.mini = null; } this.hud.destroy();
     // libera a memória de vídeo desta partida (malhas, materiais, texturas e o próprio contexto)
     this.scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach((m) => { Object.values(m).forEach((v) => { if (v && v.isTexture) v.dispose(); }); m.dispose(); }); });

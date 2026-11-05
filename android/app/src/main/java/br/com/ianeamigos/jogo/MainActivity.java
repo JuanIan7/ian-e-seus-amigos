@@ -17,6 +17,12 @@ public class MainActivity extends BridgeActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
+    // O botão/gesto "voltar" nunca fecha o jogo (a criança acionaria sem querer e perderia a partida): só pausa.
+    @Override
+    public void onBackPressed() {
+        getBridge().getWebView().evaluateJavascript("window.__ian3 && window.__ian3.setPaused(true)", null);
+    }
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);

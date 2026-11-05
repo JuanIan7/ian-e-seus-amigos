@@ -84,7 +84,7 @@ export class FrontApp {
     this.show('home');
     this.onResize = () => this.resize(); window.addEventListener('resize', this.onResize); this.resize();
     this.last = performance.now(); this.loopFn = (t) => { this.raf = requestAnimationFrame(this.loopFn); this.frame(t); }; this.raf = requestAnimationFrame(this.loopFn);
-    const first = () => { unlock(); startMusic('menu'); window.removeEventListener('pointerdown', first); }; window.addEventListener('pointerdown', first);
+    const first = () => { unlock(); startMusic('menu'); window.removeEventListener('pointerdown', first, true); }; window.addEventListener('pointerdown', first, true);   // captura: os botões param a propagação
   }
 
   // ------------------------------------------------------------------ palco 3D
@@ -152,8 +152,11 @@ export class FrontApp {
   // ------------------------------------------------------------------ telas
   mkBtn(parent, cls, html, fn) {
     const b = document.createElement('div'); b.className = 'b ' + cls; b.innerHTML = html; parent.appendChild(b);
-    b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); unlock(); b.classList.add('dn'); sfx.tap && sfx.tap(); fn(e, b); });
-    b.addEventListener('pointerup', () => b.classList.remove('dn')); b.addEventListener('pointerleave', () => b.classList.remove('dn'));
+    // as opções do personagem ficam numa lista que rola: só escolhem ao soltar o dedo sem arrastar (rolar não troca a aparência)
+    const scroll = cls.startsWith('opt'); let st = null;
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); unlock(); b.classList.add('dn'); if (scroll) { st = { x: e.clientX, y: e.clientY }; return; } sfx.tap && sfx.tap(); fn(e, b); });
+    b.addEventListener('pointerup', (e) => { b.classList.remove('dn'); if (scroll && st && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 12) { sfx.tap && sfx.tap(); fn(e, b); } st = null; });
+    b.addEventListener('pointerleave', () => b.classList.remove('dn')); b.addEventListener('pointercancel', () => { b.classList.remove('dn'); st = null; });
     return b;
   }
   scr(name) { const d = document.createElement('div'); d.className = 'scr ' + name; this.el.appendChild(d); return d; }
@@ -265,7 +268,7 @@ export class FrontApp {
   startGame(o = {}) {
     const s = load(); unlock();
     if (this.game) { this.game.destroy(); this.game = null; }
-    this.el.style.display = 'none'; stopMusic();
+    this.el.style.display = 'none'; stopMusic(); this.renderer.setSize(2, 2, false);   // libera a memória de vídeo do palco enquanto o jogo roda (resize() restaura ao voltar)
     const mode = o.mode || s.mode || 'facil', phase = o.phase || s.phase || 1;
     this.lastStart = { mode, phase };
     this.game = new Game3D({ root: document.body, mode, phase, seed: o.seed, manual: o.manual, look: s.look, onExit: (d) => this.onGameExit(d) });
@@ -277,7 +280,7 @@ export class FrontApp {
     this.el.style.display = ''; this.resize(); startMusic('menu');
     this.show(d.action === 'shop' ? 'shop' : 'home');
   }
-  toHome() { if (this.game) { this.game.destroy(); this.game = null; } this.el.style.display = ''; this.show('home'); }
+  toHome() { if (this.game) { this.game.destroy(); this.game = null; } this.el.style.display = ''; this.resize(); this.show('home'); }
 }
 
 export function startApp() {

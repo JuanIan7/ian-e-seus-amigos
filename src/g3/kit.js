@@ -157,9 +157,22 @@ function getShadowTex() {
   shadowTex = new THREE.CanvasTexture(c); shadowTex.colorSpace = THREE.SRGBColorSpace;
   return shadowTex;
 }
-const shadowGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
-const shadowMat = () => new THREE.MeshBasicMaterial({ map: getShadowTex(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+const shadowGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2); shadowGeo.userData.shared = true;
+let shadowMatC = null;   // um material só para todas as sombras de contato
+const shadowMat = () => shadowMatC || (shadowMatC = new THREE.MeshBasicMaterial({ map: getShadowTex(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
 export function blobShadow(w = 1, d = w) { const m = new THREE.Mesh(shadowGeo, shadowMat()); m.scale.set(w, 1, d); m.position.y = 0.02; m.renderOrder = 1; return m; }
+
+// ---- memória de vídeo ----
+/** marca as geometrias de um modelo-base como compartilhadas (clones usam a mesma; nunca são liberadas no meio do jogo) */
+export function markShared(root) { root.traverse((o) => { if (o.geometry) o.geometry.userData.shared = true; }); return root; }
+/** libera da GPU as geometrias (e materiais próprios com textura) de um objeto que saiu do jogo; as compartilhadas ficam */
+export function disposeDeep(root) {
+  if (!root) return;
+  root.traverse((o) => {
+    const g = o.geometry; if (g && !g.userData.shared && !o.isSprite) g.dispose();     // sprites usam uma geometria global
+    if (o.userData.ownMat && o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { Object.values(m).forEach((v) => { if (v && v.isTexture) v.dispose(); }); m.dispose(); }); }
+  });
+}
 
 // ---- partículas (uma única chamada de desenho) ----
 export class Particles {

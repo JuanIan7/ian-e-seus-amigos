@@ -68,7 +68,7 @@ const css = `
 .g3 .res p{margin:0 0 2vh;font-size:min(5vh,26px)}
 .g3 .res .row{display:flex;gap:4vw;justify-content:center}
 .g3 .res .btn{position:static;width:min(22vh,110px);height:min(22vh,110px)}
-.g3 .veil{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;gap:5vw;pointer-events:auto}
+.g3 .veil{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;gap:5vw;pointer-events:auto;z-index:25}
 .g3 .veil .btn{position:static;width:min(24vh,120px);height:min(24vh,120px)}
 .g3 .veil .big{width:min(34vh,170px);height:min(34vh,170px);background:#3ecb6b}
 `;

@@ -131,13 +131,13 @@ function shell(root, icon, o) {
     U.prog.innerHTML = Array.from({ length: total }, (_, i) => `<b class="${i < n ? 'on' : ''}">${emoji}</b>`).join('');
   };
   api.win = () => {
-    if (api.won || api.over) return; api.won = true; S('win');
+    if (!api.alive || api.won || api.over) return; api.won = true; S('win');
     U.win.querySelector('b').textContent = '⭐'; U.win.querySelector('span').textContent = o.reward || 'Muito bem!'; U.win.style.display = 'flex';
     say(o.rewardSay || 'Muito bem!');
     setTimeout(() => { if (api.alive) (o.onWin || (() => {}))(api); }, 1400);
   };
   api.timeout = () => {
-    if (api.won || api.over) return; api.over = true; S('hit');
+    if (!api.alive || api.won || api.over) return; api.over = true; S('hit');
     U.win.querySelector('b').textContent = '⏰'; U.win.querySelector('span').textContent = 'Acabou o tempo!'; U.win.style.display = 'flex';
     say('O tempo acabou! Vamos continuar a corrida.');
     setTimeout(() => { if (api.alive) (o.onTimeout || o.onClose || (() => {}))(api); }, 1500);
@@ -261,8 +261,8 @@ export function startMaze(root, o) {
   // caminho até a casinha (para a dica do modo fácil)
   const solve = (from) => { const q = [from], prev = new Map([[from.join(), null]]); while (q.length) { const v = q.shift(); if (v[0] === goal[0] && v[1] === goal[1]) break; for (const [dx, dy] of Object.values(D)) { const nb = [v[0] + dx, v[1] + dy]; if (nb[0] < 0 || nb[1] < 0 || nb[0] >= C || nb[1] >= R || prev.has(nb.join()) || !open(v, nb)) continue; prev.set(nb.join(), v); q.push(nb); } } const out = []; let k = goal; while (k) { out.unshift(k); k = prev.get(k.join()); } return out; };
   const tryMove = (cell) => {
-    if (api.won || api.over) return;
-    if (open(cur, cell)) { cur = cell; trail.push(cell.slice()); S('tap'); idle = 0; if (cur[0] === goal[0] && cur[1] === goal[1]) setTimeout(() => api.win(), 350); }
+    if (api.won || api.over || api.locked) return;
+    if (open(cur, cell)) { cur = cell; trail.push(cell.slice()); S('tap'); idle = 0; if (cur[0] === goal[0] && cur[1] === goal[1]) { api.locked = true; setTimeout(() => api.win(), 350); } }
   };
   const cellAt = ([x, y]) => [Math.floor((x - ox) / cs), Math.floor((y - oy) / cs)];
   let pid = null;
@@ -275,7 +275,7 @@ export function startMaze(root, o) {
   cv.addEventListener('pointerdown', (e) => { e.preventDefault(); pid = e.pointerId; try { cv.setPointerCapture(e.pointerId); } catch (x) { /* ok */ } step(e); });
   cv.addEventListener('pointermove', (e) => { if (pid === e.pointerId) step(e); });
   const up = (e) => { if (pid === e.pointerId) pid = null; };
-  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('lostpointercapture', up);
   const draw = (t) => {
     c.clearRect(0, 0, W, H);
     const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#8fe08a'); g.addColorStop(1, '#5fc95e'); c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -483,7 +483,7 @@ export function startBoat(root, o) {
   cv.addEventListener('pointerdown', (e) => { if (api.won || api.over || pid !== null) return; e.preventDefault(); const p = pos(e); if (d2(p, path[Math.floor(head)]) < (cfg.tol * 1.9) ** 2) { pid = e.pointerId; try { cv.setPointerCapture(e.pointerId); } catch (x) { /* ok */ } } else shake = 0.4; });
   cv.addEventListener('pointermove', (e) => { if (e.pointerId !== pid) return; const p = pos(e); let best = -1, bd = Infinity; const a = Math.max(0, Math.floor(head) - 6), b = Math.min(path.length - 1, Math.floor(head) + 46); for (let i = a; i <= b; i++) { const d = d2(p, path[i]); if (d < bd) { bd = d; best = i; } } if (best >= 0 && bd < cfg.tol * cfg.tol) target = Math.max(target, best); else shake = 0.25; });
   const up = (e) => { if (e.pointerId === pid) pid = null; };
-  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('lostpointercapture', up);
   const draw = (t) => {
     c.fillStyle = '#7ad36a'; c.fillRect(0, 0, W, H);
     const trace = () => { c.beginPath(); path.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); };

@@ -1,11 +1,12 @@
 // Mundo 3D: céu, pista em blocos reciclados, cenário lateral por tema, buracos. O jogador fica em z = 0 e o
 // mundo "corre" em direção a +z; uma posição s na pista vira z = dist - s (negativo = à frente).
-import { THREE, P, box, toMesh, mergeParts, toon, hex, mixHex, rng, lowDetail } from './kit.js';
+import { THREE, P, box, toMesh, mergeParts, toon, hex, mixHex, rng, lowDetail, disposeDeep } from './kit.js';
 import { SCENERY, buildSea, animateSea, SEA_TILE } from './final.js';
 import { SCENERY as SCENERY_LO } from './props.js';
 
 // a partir desta distância o cenário troca para a versão simples (o detalhe fino não aparece de longe)
 const LOD_FAR = 28;
+const LOD_NEAR = { shop: 18, fountain: 20, tower: 20 };     // peças muito pesadas (13 mil triângulos) simplificam mais cedo
 const LO_KEY = { treefern: 'cycad', horsetail: 'cycad' };
 
 export const LANE_W = 2.1;
@@ -171,7 +172,7 @@ export class World {
     const id = key + i;
     if (!this.lib[id]) {
       const hq = lowDetail(() => SCENERY[key](rng(this.seed + id))), lk = LO_KEY[key] || key;
-      if (SCENERY_LO[lk] && SCENERY_LO[lk] !== SCENERY[key]) { const lod = new THREE.LOD(); lod.addLevel(hq, 0); lod.addLevel(lowDetail(() => SCENERY_LO[lk](rng(this.seed + id))), LOD_FAR); this.lib[id] = lod; }
+      if (SCENERY_LO[lk] && SCENERY_LO[lk] !== SCENERY[key]) { const lod = new THREE.LOD(); lod.addLevel(hq, 0); lod.addLevel(lowDetail(() => SCENERY_LO[lk](rng(this.seed + id))), LOD_NEAR[key] || LOD_FAR); this.lib[id] = lod; }
       else this.lib[id] = hq;
     }
     return this.lib[id].clone();
@@ -208,7 +209,7 @@ export class World {
     this.root.add(g);
     const h = { s, len, g }; this.holes.push(h); return h;
   }
-  removeHole(h) { this.root.remove(h.g); this.holes = this.holes.filter((x) => x !== h); }
+  removeHole(h) { this.root.remove(h.g); disposeDeep(h.g); this.holes = this.holes.filter((x) => x !== h); }
   inHole(s0, s1) { return this.holes.some((h) => s1 > h.s && s0 < h.s + h.len); }
 
   update(dist, dt, speed) {

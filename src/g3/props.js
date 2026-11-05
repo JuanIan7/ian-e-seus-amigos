@@ -415,7 +415,7 @@ export function buildPuzzleStation(icon = 'puzzle') {
   x.font = '64px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
   x.fillText({ puzzle: '🧩', maze: '🐶', apple: '🍎', hose: '🔥', boat: '⛵', lava: '🌋' }[icon] || '❓', 64, 70);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-  const sign = new THREE.Mesh(new THREE.CircleGeometry(0.62, 32), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide }));
+  const sign = new THREE.Mesh(new THREE.CircleGeometry(0.62, 32), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })); sign.userData.ownMat = true;   // textura própria: liberada quando a estação sai do jogo
   const iconG = new THREE.Group(); iconG.add(sign); iconG.position.y = 2.9; g.add(iconG);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.06, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffe14a })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.34; g.add(ring);
   g.userData = { lid, icon: iconG, ring };
