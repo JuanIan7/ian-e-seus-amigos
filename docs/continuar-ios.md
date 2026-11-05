@@ -11,15 +11,15 @@
   paisagem, bundle `br.com.ianeamigos.jogo`, iOS mínimo 15. `npx cap sync ios` já foi rodado com o build atual.
   **Falta:** o Xcode não está instalado neste Mac.
 
-## Bloqueio: espaço em disco
+## Espaço em disco (resolvido em 05/11)
 
-Em 05/11 o Mac tinha só **~14 GB livres** (de 926 GB). A instalação do Xcode pela App Store precisa de uns 40 GB
-livres durante a instalação (baixa ~3 GB comprimidos, expande para ~15 GB e ainda usa espaço temporário).
-Antes de instalar, liberar espaço. Onde está o volume (medido em 05/11, nada foi apagado):
-Downloads 50 GB, Library/Caches 23 GB, Lixeira 14 GB, Library/Android 13 GB (imagens do emulador), Desktop 103 GB, Documents 89 GB.
-Esvaziar a Lixeira e limpar Caches já libera ~37 GB sem perder nada de trabalho.
+Em 05/11 o Mac tinha só ~14 GB livres (de 926 GB); a instalação do Xcode pela App Store precisa de uns 40 GB
+livres durante a instalação. Com autorização do Juan foram apagados: Lixeira (14 GB), instaladores .dmg em
+Downloads (3,5 GB) e, em Downloads, as pastas Vídeos, Imagens e Apresentações e os zips exportados do Google
+Drive (CATTS 2026, Instrução Light, Fotografia, POPATTS). Resultado: **57 GB livres**. Nada em Documents, Desktop
+ou Library/Caches foi tocado. A App Store foi aberta na página do Xcode para o Juan clicar em "Obter".
 
-## Instalar no iPhone com Apple ID grátis (7 dias)
+## Passos para instalar no iPhone
 
 1. Instalar o Xcode pela App Store (gratuito). Abrir uma vez sozinho (instala componentes extras).
 2. Xcode > Settings > Accounts > "+" > entrar com o Apple ID pessoal (não precisa pagar nada).
