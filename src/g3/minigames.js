@@ -328,7 +328,16 @@ export function startApples(root, o) {
   const mode = o.mode || 'facil', rng = o.rng || Math.random, cfg = APPLES[mode];
   const { U, api, S, say } = shell(root, 'apple', o);
   const { cv, c, W, H, pos } = canvasIn(U);
-  const by = H - 54; let bx = W / 2, tx = W / 2, got = 0, spawnT = 0.4, items = [], shake = 0, pops = [];
+  const by = H - 54; let bx = W / 2, tx = W / 2, got = 0, spawnT = 0.4, items = [], shake = 0, pops = [], flash = 0, bounce = 0, sparks = [], badges = [], rings = [];
+  const EMO = { apple: '🍎' }, COL = { apple: '#ff4d4d' };
+  // aviso claro de que a fruta foi pega: flash na cesta, estrela, faíscas da cor da fruta e a fruta ao lado da cesta
+  const caught = (it) => {
+    flash = 1; bounce = 1; S('catch'); S('star');
+    pops.push({ x: it.x, y: by - 20, t: 1 });
+    rings.push({ x: it.x, y: by, t: 1 });
+    for (let k = 0; k < 12; k++) { const a = -Math.PI * (0.1 + 0.8 * rng()), v = 120 + rng() * 160; sparks.push({ x: it.x, y: by, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 1, col: k % 3 === 0 ? '#ffd23f' : COL[it.kind] }); }
+    badges.push({ x: it.x, t: 1, e: EMO[it.kind] });
+  };
   api.setProg(0, cfg.goal, '🍎');
   const setX = (e) => { tx = Math.max(cfg.bw / 2, Math.min(W - cfg.bw / 2, pos(e)[0])); };
   cv.addEventListener('pointerdown', (e) => { e.preventDefault(); setX(e); try { cv.setPointerCapture(e.pointerId); } catch (x) { /* ok */ } });
@@ -345,12 +354,18 @@ export function startApples(root, o) {
       else { c.fillStyle = '#8a8f9c'; c.beginPath(); c.moveTo(-20, 6); c.lineTo(-12, -16); c.lineTo(10, -18); c.lineTo(22, 2); c.lineTo(8, 18); c.lineTo(-14, 16); c.closePath(); c.fill(); stroke(c, 4); }
       c.restore();
     });
-    pops.forEach((p) => { c.globalAlpha = Math.max(0, p.t); star5(c, p.x, p.y - (1 - p.t) * 40, 12); c.globalAlpha = 1; });
+    rings.forEach((r) => { c.globalAlpha = Math.max(0, r.t) * 0.9; c.strokeStyle = '#fff6b0'; c.lineWidth = 8 * r.t + 2; c.beginPath(); c.arc(r.x, r.y, 20 + (1 - r.t) * 70, 0, Math.PI * 2); c.stroke(); c.globalAlpha = 1; });
+    sparks.forEach((q) => { c.globalAlpha = Math.max(0, q.t); c.fillStyle = q.col; c.beginPath(); c.arc(q.x, q.y, 3 + 5 * q.t, 0, Math.PI * 2); c.fill(); c.globalAlpha = 1; });
+    pops.forEach((p) => { c.globalAlpha = Math.max(0, p.t); star5(c, p.x, p.y - (1 - p.t) * 50, 12 + 12 * p.t); c.globalAlpha = 1; });
     // cesta
     const sx = bx + (shake > 0 ? Math.sin(t * 60) * 8 * shake : 0), bw = cfg.bw;
+    if (bounce > 0) { const k = 1 + 0.12 * Math.sin(bounce * Math.PI); c.save(); c.translate(sx, by + 46); c.scale(1 + 0.05 * Math.sin(bounce * Math.PI), k); c.translate(-sx, -(by + 46)); }
     for (let k = 0; k < Math.min(got, 8); k++) { c.fillStyle = '#ff4d4d'; c.beginPath(); c.arc(sx - bw * 0.3 + (k % 4) * bw * 0.2, by - 6 - Math.floor(k / 4) * 12, 13, 0, Math.PI * 2); c.fill(); stroke(c, 3); }
-    c.fillStyle = '#c2864a'; c.beginPath(); c.moveTo(sx - bw / 2, by); c.lineTo(sx + bw / 2, by); c.lineTo(sx + bw * 0.38, by + 46); c.lineTo(sx - bw * 0.38, by + 46); c.closePath(); c.fill(); stroke(c, 5);
+    c.fillStyle = flash > 0 ? '#ffe28a' : '#c2864a'; c.beginPath(); c.moveTo(sx - bw / 2, by); c.lineTo(sx + bw / 2, by); c.lineTo(sx + bw * 0.38, by + 46); c.lineTo(sx - bw * 0.38, by + 46); c.closePath(); c.fill(); stroke(c, 5);
     c.strokeStyle = '#8a5a2e'; c.lineWidth = 4; for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(sx - bw / 2 + k * 6, by + k * 11); c.lineTo(sx + bw / 2 - k * 6, by + k * 11); c.stroke(); }
+    if (bounce > 0) c.restore();
+    // selo ao lado da cesta mostrando qual fruta foi pega (sobe e some)
+    badges.forEach((b) => { const bxp = Math.min(W - 44, sx + bw / 2 + 34), byp = by - 6 - (1 - b.t) * 36; c.globalAlpha = Math.min(1, b.t * 2); c.fillStyle = '#ffffff'; c.beginPath(); c.arc(bxp, byp, 26, 0, Math.PI * 2); c.fill(); stroke(c, 4); c.font = '30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#000'; c.fillText(b.e, bxp, byp + 2); c.globalAlpha = 1; });
   };
   let tt = 0;
   api.onStep((dt) => {
@@ -359,11 +374,15 @@ export function startApples(root, o) {
       spawnT -= dt;
       if (spawnT <= 0) { spawnT = cfg.every * (0.8 + rng() * 0.4); items.push({ x: 40 + rng() * (W - 80), y: 40, vy: cfg.sp * (0.85 + rng() * 0.3), rot: 0, vr: (rng() - 0.5) * 3, kind: rng() < cfg.rock ? 'rock' : 'apple' }); }
       items.forEach((it) => { it.y += it.vy * dt; it.rot += it.vr * dt;
-        if (!it.done && it.y > by - 14 && it.y < by + 30 && Math.abs(it.x - bx) < cfg.bw / 2) { it.done = true; if (it.kind === 'apple') { got++; S('star'); pops.push({ x: it.x, y: by - 20, t: 1 }); api.setProg(got, cfg.goal, '🍎'); if (got >= cfg.goal) api.win(); } else { got = Math.max(0, got - 1); shake = 0.5; S('hit'); api.setProg(got, cfg.goal, '🍎'); } }
+        if (!it.done && it.y > by - 14 && it.y < by + 30 && Math.abs(it.x - bx) < cfg.bw / 2) { it.done = true; if (it.kind === 'apple') { got++; caught(it); api.setProg(got, cfg.goal, '🍎'); if (got >= cfg.goal) api.win(); } else { got = Math.max(0, got - 1); shake = 0.5; S('hit'); api.setProg(got, cfg.goal, '🍎'); } }
         if (it.y > H + 30) it.done = true; });
       items = items.filter((it) => !it.done);
     }
-    pops.forEach((p) => { p.t -= dt * 1.6; }); pops = pops.filter((p) => p.t > 0);
+    pops.forEach((p) => { p.t -= dt * 1.2; }); pops = pops.filter((p) => p.t > 0);
+    flash = Math.max(0, flash - dt * 3.5); bounce = Math.max(0, bounce - dt * 4);
+    rings.forEach((r) => { r.t -= dt * 2.2; }); rings = rings.filter((r) => r.t > 0);
+    sparks.forEach((q) => { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 520 * dt; q.t -= dt * 1.8; }); sparks = sparks.filter((q) => q.t > 0);
+    badges.forEach((b) => { b.t -= dt * 1.4; }); badges = badges.filter((b) => b.t > 0);
     draw(tt);
   });
   say('Pegue as maçãs com a cesta!');

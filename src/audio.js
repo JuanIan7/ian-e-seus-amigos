@@ -36,6 +36,8 @@ function noise(dur, vol = 0.2, hp = 1500) {
 export const sfx = {
   jump: () => tone(380, 0.22, { type: 'square', vol: 0.12, slide: 420 }),
   star: () => { tone(880, 0.1, { vol: 0.18 }); tone(1320, 0.14, { vol: 0.18, delay: 0.07 }); },
+  // clique/“pop” de fruta pega: estalo curto + nota subindo
+  catch: () => { noise(0.05, 0.22, 3000); tone(700, 0.09, { type: 'triangle', vol: 0.25, slide: 500 }); tone(1500, 0.07, { vol: 0.12, delay: 0.05 }); },
   hit: () => tone(180, 0.28, { type: 'triangle', vol: 0.3, slide: -120 }),
   splash: () => noise(0.25, 0.18, 2200),
   hose: () => { tone(520, 0.12, { type: 'triangle' }); tone(780, 0.12, { type: 'triangle', delay: 0.1 }); tone(1040, 0.2, { type: 'triangle', delay: 0.2 }); },
