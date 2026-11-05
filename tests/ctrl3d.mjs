@@ -37,7 +37,9 @@ const air = await run(() => !window.__ian3.p.ground); ok(air, 'o pulo aconteceu 
 await touch('.g3 .btn.jump', 'pointerup', 2);
 ok(await run(() => window.__ian3.runHeld), 'soltar o pulo não solta o correr');
 await touch('.g3 .btn.run', 'pointerup', 1);
-ok(!(await run(() => window.__ian3.runHeld)), 'soltar o correr para de acelerar');
+ok(await run(() => window.__ian3.runHeld), 'soltar o botão de correr mantém a corrida ligada (é liga/desliga)');
+await touch('.g3 .btn.run', 'pointerdown', 1); await touch('.g3 .btn.run', 'pointerup', 1);
+ok(!(await run(() => window.__ian3.runHeld)), 'segundo toque em correr desliga a corrida');
 await ticks(120);
 
 console.log('2. Pausa e retomada');
