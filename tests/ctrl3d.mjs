@@ -37,9 +37,13 @@ const air = await run(() => !window.__ian3.p.ground); ok(air, 'o pulo aconteceu 
 await touch('.g3 .btn.jump', 'pointerup', 2);
 ok(await run(() => window.__ian3.runHeld), 'soltar o pulo não solta o correr');
 await touch('.g3 .btn.run', 'pointerup', 1);
-ok(await run(() => window.__ian3.runHeld), 'soltar o botão de correr mantém a corrida ligada (é liga/desliga)');
+ok(await run(() => window.__ian3.runHeld), 'soltar o botão de correr mantém a corrida ligada (é por toques)');
 await touch('.g3 .btn.run', 'pointerdown', 1); await touch('.g3 .btn.run', 'pointerup', 1);
-ok(!(await run(() => window.__ian3.runHeld)), 'segundo toque em correr desliga a corrida');
+const c2 = await ticks(90);
+ok(await run(() => window.__ian3.runLevel === 2), 'segundo toque em correr vai para o nível 2');
+ok(c2.speed > b.speed * 1.1, 'nível 2 corre mais que o nível 1', `vel ${b.speed.toFixed(2)} → ${c2.speed.toFixed(2)}`);
+await touch('.g3 .btn.run', 'pointerdown', 1); await touch('.g3 .btn.run', 'pointerup', 1);
+ok(!(await run(() => window.__ian3.runHeld)), 'terceiro toque em correr desliga a corrida');
 await ticks(120);
 
 console.log('2. Pausa e retomada');

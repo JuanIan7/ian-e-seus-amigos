@@ -49,6 +49,10 @@ const css = `
 @keyframes g3float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.07)}}
 .g3 .run{background:#9b5cff}
 .g3 .run.on{background:#c38bff;box-shadow:0 0 0 6px rgba(255,255,255,.55),0 2px 0 rgba(27,42,73,.55)}
+.g3 .run.on2{background:#ff7a3d;box-shadow:0 0 0 8px rgba(255,255,255,.75),0 2px 0 rgba(27,42,73,.55);animation:g3run2 .5s infinite alternate}
+.g3 .run b{position:absolute;right:-6px;top:-6px;width:min(6vh,32px);height:min(6vh,32px);border-radius:50%;background:#fff;color:#1b2a49;font-size:min(3.6vh,19px);display:none;align-items:center;justify-content:center;border:3px solid #1b2a49}
+.g3 .run.on b,.g3 .run.on2 b{display:flex}
+@keyframes g3run2{from{transform:scale(1)}to{transform:scale(1.07)}}
 .g3 .lives{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 2vh + min(5vh,28px));transform:translateX(-50%);display:flex;gap:4px;pointer-events:none;font-size:min(6vh,32px);line-height:1;filter:drop-shadow(0 2px 0 #1b2a49)}
 .g3 .lives b{font-weight:400;transition:transform .2s}
 .g3 .lives b.off{filter:grayscale(1) brightness(1.6);opacity:.45}
@@ -120,7 +124,8 @@ export function createHud(root, h) {
   els.right = mk('lane r', ICONS.right, () => h.lane(1));
   els.jump = mk('jump', ICONS.up, () => h.jump(true), () => h.jump(false));
   els.act = mk('act', ICONS.drop, () => h.action());
-  els.run = mk('run', ICONS.run, () => h.run(), null, true);   // toca uma vez: liga a corrida; toca de novo: desliga (assim dá para correr e pular junto)
+  els.run = mk('run', ICONS.run, () => h.run(), null, true);
+  els.runBadge = document.createElement('b'); els.run.appendChild(els.runBadge);   // mostra 1 ou 2 (nível da corrida)   // toca uma vez: liga a corrida; toca de novo: desliga (assim dá para correr e pular junto)
   els.quest = mk('quest', ICONS.up, () => { const f = els.quest._tap; f && f(); });
   els.pause = mk('pause', ICONS.pause, () => h.pause());
   els.act.classList.add('off');
@@ -186,7 +191,7 @@ export function createHud(root, h) {
     },
     pulseJump(v) { els.jump.classList.toggle('pulse', !!v); },
     showRun(v) { els.run.style.display = v ? 'flex' : 'none'; },
-    setRunActive(v) { els.run.classList.toggle('on', !!v); },
+    setRunActive(v) { const lv = v === true ? 1 : v | 0; els.run.classList.toggle('on', lv === 1); els.run.classList.toggle('on2', lv === 2); els.runBadge.textContent = lv ? String(lv) : ''; },
     power(emoji, frac, color) {
       if (!emoji) { power.style.display = 'none'; return; }
       power.style.display = 'flex'; power.firstChild.textContent = emoji; power.querySelector('u').style.width = Math.round(frac * 100) + '%'; power.querySelector('u').style.background = color || '#fff';

@@ -74,6 +74,19 @@ xcrun devicectl device process launch --device 00008140-0002309A2244801C br.com.
 - Minijogos: pausa (app em segundo plano) cobre o minijogo; labirinto trava o dedo ao chegar na casinha; captura de ponteiro
   perdida libera o arrasto (barco/labirinto); vitória/tempo esgotado não disparam depois do cartão fechado.
 
+## Ajustes de 05/11 (tarde), já no iPhone e no APK
+
+- Correr é por toques (segurar o botão impedia pular junto no celular): 1º toque = acelera (botão lilás, selo "1"),
+  2º = acelera 30% a mais (laranja pulsando, selo "2"), 3º = desliga. Teclas W/Shift/R fazem o mesmo ciclo.
+- Fases: seguem em ordem a partir da escolhida (1, 2, 3... até a última, voltando ao começo se não começou na 1);
+  só depois de passar por todas é que a próxima é sorteada (`this.played` em `advancePhase`).
+- Piscadas na tela: a resolução dinâmica mudava a cada 1,5 s e cada troca deixava um quadro em branco. Agora
+  (`adaptQuality`) muda antes do render, só com 3 medições seguidas, 10 s de intervalo e no máximo 3 trocas por partida.
+- Laterais distorcidas ao correr: a lente abria até 90°; agora no máximo 69°.
+- Créditos "Desenvolvido por Juan Carlos Silva de Araujo" + © na tela inicial, Info.plist, strings.xml, package.json e README
+  (regra do Juan para todos os apps: só tirar se ele pedir).
+- APK local: `cd android && ./gradlew assembleDebug` → copiar para `builds/android/` (pasta ignorada pelo git).
+
 ## Ideias para depois (não feitas)
 
 - Voz em Android: o WebView do Android pode não ter `speechSynthesis` (as frases faladas ficariam mudas). Se for o caso no

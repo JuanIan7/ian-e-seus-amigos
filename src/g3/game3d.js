@@ -15,6 +15,7 @@ import { startMinigame, PUZZLE_ICON } from './minigames.js';
 import { buildPuzzleStation } from './props.js';
 import { sfx, unlock, startMusic, stopMusic, speak, silenceVoice } from '../audio.js';
 const PHASES = PHASES3;
+const RUN2_MUL = 1.3;   // 2º toque em correr: 30% acima da corrida normal
 import { createHud } from './hud.js';
 
 const STOP = 3.2;                       // distância (em z) em que o mundo para diante de uma missão
@@ -78,12 +79,12 @@ export class Game3D {
     this.paused = false; this.t = 0; this.dist = 0; this.runTime = 0; this.worldSpeed = 0;
     this.stars = 0; this.nextPowerAt = STARS_PER_POWER; this.powers = {}; this.assist = 0; this.hitTimes = []; this.cleanTimer = 0;
     this.p = { x: 0, y: 0, vy: 0, lane: 0, ground: true, coyote: 0, buffer: 0, invul: 0, dbl: false, dblReq: false, floating: false, floatT: 0, jumpT: -9, lastSteer: -9, rescued: false, hitT: 0, squash: 0, roll: 0, cheer: 0 };
-    this.runHeld = false; this.jumpHeld = false; this.turbo = 1; this.recover = 0; this.fall = null; this.missionMul = 1;
+    this.runHeld = false; this.runLevel = 0; this.jumpHeld = false; this.turbo = 1; this.recover = 0; this.fall = null; this.missionMul = 1;
     this.eq = { hose: this.phaseNum >= 2 };
     this.stats = { minis: 0, minisWon: 0, puzzles: 0, puzzlesWon: 0, livesLost: 0, livesWon: 0, hits: 0, falls: 0, jumps: 0, doubles: 0, missions: 0, stars: 0, phases: 0, powers: 0, floats: 0 };
     this.ents = []; this.mission = null; this.tutorialJump = !load().tut.jump && this.phaseNum === 1; this.tutorialActive = false; this.tutWait = 0;
     this.mini = null; this.offer = null; this.resumeMul = 1;
-    this.lives = LIVES.start; this.maxLives = LIVES.max; this.over = false; this.gameOverT = 0; this.stage = 1; this.randomMode = false;
+    this.lives = LIVES.start; this.maxLives = LIVES.max; this.over = false; this.gameOverT = 0; this.stage = 1; this.randomMode = false; this.played = new Set([this.phaseNum]);
     this.inv = { ...(load().inv || {}) };
     this.lastTap = 0; this.sprayT = 0; this.sprayCd = 0; this.idleT = 0; this.shake = 0;
     const tt = load().tut; this.tutDouble = !tt.dbl; this.tutFloat = !tt.float; this.tutKind = null;
@@ -135,9 +136,10 @@ export class Game3D {
     window.addEventListener('keydown', this.kd); window.addEventListener('keyup', this.ku);
   }
   setJump(v) { unlock(); if (v === this.jumpHeld) return; this.jumpHeld = v; if (v) this.pressJump(); }
-  setRun(v) { if (this.mini) v = false; this.runHeld = v; this.hud.setRunActive(v); }
-  /** correr é liga/desliga (um toque liga, outro desliga): segurar o botão impedia de pular ao mesmo tempo no celular */
-  toggleRun() { unlock(); if (this.paused || this.mini) return; this.setRun(!this.runHeld); }
+  /** nível de corrida: 0 = normal, 1 = acelera, 2 = acelera mais (v=true/false também aceito: liga nível 1 / desliga) */
+  setRun(v) { let lv = v === true ? 1 : v === false ? 0 : (v | 0); if (this.mini) lv = 0; this.runLevel = lv; this.runHeld = lv > 0; this.hud.setRunActive(lv); }
+  /** correr é por toques (segurar o botão impedia de pular ao mesmo tempo no celular): 1º toque acelera, 2º acelera mais, 3º desliga */
+  toggleRun() { unlock(); if (this.paused || this.mini) return; this.setRun((this.runLevel + 1) % 3); }
   steer(d) { unlock(); if (this.paused || this.mini || this.fall) return; const p = this.p; const nl = Math.max(-1, Math.min(1, p.lane + d)); if (nl !== p.lane) { p.lane = nl; sfx.tap && sfx.tap(); } p.lastSteer = this.t; }
   pressJump() {
     unlock(); if (this.paused || this.mini) return;
@@ -211,15 +213,24 @@ export class Game3D {
       if (n === 4) this.acc = 0;
     }
     if (this.ctxLost) return;
+    this.adaptQuality(dtReal);   // ANTES de desenhar: trocar a resolução depois do render deixava um quadro em branco (piscada)
     this.render();
-    // resolução dinâmica: mantém a fluidez em celulares intermediários
+  }
+  /** resolução dinâmica com calma: só muda depois de 3 medições seguidas (~4,5 s) concordando, com intervalo mínimo de 10 s
+   *  e no máximo 3 trocas por partida. Trocar a cada 1,5 s fazia a tela piscar o tempo todo no celular. */
+  adaptQuality(dtReal) {
     this.frames++; this.fpsT = (this.fpsT || 0) + dtReal;
-    if (this.fpsT > 1.5) {
-      const fps = this.frames / this.fpsT; this.frames = 0; this.fpsT = 0;
-      if (fps < (this.mobile ? 45 : 36) && (this.mobile || this.ratio <= 0.7) && this.sun.castShadow) { this.sun.castShadow = false; this.lowFx = true; }
-      if (fps < 44 && this.ratio > 0.7) { this.ratio = Math.max(0.7, this.ratio * 0.85); this.renderer.setPixelRatio(this.ratio); this.resize(); }
-      else if (fps > 58 && this.ratio < this.maxRatio) { this.ratio = Math.min(this.maxRatio, this.ratio * 1.08); this.renderer.setPixelRatio(this.ratio); this.resize(); }
-    }
+    if (this.fpsT <= 1.5) return;
+    const fps = this.frames / this.fpsT; this.frames = 0; this.fpsT = 0;
+    this.qCool = (this.qCool || 0) - 1.5; this.qLow = fps < 42 ? (this.qLow || 0) + 1 : 0; this.qHigh = fps > 58 ? (this.qHigh || 0) + 1 : 0;
+    if (this.qLow >= 3 && this.sun.castShadow && (this.mobile || this.ratio <= 0.7)) { this.sun.castShadow = false; this.lowFx = true; this.qLow = 0; return; }
+    if (this.qCool > 0 || (this.qChanges || 0) >= 3) return;
+    let r = this.ratio;
+    if (this.qLow >= 3 && this.ratio > 0.7) r = Math.max(0.7, this.ratio * 0.8);
+    else if (this.qHigh >= 3 && this.ratio < this.maxRatio && !this.qLowered) r = this.maxRatio;   // sobe de uma vez (uma troca só)
+    if (r === this.ratio) return;
+    if (r < this.ratio) this.qLowered = true;
+    this.ratio = r; this.renderer.setPixelRatio(r); this.resize(); this.qCool = 10; this.qChanges = (this.qChanges || 0) + 1; this.qLow = this.qHigh = 0;
   }
   render() {
     // a área de sombra acompanha a criança (mapa pequeno, nítido perto dela)
@@ -277,10 +288,11 @@ export class Game3D {
     if (this.resumeMul < 1) { this.resumeMul = Math.min(1, this.resumeMul + dt / 1.3); mul = Math.min(mul, 0.35 + 0.65 * this.resumeMul); }
     const rec = this.recover > 0 ? c.slow + (1 - c.slow) * (1 - this.recover / 1.0) : 1;
     // correr: aceleração gradual enquanto o botão está pressionado; ao soltar volta suavemente à velocidade da partida
-    const turboMax = this.powers.speed ? 1.5 : Math.max(c.runBoost, this.powers.truck ? 1.35 : 1);
-    const wantTurbo = (this.runHeld && !this.fall && !this.focus && !this.tutorialActive) ? turboMax : (this.powers.speed ? 1.5 : this.powers.truck ? 1.35 : 1);
+    const runBoost = c.runBoost * (this.runLevel >= 2 ? RUN2_MUL : 1);                 // nível 2 corre ainda mais
+    const turboMax = Math.max(this.powers.speed ? 1.5 : 1, runBoost, this.powers.truck ? 1.35 : 1);
+    const wantTurbo = (this.runLevel > 0 && !this.fall && !this.focus && !this.tutorialActive) ? turboMax : (this.powers.speed ? 1.5 : this.powers.truck ? 1.35 : 1);
     this.turbo += (wantTurbo - this.turbo) * Math.min(1, dt * (wantTurbo > this.turbo ? 2.6 : 3.2));
-    const speed = Math.min(this.baseSpeed * this.turbo, c.speedMax * c.runBoost * 1.02) * mul * rec;
+    const speed = Math.min(this.baseSpeed * this.turbo, c.speedMax * runBoost * 1.02) * mul * rec;
     const stopped = this.focus || this.tutorialActive || this.fall;
     if (!stopped) this.runTime += dt;                                  // só o tempo ativo conta para a velocidade básica
     const dx = speed * dt; this.dist += dx; this.worldSpeed = speed;
@@ -760,10 +772,12 @@ export class Game3D {
   // ================================================================ fases
   advancePhase() {
     this.stage++; this.stats.phases++;
-    let next;
-    if (!this.randomMode && this.phaseNum < PHASES.length) next = this.phaseNum + 1;
-    else { this.randomMode = true; next = this.rng.pick(PHASES.map((p) => p.id).filter((id) => id !== this.phaseNum)); }   // depois da última: ordem sorteada
-    this.phaseNum = next;
+    // ordem: a fase seguinte (1, 2, 3... até a última, voltando ao começo se a partida não começou na 1);
+    // só depois de passar por TODAS as fases é que a próxima passa a ser sorteada
+    let next = null;
+    for (let i = 1; i <= PHASES.length && next === null; i++) { const id = ((this.phaseNum - 1 + i) % PHASES.length) + 1; if (!this.played.has(id)) next = id; }
+    if (next === null) { this.randomMode = true; next = this.rng.pick(PHASES.map((p) => p.id).filter((id) => id !== this.phaseNum)); }
+    this.phaseNum = next; this.played.add(next);
     const ph = this.phase; this.world.setTheme(ph.theme);
     this.queue = this.scriptFor(this.phaseNum); this.firstObstacle = false; this.setupDog();
     this.hud.banner('Fase ' + this.phaseNum, ph.name); this.hud.setDots(this.phaseNum - 1, PHASES.length, this.loop);
@@ -921,7 +935,7 @@ export class Game3D {
       pos = new THREE.Vector3(-m.side * 1.2, tall ? 3.4 : 2.7 + big * 1.0, tall ? 7.2 : 4.6 + big * 1.4);
       look = new THREE.Vector3(m.tx * 0.45, tall ? tall : 1.3 + big * 1.5, -3.0); fov = tall ? 68 : 56 + big * 3;
     }
-    else { pos = new THREE.Vector3(p.x * 0.55, 3.3 + Math.max(0, p.y) * 0.4, 5.7); look = new THREE.Vector3(p.x * 0.35, 1.1 + Math.max(0, p.y) * 0.3, -9); fov = 60 + (this.turbo - 1) * 34; }
+    else { pos = new THREE.Vector3(p.x * 0.55, 3.3 + Math.max(0, p.y) * 0.4, 5.7); look = new THREE.Vector3(p.x * 0.35, 1.1 + Math.max(0, p.y) * 0.3, -9); fov = 60 + Math.min(this.turbo - 1, 0.9) * 10; }   // abre pouco a lente ao correr (máx. 69°): mais que isso distorce as laterais
     if (this.shake > 0) { this.shake -= dt; pos.y += Math.sin(this.t * 60) * 0.04 * Math.min(1, this.shake * 5); }
     const k = snap ? 1 : 1 - Math.exp(-dt * 5);
     this.camPos.lerp(pos, k); this.camLook.lerp(look, k);
@@ -954,7 +968,7 @@ export class Game3D {
   snapshot() {
     const m = this.mission, p = this.p;
     return {
-      mode: this.modeId, phase: this.phaseNum, theme: this.world.nextTheme, t: this.t, dist: this.dist, stars: this.stars, speed: this.worldSpeed, base: this.baseSpeed, turbo: this.turbo,
+      mode: this.modeId, phase: this.phaseNum, theme: this.world.nextTheme, t: this.t, dist: this.dist, stars: this.stars, speed: this.worldSpeed, base: this.baseSpeed, turbo: this.turbo, runLevel: this.runLevel, random: this.randomMode,
       y: p.y, lane: p.lane, onGround: p.ground, floating: p.floating, dbl: p.dbl, assist: this.assist, powers: Object.keys(this.powers), eq: { ...this.eq },
       falling: !!this.fall, paused: this.paused, lives: this.lives, over: this.over, stage: this.stage, inv: { ...this.inv }, mini: !!this.mini, offer: this.offer ? this.offer.kind : null, tutorial: this.tutorialActive, mission: m ? { key: m.key, hp: m.hp, engaged: m.engaged, done: m.done } : null, focus: !!this.focus, runTime: this.runTime,
       stats: { ...this.stats }, ents: this.ents.length, queue: this.queue.length,
