@@ -104,12 +104,13 @@ export const ICONS = {
 export function createHud(root, h) {
   const style = document.createElement('style'); style.textContent = css; root.appendChild(style);
   const ui = document.createElement('div'); ui.className = 'ui'; root.appendChild(ui);
-  const mk = (cls, icon, down, up) => {
+  // toggle = botão liga/desliga: o visual "on" é controlado por fora (setRunActive), não pelo dedo apertado
+  const mk = (cls, icon, down, up, toggle = false) => {
     const b = document.createElement('div'); b.className = 'btn ' + cls; b.innerHTML = icon; ui.appendChild(b);
     let held = false;
     let pid = null;
-    const on = (e) => { e.preventDefault(); e.stopPropagation(); if (held) return; held = true; pid = e.pointerId; b.classList.add('on'); try { b.setPointerCapture(e.pointerId); } catch (x) { /* ignora */ } down && down(); };
-    const off = (e) => { e.preventDefault(); e.stopPropagation(); if (!held || (pid !== null && e.pointerId !== pid)) return; held = false; pid = null; b.classList.remove('on'); up && up(); };
+    const on = (e) => { e.preventDefault(); e.stopPropagation(); if (held) return; held = true; pid = e.pointerId; if (!toggle) b.classList.add('on'); try { b.setPointerCapture(e.pointerId); } catch (x) { /* ignora */ } down && down(); };
+    const off = (e) => { e.preventDefault(); e.stopPropagation(); if (!held || (pid !== null && e.pointerId !== pid)) return; held = false; pid = null; if (!toggle) b.classList.remove('on'); up && up(); };
     b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
     b.addEventListener('contextmenu', (e) => e.preventDefault());
     return b;
@@ -119,7 +120,7 @@ export function createHud(root, h) {
   els.right = mk('lane r', ICONS.right, () => h.lane(1));
   els.jump = mk('jump', ICONS.up, () => h.jump(true), () => h.jump(false));
   els.act = mk('act', ICONS.drop, () => h.action());
-  els.run = mk('run', ICONS.run, () => h.run(true), () => h.run(false));
+  els.run = mk('run', ICONS.run, () => h.run(), null, true);   // toca uma vez: liga a corrida; toca de novo: desliga (assim dá para correr e pular junto)
   els.quest = mk('quest', ICONS.up, () => { const f = els.quest._tap; f && f(); });
   els.pause = mk('pause', ICONS.pause, () => h.pause());
   els.act.classList.add('off');

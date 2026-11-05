@@ -1,6 +1,8 @@
 {
   "name": "ian-e-seus-amigos",
   "version": "0.1.0",
+  "author": "Juan Carlos Silva de Araujo",
+  "license": "UNLICENSED",
   "private": true,
   "type": "module",
   "description": "Jogo infantil de corrida e resgate - Ian e Seus Amigos",

@@ -11,6 +11,10 @@ import { rng, lowDetail } from '../g3/kit.js';
 import { MODES3, PHASES3, SHOP } from '../g3/config3.js';
 import { load, save, DEFAULT_LOOK } from '../save.js';
 import { sfx, unlock, startMusic, stopMusic, speak } from '../audio.js';
+
+// Créditos: aparecem na tela inicial. Só remover se o Juan pedir.
+const AUTHOR = 'Juan Carlos Silva de Araujo';
+const YEAR = 2026;
 import { Game3D } from '../g3/game3d.js';
 
 const hexs = (c) => '#' + c.toString(16).padStart(6, '0');
@@ -39,6 +43,7 @@ const css = `
 .front .play{position:absolute;left:3vw;bottom:4vh;width:min(28vh,170px);height:min(22vh,120px);background:#3ecb6b;border-radius:34px}
 .front .play svg{width:46%;height:60%}
 .front .side{position:absolute;bottom:4vh;display:flex;gap:2vw;left:calc(3vw + min(28vh,170px) + 2.5vw)}
+.front .credits{position:absolute;right:3vw;bottom:1.2vh;text-align:right;color:#fff;font-size:min(2.3vh,13px);line-height:1.25;text-shadow:0 2px 0 #1b2a49,1px 0 0 #1b2a49,-1px 0 0 #1b2a49,0 -1px 0 #1b2a49;pointer-events:none;opacity:.95}
 .front .sbtn{width:min(19vh,108px);height:min(19vh,108px);background:#2f9bff;color:#fff;flex-direction:column;font-size:min(7vh,40px);border-radius:28px;position:relative}
 .front .sbtn span{font-size:min(3vh,15px);margin-top:2px}
 .front .sbtn.shop{background:#ff8a1f}
@@ -177,6 +182,7 @@ export class FrontApp {
     const phs = document.createElement('div'); phs.className = 'phases'; d.appendChild(phs);
     this.phaseBtns = PHASES3.map((p, i) => this.mkBtn(phs, 'ph', `${PHASE_ICON[i]}<b>${p.id}</b>`, () => { save({ phase: p.id }); speak('Fase ' + p.id + '. ' + p.name); this.refreshHome(); }));
     this.mkBtn(d, 'play', PLAY_SVG, () => this.startGame());
+    const cr = document.createElement('div'); cr.className = 'credits'; cr.innerHTML = `Desenvolvido por ${AUTHOR}<br>© ${YEAR} ${AUTHOR}. Todos os direitos reservados.`; d.appendChild(cr);
     const side = document.createElement('div'); side.className = 'side'; d.appendChild(side);
     this.mkBtn(side, 'sbtn', '🧒<span>Personagem</span>', () => { speak('Monte o seu personagem!'); this.show('editor'); });
     this.mkBtn(side, 'sbtn shop', '🛍️<span>Lojinha</span>', () => { speak('Lojinha de poderes!'); this.show('shop'); });

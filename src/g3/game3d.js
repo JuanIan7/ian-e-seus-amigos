@@ -97,7 +97,7 @@ export class Game3D {
 
     // ---- interface ----
     this.hud = createHud(this.el, {
-      lane: (d) => this.steer(d), jump: (v) => this.setJump(v), run: (v) => this.setRun(v), action: () => this.pressAction(), pause: () => this.setPaused(true), item: (k) => this.useItem(k),
+      lane: (d) => this.steer(d), jump: (v) => this.setJump(v), run: () => this.toggleRun(), action: () => this.pressAction(), pause: () => this.setPaused(true), item: (k) => this.useItem(k),
     });
     this.hud.showRun(this.cfg.showRun); this.hud.setDots(this.phaseNum - 1, PHASES.length, 0);
     this.hud.setStars(0); this.hud.setLives(this.lives, this.maxLives); this.hud.setInv(this.inv, SHOP);
@@ -124,7 +124,7 @@ export class Game3D {
       if (e.repeat) return;
       const c = e.code;
       if (c === 'ArrowUp' || c === 'Space') { e.preventDefault(); this.setJump(down); }
-      else if (c === 'ShiftLeft' || c === 'ShiftRight' || c === 'KeyR' || c === 'KeyW') this.setRun(down);
+      else if (down && (c === 'ShiftLeft' || c === 'ShiftRight' || c === 'KeyR' || c === 'KeyW')) this.toggleRun();
       else if (down && (c === 'ArrowLeft' || c === 'KeyA')) this.steer(-1);
       else if (down && (c === 'ArrowRight' || c === 'KeyD')) this.steer(1);
       else if (down && (c === 'ArrowDown' || c === 'KeyX' || c === 'KeyZ')) this.pressAction();
@@ -136,6 +136,8 @@ export class Game3D {
   }
   setJump(v) { unlock(); if (v === this.jumpHeld) return; this.jumpHeld = v; if (v) this.pressJump(); }
   setRun(v) { if (this.mini) v = false; this.runHeld = v; this.hud.setRunActive(v); }
+  /** correr é liga/desliga (um toque liga, outro desliga): segurar o botão impedia de pular ao mesmo tempo no celular */
+  toggleRun() { unlock(); if (this.paused || this.mini) return; this.setRun(!this.runHeld); }
   steer(d) { unlock(); if (this.paused || this.mini || this.fall) return; const p = this.p; const nl = Math.max(-1, Math.min(1, p.lane + d)); if (nl !== p.lane) { p.lane = nl; sfx.tap && sfx.tap(); } p.lastSteer = this.t; }
   pressJump() {
     unlock(); if (this.paused || this.mini) return;

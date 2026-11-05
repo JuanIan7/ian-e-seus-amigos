@@ -53,3 +53,7 @@ Teste no navegador: Espaço/↑ = pular, ↓/X = ação, P/Esc = pausa. Para PCs
 
 ## APK
 Cada push na `main` roda o GitHub Actions (`.github/workflows/build-apk.yml`): simula o jogo, compila o APK de teste (assinatura de depuração) e publica em **Releases → latest** (`ian-e-seus-amigos.apk`). Abra o link da Release no celular, baixe e instale (permitir "apps desconhecidos").
+
+## Créditos
+
+Desenvolvido por Juan Carlos Silva de Araujo. © 2026 Juan Carlos Silva de Araujo. Todos os direitos reservados.
