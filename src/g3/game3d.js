@@ -624,7 +624,7 @@ export class Game3D {
   openMini(kind, station = null) {
     if (this.mini || this.paused || this.over) return;
     this.setRun(false); this.jumpHeld = false; this.p.dblReq = false; this.stats.minis++;
-    const fx = { star: () => sfx.star(), tap: () => sfx.tap && sfx.tap(), win: () => sfx.win(), hit: () => sfx.hit() };
+    const fx = { star: () => sfx.star(), catch: () => sfx.catch && sfx.catch(), tap: () => sfx.tap && sfx.tap(), win: () => sfx.win(), hit: () => sfx.hit() };
     const reward = this.lives < this.maxLives ? '+1 ❤️ vida!' : '+5 ⭐';
     this.mini = startMinigame(this.el, kind || this.phase.puzzle, {
       mode: this.modeId, rng: this.rng.frac, sfx: fx, speak, time: 30, reward, rewardSay: 'Muito bem! Você ganhou uma vida!',
