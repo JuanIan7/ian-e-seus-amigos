@@ -8,8 +8,8 @@
 - **Android:** funcionando (APK gerado pelo Android Studio e pelo GitHub Actions em Releases → latest). O Juan relatou
   lentidão e alguns travamentos; em 05/11 foram corrigidos (ver "Revisão de 05/11" abaixo). O próximo APK já sai com as correções.
 - **iOS:** plataforma adicionada (`ios/`, Capacitor 8.6, SPM, sem CocoaPods), ícone e splash próprios, orientação travada em
-  paisagem, bundle `br.com.ianeamigos.jogo`, iOS mínimo 15. `npx cap sync ios` já foi rodado com o build atual.
-  **Falta:** o Xcode não está instalado neste Mac.
+  paisagem, bundle `br.com.ianeamigos.jogo`, iOS mínimo 15.
+  **Instalado no iPhone do Juan em 05/11/2026** (Xcode 27.2, Apple ID gratuito, time `8B992A8Y4H`). Ver "Reinstalar no iPhone".
 
 ## Espaço em disco (resolvido em 05/11)
 
@@ -19,7 +19,29 @@ Downloads (3,5 GB) e, em Downloads, as pastas Vídeos, Imagens e Apresentações
 Drive (CATTS 2026, Instrução Light, Fotografia, POPATTS). Resultado: **57 GB livres**. Nada em Documents, Desktop
 ou Library/Caches foi tocado. A App Store foi aberta na página do Xcode para o Juan clicar em "Obter".
 
-## Passos para instalar no iPhone
+## Reinstalar no iPhone (processo que funcionou em 05/11)
+
+O app com Apple ID grátis expira em 7 dias. Para reinstalar (ou atualizar depois de mudar o jogo), com o iPhone no cabo e destravado:
+
+```bash
+cd ~/ian-e-seus-amigos
+npm run build && npx cap sync ios
+cd ios/App
+xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+  -destination 'id=00008140-0002309A2244801C' -allowProvisioningUpdates \
+  -derivedDataPath /tmp/dd-ian build
+xcrun devicectl device install app --device 00008140-0002309A2244801C /tmp/dd-ian/Build/Products/Debug-iphoneos/App.app
+xcrun devicectl device process launch --device 00008140-0002309A2244801C br.com.ianeamigos.jogo
+```
+
+- Não precisa abrir o Xcode nem clicar em nada. O projeto é `App.xcodeproj` (não existe `.xcworkspace`, é SPM).
+- Na primeira assinatura o macOS pede a **senha do usuário do Mac** (chave "login"): digitar e clicar em "Sempre Permitir".
+- **Limite de 3 apps** por iPhone com Apple ID grátis. O iPhone do Juan tinha SideStore, Manic EMU e StikDebug;
+  em 05/11 o StikDebug foi removido (com autorização) para o jogo entrar. Se der erro "maximum number of installed
+  apps using a free developer profile", é isso: remover um app ou pagar o Apple Developer Program.
+- UDID do iPhone de Juan: `00008140-0002309A2244801C` (`xcrun devicectl list devices`).
+
+## Passos originais (primeira instalação, já feitos)
 
 1. Instalar o Xcode pela App Store (gratuito). Abrir uma vez sozinho (instala componentes extras).
 2. Xcode > Settings > Accounts > "+" > entrar com o Apple ID pessoal (não precisa pagar nada).
