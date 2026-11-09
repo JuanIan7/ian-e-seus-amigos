@@ -105,6 +105,9 @@ xcrun devicectl device process launch --device 00008140-0002309A2244801C br.com.
   voz Kore) para o dia a dia e para ajudar bichinhos; masculina (o pai) para salvar pessoas, apagar fogo e a frase final.
   **Gerar** (API paga do Gemini, só com autorização do Juan): `python3 scripts/vozes/gerar-vozes.py [--voz-m Charon]`
   (chave em ~/Projetos/gbs-online/.env.local), depois `npm run build && npx cap sync` e reinstalar. 123 falas (11 masculinas).
+  **Geradas em 09/11/2026** (Kore + Charon; 3,3 MB em `public/vozes/`). O modelo flash tem limite de **100 pedidos/dia**: as últimas
+  22 saíram com `--modelo gemini-2.5-pro-preview-tts` (mesmas vozes). O gerador só cria o que falta e apaga arquivos órfãos; ao
+  mudar/adicionar uma frase no jogo, incluí-la em `falas.json` e rodar de novo.
 - Testes novos em `tests/sim3d.mjs`: corrida infinita (aceleração, multiplicador, sem missões, ranking) e modo história zerado.
 
 ## Ideias para depois (não feitas)

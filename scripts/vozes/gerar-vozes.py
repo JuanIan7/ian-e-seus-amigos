@@ -12,7 +12,7 @@ def opt(name, default):
     return args[args.index(name) + 1] if name in args else default
 VOZ = {'f': opt('--voz-f', 'Kore'), 'm': opt('--voz-m', 'Charon')}
 SO_FALTANTES = '--so-faltantes' in args
-MODELO = 'gemini-2.5-flash-preview-tts'
+MODELO = opt('--modelo', 'gemini-2.5-flash-preview-tts')   # limite de 100 pedidos/dia por modelo; se estourar, usar --modelo gemini-2.5-pro-preview-tts (mesmas vozes)
 ESTILO = {'f': 'Leia em português do Brasil com voz feminina jovem, carinhosa e animada, como uma mãe falando com uma criança de 4 anos num jogo; frase curta, clara, sem pressa: ',
           'm': 'Leia em português do Brasil com voz masculina calorosa e firme, como um pai bombeiro falando com o filho pequeno num jogo; frase curta, clara, sem pressa: '}
 chave = os.environ.get('GEMINI_API_KEY')
@@ -27,26 +27,38 @@ def ident(texto, voz):
 def gerar(texto, voz, dest):
     corpo = {'contents': [{'parts': [{'text': ESTILO[voz] + texto}]}],
              'generationConfig': {'responseModalities': ['AUDIO'], 'speechConfig': {'voiceConfig': {'prebuiltVoiceConfig': {'voiceName': VOZ[voz]}}}}}
-    for tent in range(4):
+    for tent in range(10):
         try:
             req = urllib.request.Request(f'https://generativelanguage.googleapis.com/v1beta/models/{MODELO}:generateContent',
                                          data=json.dumps(corpo).encode(), headers={'Content-Type': 'application/json', 'x-goog-api-key': chave})
             r = json.loads(urllib.request.urlopen(req, timeout=120).read()); break
         except urllib.error.HTTPError as e:
-            if e.code in (429, 500, 503) and tent < 3: time.sleep(8 * (tent + 1)); continue
+            # limite de requisições por minuto: espera e tenta de novo (até 10 vezes)
+            if e.code in (429, 500, 503) and tent < 9: print('   espera', 20 * (tent + 1), 's (HTTP', e.code, ')'); time.sleep(20 * (tent + 1)); continue
             raise
-    parte = r['candidates'][0]['content']['parts'][0]['inlineData']
+    time.sleep(2.5)   # ritmo: evita estourar o limite por minuto
+    cand = (r.get('candidates') or [{}])[0]
+    if 'content' not in cand:
+        # bloqueio/recusa do modelo nesta frase: tenta de novo sem o texto de estilo, só com a frase
+        print('   sem áudio (', cand.get('finishReason'), ') - tentando só com a frase')
+        corpo['contents'][0]['parts'][0]['text'] = 'Diga em português do Brasil: ' + texto
+        req = urllib.request.Request(f'https://generativelanguage.googleapis.com/v1beta/models/{MODELO}:generateContent',
+                                     data=json.dumps(corpo).encode(), headers={'Content-Type': 'application/json', 'x-goog-api-key': chave})
+        r = json.loads(urllib.request.urlopen(req, timeout=120).read()); cand = r['candidates'][0]
+        if 'content' not in cand: print('   FALHOU:', texto, cand.get('finishReason')); return False
+    parte = cand['content']['parts'][0]['inlineData']
     pcm = base64.b64decode(parte['data']); taxa = int(re.search(r'rate=(\d+)', parte['mimeType']).group(1)) if 'rate=' in parte['mimeType'] else 24000
     wav = dest + '.wav'
     with open(wav, 'wb') as w:
         w.write(b'RIFF' + struct.pack('<I', 36 + len(pcm)) + b'WAVEfmt ' + struct.pack('<IHHIIHH', 16, 1, 1, taxa, taxa * 2, 2, 16) + b'data' + struct.pack('<I', len(pcm)) + pcm)
-    subprocess.run(['afconvert', '-f', 'm4af', '-d', 'aac', '-b', '64000', wav, dest], check=True); os.remove(wav)
+    subprocess.run(['afconvert', '-f', 'm4af', '-d', 'aac', '-b', '64000', wav, dest], check=True); os.remove(wav); return True
 manifest = {}
 total = 0
 for f in falas:
     voz = f.get('voz', 'f'); fid = ident(f['texto'], voz) + '.m4a'; dest = f'{outdir}/{fid}'
-    if not (SO_FALTANTES and os.path.exists(dest)) and not os.path.exists(dest):
-        gerar(f['texto'], voz, dest); total += 1; print('ok ', voz, f['texto'])
+    if not os.path.exists(dest):
+        if gerar(f['texto'], voz, dest) is False: continue
+        total += 1; print('ok ', voz, f['texto'])
     manifest[f['texto']] = {'f': fid, 'v': voz}
 # remove arquivos órfãos (frases que saíram do jogo)
 usados = {m['f'] for m in manifest.values()}
