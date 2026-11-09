@@ -54,7 +54,7 @@ export const THEMES3 = {
     sky: [0xff7e6b, 0xffd9a0], fog: 0xffd2a0, hemi: [0xffe3c8, 0xb08a7a, 1.15], sun: [0xffc58a, 2.2],
     road: [0x8e98ad, 0x8590a6], line: 0xffffff, edge: 0xffc92b, curb: 0xdfe6f1, walk: 0xb7c0d2, side: [0x9ba5ba, 0x939eb4], pit: 0xffe3c0, pitName: 'vão', rooftop: true,
     layout: (r) => [
-      { key: 'rail', x: 5.0, z: 6 },
+      { key: 'rail', x: 5.0, z: 6, rot: 0 },           // grade do telhado ao longo da pista (girar ao acaso a jogava no meio da corrida)
       { key: r.pick(['tank', 'billboard', 'bush']), x: r.between(6.5, 8.5), z: r.between(2, 10), face: true },
       { key: 'tower', x: r.between(14, 22), z: r.between(1, 11), face: true, drop: 12 }, { key: 'tower', x: r.between(26, 40), z: r.between(1, 11), face: true, drop: 14 },
     ],
@@ -263,7 +263,8 @@ export class World {
         const o = this.libGet(it.key, theme, r.int(0, 3));
         const x = it.x * side + (it.key === 'tower' && T.rooftop ? side * 0 : 0);
         o.position.set(x, it.drop ? -it.drop : 0, -(it.z + (idx * 0.9 % 1.5)));
-        if (it.face) o.rotation.y = side < 0 ? -Math.PI / 2 : Math.PI / 2;
+        if (it.rot !== undefined) o.rotation.y = it.rot;
+        else if (it.face) o.rotation.y = side < 0 ? -Math.PI / 2 : Math.PI / 2;
         else o.rotation.y = r.between(0, 6.28);
         if (it.key === 'lamp') o.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
         ch.g.add(o);

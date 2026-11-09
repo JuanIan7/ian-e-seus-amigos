@@ -62,6 +62,10 @@ for (const mode of ['facil', 'aventura', 'desafio']) {
   const fall = await run(() => { const g = window.__ian3; const rec = (hold) => { g.setJump(true); g.setJump(false); let maxFall = 0, air = 0; for (let i = 0; i < 300; i++) { if (i === 20 && hold) g.setJump(true); g.tick(1 / 60); maxFall = Math.min(maxFall, g.p.vy); if (!g.p.ground) air++; if (g.p.ground && i > 5) break; } g.setJump(false); return { maxFall, air: air / 60, floats: g.stats.floats }; }; const a = rec(false); for (let i = 0; i < 40; i++) g.tick(1 / 60); const b = rec(true); return { a, b }; });
   ok(fall.b.air > fall.a.air + 0.15 && fall.b.maxFall > fall.a.maxFall * 0.6, `${mode}: segurar o pulo faz descer devagar`, `ar ${fall.a.air.toFixed(2)}s → ${fall.b.air.toFixed(2)}s, queda máx ${fall.a.maxFall.toFixed(1)} → ${fall.b.maxFall.toFixed(1)}`);
   ok(fall.b.air < fall.a.air + 3.0, `${mode}: a descida lenta é limitada`);
+  await ticks(30);
+  // mergulho (deslizar para baixo): desce bem mais rápido que a queda normal
+  const dv = await run(() => { const g = window.__ian3; const rec = (dive) => { g.setJump(true); g.setJump(false); let air = 0; for (let i = 0; i < 300; i++) { if (i === 12 && dive) g.dive(); g.tick(1 / 60); air += 1 / 60; if (g.p.ground && i > 5) break; } for (let k = 0; k < 30; k++) g.tick(1 / 60); return air; }; return { a: rec(false), b: rec(true) }; });
+  ok(dv.b < dv.a * 0.8, `${mode}: mergulho encurta o pulo (${dv.a.toFixed(2)}s → ${dv.b.toFixed(2)}s)`);
 }
 
 // ---------------------------------------------------------------- 3. combinação: correr + pulo duplo + segurar na descida

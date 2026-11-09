@@ -126,6 +126,17 @@ desenhada um quadro fora da tela (y = -1000, sem recorte) para a geometria subir
 decidida no começo da fase atual (`pickNextPhase`). Medido no navegador de teste: troca de fase de ~90 ms para ~5 ms de
 lógica e ~24 ms no pior quadro; criar missão de 40 ms para 0,2 ms; moradores de 32 ms para 0,5 ms.
 
+## Ajustes de 09/11 (fim do dia)
+
+- **Fase 4 de verdade limpa**: o que atravessava a pista era a *grade do telhado* (`rail`, 12 m), colocada com rotação
+  aleatória pelo layout do tema; agora `rot: 0` (alinhada com a pista; `fillChunk` aceita `rot`). Sem buracos, sem
+  plataformas no centro, obstáculos só nas laterais.
+- **Batida mais visível**: clarão vermelho nas bordas (`hud.hitFlash`), aviso "💥 Opa!", piscada mais lenta (9 Hz por 1,6 s)
+  e recuperação da velocidade em 1,4 s (`RECOVER_T`, começa em 40%).
+- **Descer rápido (mergulho)**: com o dedo nos botões azuis, arrastar para baixo (joystick) ou deslizar para baixo em
+  qualquer lugar; no teclado, seta para baixo / S no ar. `dive()`: gravidade ×3,5 por 0,6 s e cancela o planar.
+  Seta para baixo no chão continua sendo a ação; X/Z só ação. Teste em sim3d ("mergulho encurta o pulo").
+
 ## Ideias para depois (não feitas)
 
 - Voz em Android: o WebView do Android pode não ter `speechSynthesis` (as frases faladas ficariam mudas). Se for o caso no

@@ -54,6 +54,9 @@ const css = `
 .g3 .dist{position:absolute;left:calc(env(safe-area-inset-left) + 2.2vw + min(24vh,140px));top:calc(env(safe-area-inset-top) + 2vh + min(1.5vh,8px));display:none;color:#fff;font-size:min(5vh,28px);text-shadow:0 3px 0 #1b2a49,2px 0 0 #1b2a49,-2px 0 0 #1b2a49,0 -2px 0 #1b2a49;pointer-events:none}
 .g3 .mul{position:absolute;left:calc(env(safe-area-inset-left) + 2.2vw + min(44vh,270px));top:calc(env(safe-area-inset-top) + 2vh);display:none;align-items:center;justify-content:center;background:#ff8a1f;color:#fff;border:4px solid #1b2a49;border-radius:20px;padding:0 12px;height:min(8vh,44px);font-size:min(5.5vh,30px);text-shadow:0 2px 0 #1b2a49;pointer-events:none}
 .g3 .mul.pop{animation:g3pop .6s}
+.g3 .hitflash{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 60%,rgba(255,60,60,0) 35%,rgba(255,40,40,.55) 100%);opacity:0;z-index:20}
+.g3 .hitflash.go{animation:g3flash .5s ease-out}
+@keyframes g3flash{0%{opacity:1}100%{opacity:0}}
 .g3 .win{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,rgba(255,226,120,.75),rgba(20,34,64,.85) 70%);pointer-events:auto;z-index:31;text-align:center;color:#fff}
 .g3 .win .box{background:linear-gradient(#fff6d8,#ffe2a0);border:6px solid #1b2a49;border-radius:30px;padding:3vh 4vw;color:#1b2a49;max-width:84vw;box-shadow:0 10px 0 rgba(27,42,73,.5)}
 .g3 .win h1{margin:0 0 1vh;font-size:min(9vh,52px)}
@@ -123,19 +126,21 @@ export function createHud(root, h) {
   const style = document.createElement('style'); style.textContent = css; root.appendChild(style);
   const ui = document.createElement('div'); ui.className = 'ui'; root.appendChild(ui);
   // toggle = botão liga/desliga: o visual "on" é controlado por fora (setRunActive), não pelo dedo apertado
-  const mk = (cls, icon, down, up, toggle = false) => {
+  const mk = (cls, icon, down, up, toggle = false, onMove = null) => {
     const b = document.createElement('div'); b.className = 'btn ' + cls; b.innerHTML = icon; ui.appendChild(b);
     let held = false;
-    let pid = null;
-    const on = (e) => { e.preventDefault(); e.stopPropagation(); if (held) return; held = true; pid = e.pointerId; if (!toggle) b.classList.add('on'); try { b.setPointerCapture(e.pointerId); } catch (x) { /* ignora */ } down && down(); };
+    let pid = null, y0 = 0, moved = false;
+    const on = (e) => { e.preventDefault(); e.stopPropagation(); if (held) return; held = true; pid = e.pointerId; y0 = e.clientY; moved = false; if (!toggle) b.classList.add('on'); try { b.setPointerCapture(e.pointerId); } catch (x) { /* ignora */ } down && down(); };
     const off = (e) => { e.preventDefault(); e.stopPropagation(); if (!held || (pid !== null && e.pointerId !== pid)) return; held = false; pid = null; if (!toggle) b.classList.remove('on'); up && up(); };
     b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
+    // como um joystick: com o dedo no botão, arrastar para baixo dispara onMove (uma vez por toque)
+    if (onMove) b.addEventListener('pointermove', (e) => { if (!held || e.pointerId !== pid || moved) return; if (e.clientY - y0 > 40) { moved = true; onMove(); } });
     b.addEventListener('contextmenu', (e) => e.preventDefault());
     return b;
   };
   const els = {};
-  els.left = mk('lane l', ICONS.left, () => h.lane(-1));
-  els.right = mk('lane r', ICONS.right, () => h.lane(1));
+  els.left = mk('lane l', ICONS.left, () => h.lane(-1), null, false, () => h.dive());
+  els.right = mk('lane r', ICONS.right, () => h.lane(1), null, false, () => h.dive());
   els.jump = mk('jump', ICONS.up, () => h.jump(true), () => h.jump(false));
   els.act = mk('act', ICONS.drop, () => h.action());
   els.run = mk('run', ICONS.run, () => h.run(), null, true);
@@ -160,11 +165,12 @@ export function createHud(root, h) {
   const dist = document.createElement('div'); dist.className = 'dist'; dist.innerHTML = '<span>0 m</span>'; ui.appendChild(dist);
   const mulEl = document.createElement('div'); mulEl.className = 'mul'; ui.appendChild(mulEl);
   const win = document.createElement('div'); win.className = 'win'; ui.appendChild(win);
+  const flash = document.createElement('div'); flash.className = 'hitflash'; ui.appendChild(flash);
 
   // deslizar o dedo para os lados também muda de faixa
   let sx = null, sy = null, st = 0;
   root.addEventListener('pointerdown', (e) => { if (e.target.closest && e.target.closest('.btn')) return; sx = e.clientX; sy = e.clientY; st = performance.now(); });
-  root.addEventListener('pointerup', (e) => { if (sx === null) return; const dx = e.clientX - sx, dy = e.clientY - sy; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2 && performance.now() - st < 600) h.lane(dx > 0 ? 1 : -1); sx = null; });
+  root.addEventListener('pointerup', (e) => { if (sx === null) return; const dx = e.clientX - sx, dy = e.clientY - sy; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2 && performance.now() - st < 600) h.lane(dx > 0 ? 1 : -1); else if (dy > 50 && dy > Math.abs(dx) * 1.2 && performance.now() - st < 600) h.dive(); sx = null; });   // deslizar para baixo: desce mais rápido
 
   let lastStars = -1, lastBar = -1, lastDots = '', lastDist = -1;
   const api = {
@@ -220,6 +226,8 @@ export function createHud(root, h) {
       add(ICONS.home, '#2f9bff', cb.menu, 'menu'); add(ICONS.again, '#3ecb6b', cb.again, 'again'); add(ICONS.shop, '#ff8a1f', cb.shop, 'shop');
     },
     pulseJump(v) { els.jump.classList.toggle('pulse', !!v); },
+    /** clarão vermelho nas bordas ao bater num obstáculo */
+    hitFlash() { flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go'); },
     /** fim do modo história: medalha, a frase do pai e um toque para seguir ao resultado */
     victory(text, onTap) {
       win.style.display = 'flex'; win.innerHTML = `<div class="box"><div class="medal">🏅</div><h1>Você zerou!</h1><p>${text}</p><small>toque para continuar</small></div>`;

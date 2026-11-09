@@ -17,7 +17,8 @@ import { sfx, unlock, startMusic, stopMusic, speak, silenceVoice } from '../audi
 const PHASES = PHASES3;
 import { createHud } from './hud.js';
 
-const STOP = 3.2;                       // distância (em z) em que o mundo para diante de uma missão
+const STOP = 3.2;
+const RECOVER_T = 1.4;                  // segundos para recuperar a velocidade depois de bater                       // distância (em z) em que o mundo para diante de uma missão
 const PLAYER_R = 0.3;
 const POWER_EMOJI = { shield: '🛡️', magnet: '🧲', jump: '🦘', speed: '⚡', jet: '💦', fly: '🪽', glide: '🪂', truck: '🚒' };
 const POWERS_ALL = { ...POWERS, glide: { name: 'Planador', say: 'Planador! Segure o pulo no ar!', dur: 16, color: 0x4db8ff }, truck: { name: 'Viatura', say: 'Viatura dos bombeiros!', dur: 9, color: 0xe8352f } };
@@ -99,7 +100,7 @@ export class Game3D {
 
     // ---- interface ----
     this.hud = createHud(this.el, {
-      lane: (d) => this.steer(d), jump: (v) => this.setJump(v), run: () => this.toggleRun(), action: () => this.pressAction(), pause: () => this.setPaused(true), item: (k) => this.useItem(k),
+      lane: (d) => this.steer(d), jump: (v) => this.setJump(v), run: () => this.toggleRun(), dive: () => this.dive(), action: () => this.pressAction(), pause: () => this.setPaused(true), item: (k) => this.useItem(k),
     });
     this.hud.showRun(this.cfg.showRun); if (!this.infinite) this.hud.setDots(this.phaseNum - 1, PHASES.length, 0); else { this.hud.setDist(0); this.hud.els.act.style.display = 'none'; }   // sem missões na infinita: sem botão de ação
     this.hud.setStars(0); this.hud.setLives(this.lives, this.maxLives); this.hud.setInv(this.inv, SHOP);
@@ -130,7 +131,8 @@ export class Game3D {
       else if (down && (c === 'ShiftLeft' || c === 'ShiftRight' || c === 'KeyR' || c === 'KeyW')) this.toggleRun();
       else if (down && (c === 'ArrowLeft' || c === 'KeyA')) this.steer(-1);
       else if (down && (c === 'ArrowRight' || c === 'KeyD')) this.steer(1);
-      else if (down && (c === 'ArrowDown' || c === 'KeyX' || c === 'KeyZ')) this.pressAction();
+      else if (down && (c === 'ArrowDown' || c === 'KeyS')) { if (this.p.ground) this.pressAction(); else this.dive(); }   // para baixo: no ar desce rápido; no chão, ação
+      else if (down && (c === 'KeyX' || c === 'KeyZ')) this.pressAction();
       else if (down && (c === 'KeyP' || c === 'Escape')) { if (this.mini) this.closeMini(false); else this.setPaused(!this.paused); }
       else if (down && /^Digit[1-8]$/.test(c)) { const it = SHOP[+c.slice(5) - 1]; if (it) this.useItem(it.key); }
     };
@@ -142,6 +144,12 @@ export class Game3D {
   setRun(v) { let lv = v === true ? 1 : v === false ? 0 : (v | 0); if (this.mini) lv = 0; this.runLevel = lv; this.runHeld = lv > 0; this.hud.setRunActive(lv, lv ? RUN_MULS[lv] + 'x' : ''); }
   /** velocidade por toques (segurar o botão impedia de pular ao mesmo tempo no celular): 1º toque ×2, 2º toque ×3, 3º volta ao normal */
   toggleRun() { unlock(); if (this.paused || this.mini) return; this.setRun((this.runLevel + 1) % 3); }
+  /** mergulho: no ar, desce bem mais rápido (deslizar o dedo para baixo ou seta para baixo) */
+  dive() {
+    unlock(); const p = this.p;
+    if (this.paused || this.mini || this.fall || this.focus || p.ground || this.powers.fly) return;
+    p.diveT = 0.6; p.floating = false; this.jumpHeld = false; p.vy = Math.min(p.vy, -this.jumpV * 0.5); p.squash = -0.15; sfx.tap && sfx.tap(); this.stats.dives = (this.stats.dives || 0) + 1;
+  }
   steer(d) { unlock(); if (this.paused || this.mini || this.fall) return; const p = this.p; const nl = Math.max(-1, Math.min(1, p.lane + d)); if (nl !== p.lane) { p.lane = nl; sfx.tap && sfx.tap(); } p.lastSteer = this.t; }
   pressJump() {
     unlock(); if (this.paused || this.mini) return;
@@ -393,7 +401,7 @@ export class Game3D {
     if (this.focus) this.missionMul = 0;
     mul = Math.min(mul, this.missionMul);
     if (this.resumeMul < 1) { this.resumeMul = Math.min(1, this.resumeMul + dt / 1.3); mul = Math.min(mul, 0.35 + 0.65 * this.resumeMul); }
-    const rec = this.recover > 0 ? c.slow + (1 - c.slow) * (1 - this.recover / 1.0) : 1;
+    const rec = this.recover > 0 ? c.slow + (1 - c.slow) * (1 - this.recover / RECOVER_T) : 1;   // depois da batida: devagar e volta aos poucos
     // correr: aceleração gradual enquanto o botão está pressionado; ao soltar volta suavemente à velocidade da partida
     const runMul = RUN_MULS[this.runLevel] || 1;                                       // botão de velocidade: ×2 / ×3
     const turboMax = Math.max(this.powers.speed ? 1.5 : 1, runMul, this.powers.truck ? 1.35 : 1);
@@ -476,15 +484,16 @@ export class Game3D {
       }
       // segurar o pulo no ar: desce devagarzinho (limitado; o planador desce ainda mais devagar e por mais tempo)
       p.vy -= this.g * dt;
+      if (p.diveT > 0) { p.diveT -= dt; p.vy -= this.g * 2.5 * dt; }                       // mergulho: gravidade bem maior por um instante
       const cap = this.powers.glide ? -0.9 : -1.7, maxT = this.powers.glide ? 14 : 2.2;
-      if ((this.jumpHeld || p.softT > 0) && p.vy < cap && p.floatT < maxT && !engaged) { p.floating = true; p.floatT += dt; p.vy += (cap - p.vy) * Math.min(1, dt * 14); }
+      if ((this.jumpHeld || p.softT > 0) && p.vy < cap && p.floatT < maxT && !engaged && !(p.diveT > 0)) { p.floating = true; p.floatT += dt; p.vy += (cap - p.vy) * Math.min(1, dt * 14); }
       const yPrev = p.y; p.y += p.vy * dt;
       if (p.floating && !this._wasFloating) { this.stats.floats++; if (this.tutFloat) { this.tutFloat = false; save({ tut: { ...load().tut, float: true } }); } }
       const fl = this.floorAt(p.x, this.dist, yPrev);
       // salto de resgate sobre vazios em modos assistidos
       if (p.vy < 0 && !p.rescued && (c.jumpAssist || this.assist > 0) && p.y < 0.5 && fl === -Infinity) { p.vy = this.jumpV * 0.8; p.rescued = true; sfx.jump(); this.fx.burst(p.x, p.y, 0, 6, { col: 0xffe14a, s: 0.12, speed: 1.6, life: 0.4 }); }
       if (p.vy <= 0 && fl > -Infinity && p.y <= fl) {
-        p.y = fl; p.vy = 0; p.ground = true; p.dbl = false; p.dblReq = false; p.floatT = 0; p.rescued = false; p.coyote = c.coyote; p.squash = 0.28; this.fx.burst(p.x, fl + 0.05, 0, 6, { col: 0xf1ead8, s: 0.16, speed: 1.3, life: 0.45 }); sfx.land && sfx.land();
+        p.y = fl; p.vy = 0; p.ground = true; p.dbl = false; p.dblReq = false; p.floatT = 0; p.diveT = 0; p.rescued = false; p.coyote = c.coyote; p.squash = 0.28; this.fx.burst(p.x, fl + 0.05, 0, 6, { col: 0xf1ead8, s: 0.16, speed: 1.3, life: 0.45 }); sfx.land && sfx.land();
       } else if (fl === -Infinity && p.y < -1.1) this.startFall();
     } else { /* no apoio: p.y já foi ajustado acima */ }
     // trampolins
@@ -694,7 +703,7 @@ export class Game3D {
     const p = this.p; o.hit = true;
     o.fly = { t: 0, vx: (o.x >= p.x ? 1 : -1) * 4, vy: 5 };
     if (this.powers.shield) { this.removePower('shield'); sfx.star(); this.fx.burst(p.x, 0.8, 0, 16, { col: 0x4db8ff, s: 0.14, speed: 3, life: 0.6 }); p.invul = 0.7; return; }
-    p.invul = 1.5; this.recover = 1.0; this.stats.hits++; sfx.hit(); p.hitT = 0.45; this.shake = 0.18; this.loseLife();
+    p.invul = 1.6; this.recover = RECOVER_T; this.stats.hits++; sfx.hit(); p.hitT = 0.5; this.shake = 0.22; this.hud.hitFlash(); this.hud.toast('💥', 'Opa!'); this.loseLife();
     this.fx.burst(p.x, 0.8, -0.2, 8, { col: 0xffffff, s: 0.16, speed: 2.4, life: 0.5 });
     this.hitTimes.push(this.t); this.hitTimes = this.hitTimes.filter((t) => this.t - t < 25); this.cleanTimer = 0;
     if (this.hitTimes.length >= 3 && this.assist < 2) { this.assist++; this.hitTimes = []; }
@@ -1003,7 +1012,7 @@ export class Game3D {
     k.spin.rotation.x = p.flip > 0 ? -((0.55 - p.flip) / 0.55) * Math.PI * 2 : 0;
     k.body.scale.set(1 - p.squash * 0.35, 1 + p.squash * 0.5, 1 - p.squash * 0.35);
     this.kid.position.set(p.x, p.y + (tk ? 1.05 : 0), 0);
-    this.kid.visible = !(p.invul > 0 && p.invul < 1.6 && Math.floor(this.t * 14) % 2 && !this.fall);
+    this.kid.visible = !(p.invul > 0 && p.invul < 1.7 && Math.floor(this.t * 9) % 2 && !this.fall);   // pisca depois da batida
     this.shadow.position.set(p.x, 0.02 + (p.y > 0.5 && p.ground ? p.y : 0), 0); const alt = p.ground ? 0 : Math.max(0, p.y); this.shadow.scale.set(0.9 * (1 - Math.min(0.5, alt / 5)), 1, 0.9 * (1 - Math.min(0.5, alt / 5))); this.shadow.visible = !this.fall;
     this.bubble.visible = !!this.powers.shield; this.bubble.position.set(p.x, p.y + 0.75, 0); this.bubble.scale.setScalar(1 + Math.sin(this.t * 6) * 0.03);
     // dica de salto (modo fácil)
