@@ -108,6 +108,10 @@ xcrun devicectl device process launch --device 00008140-0002309A2244801C br.com.
   **Geradas em 09/11/2026** (Kore + Charon; 3,3 MB em `public/vozes/`). O modelo flash tem limite de **100 pedidos/dia**: as últimas
   22 saíram com `--modelo gemini-2.5-pro-preview-tts` (mesmas vozes). O gerador só cria o que falta e apaga arquivos órfãos; ao
   mudar/adicionar uma frase no jogo, incluí-la em `falas.json` e rodar de novo.
+  **Armadilha do iOS (09/11):** o Capacitor serve arquivos de mídia (.m4a, .mp3…) com uma resposta sem status HTTP, pensada
+  para o elemento `<audio>`; um `fetch()` que exige `r.ok` falha e o jogo caía na voz do sistema. Por isso `speak()` toca
+  primeiro pelo `<audio>` nativo, depois tenta Web Audio (fetch tolerante) e só então a voz do sistema. `window.__ianVoice`
+  guarda o último problema para diagnóstico no aparelho.
 - Testes novos em `tests/sim3d.mjs`: corrida infinita (aceleração, multiplicador, sem missões, ranking) e modo história zerado.
 
 ## Ideias para depois (não feitas)

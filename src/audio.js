@@ -161,29 +161,53 @@ export function currentTrack() { return curTrack; }
 // (o pai) para salvar pessoas, apagar fogo e para a frase final do modo história. Se a frase ainda não tiver
 // gravação, cai na voz do sistema (speechSynthesis) com o tom certo.
 // ---------------------------------------------------------------------------------------------
-const voiceBuf = {}, voicePending = {};
-let voiceSrc = null, voiceSeq = 0;
+const voiceBuf = {}, voicePending = {}, voiceEls = {};
+let voiceSrc = null, voiceEl = null, voiceSeq = 0;
 const voiceUrl = (f) => new URL('vozes/' + f, document.baseURI).href;
+const norm = (t) => String(t).replace(/\s+/g, ' ').trim();
+// caminho 1 (principal): elemento <audio> nativo. Toca .m4a no iOS, Android e navegadores sem decodificar nada.
+function voiceElement(f) {
+  let a = voiceEls[f];
+  if (!a) { a = new Audio(voiceUrl(f)); a.preload = 'auto'; a.setAttribute('playsinline', ''); voiceEls[f] = a; try { a.load(); } catch (e) {} }
+  return a;
+}
+// caminho 2 (reserva): Web Audio com o arquivo decodificado
 function loadVoice(f) {
   if (voiceBuf[f]) return Promise.resolve(voiceBuf[f]);
   if (voicePending[f]) return voicePending[f];
   const c = ensure(); if (!c) return Promise.resolve(null);
-  voicePending[f] = fetch(voiceUrl(f)).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+  // no iOS (Capacitor) a resposta de arquivos de mídia vem sem status HTTP: não exigir r.ok, só conteúdo
+  voicePending[f] = fetch(voiceUrl(f)).then((r) => r.arrayBuffer()).then((ab) => (ab && ab.byteLength > 0 ? ab : Promise.reject(new Error('vazio'))))
     .then((ab) => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)))
     .then((b) => { voiceBuf[f] = b; return b; }).catch(() => { voiceBuf[f] = false; return null; })
     .finally(() => { delete voicePending[f]; });
   return voicePending[f];
 }
 /** pré-carrega as falas (chamado ao começar a partida: evita atraso na primeira frase) */
-export function preloadVoices(texts) { texts.forEach((t) => { const e = VOICES[norm(t)]; if (e) loadVoice(e.f); }); }
-const norm = (t) => String(t).replace(/\s+/g, ' ').trim();
-function stopVoiceFile() { if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; } }
+export function preloadVoices(texts) { texts.forEach((t) => { const e = VOICES[norm(t)]; if (e) voiceElement(e.f); }); }
+function stopVoiceFile() {
+  if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; }
+  if (voiceEl) { try { voiceEl.pause(); voiceEl.currentTime = 0; } catch (e) {} voiceEl = null; }
+}
 function playVoiceBuffer(b) {
-  const c = ensure(); if (!c || !b) return;
+  const c = ensure(); if (!c || !b) return false;
   stopVoiceFile(); const src = c.createBufferSource(), g = c.createGain(); g.gain.value = 1.0;
   src.buffer = b; src.connect(g); g.connect(master); src.start(); voiceSrc = src; src.onended = () => { if (voiceSrc === src) voiceSrc = null; };
+  return true;
 }
-/** voz do sistema (reserva): gênero só muda o tom */
+/** toca pelo elemento <audio>; onFail é chamado se o aparelho não conseguir tocar o arquivo */
+function playVoiceElement(f, onFail) {
+  stopVoiceFile();
+  const a = voiceElement(f); voiceEl = a; let failed = false;
+  const fail = () => { if (failed) return; failed = true; a.removeEventListener('error', fail); if (voiceEl === a) voiceEl = null; onFail && onFail(); };
+  a.addEventListener('error', fail);
+  try { a.currentTime = 0; } catch (e) {}
+  a.volume = 1;
+  let p = null; try { p = a.play(); } catch (e) { fail(); return; }
+  if (p && p.catch) p.catch(fail);
+  a.onended = () => { a.removeEventListener('error', fail); if (voiceEl === a) voiceEl = null; };
+}
+/** voz do sistema (última reserva): gênero só muda o tom */
 function speakSynth(text, voice) {
   if (!('speechSynthesis' in window)) return;
   try {
@@ -196,15 +220,21 @@ function speakSynth(text, voice) {
     setTimeout(() => { try { ss.speak(u); } catch (e) { /* sem voz */ } }, 0);     // falar logo depois de cancelar perde a frase em alguns Androids
   } catch (e) { /* sem voz: segue só com o visual */ }
 }
+/** último problema ao tocar uma gravação (para diagnóstico no aparelho: window.__ianVoice) */
+export const voiceDebug = { last: null, played: 0, fallbacks: 0 };
+if (typeof window !== 'undefined') window.__ianVoice = voiceDebug;
 /** fala uma frase. voice: 'f' (padrão) ou 'm'; se a frase tiver gravação, o gênero vem do manifesto */
 export function speak(text, voice = 'f') {
   if (!on()) return;
   const e = VOICES[norm(text)]; const seq = ++voiceSeq;
   silenceVoice();
-  if (!e) { speakSynth(text, voice); return; }
-  const b = voiceBuf[e.f];
-  if (b) { playVoiceBuffer(b); return; }
-  if (b === false) { speakSynth(text, e.v || voice); return; }
-  loadVoice(e.f).then((buf) => { if (seq !== voiceSeq) return; if (buf) playVoiceBuffer(buf); else speakSynth(text, e.v || voice); });
+  if (!e) { voiceDebug.last = 'sem gravação: ' + text; voiceDebug.fallbacks++; speakSynth(text, voice); return; }
+  // 1) <audio> nativo; 2) Web Audio decodificado; 3) voz do sistema
+  playVoiceElement(e.f, () => {
+    if (seq !== voiceSeq) return;
+    voiceDebug.last = 'audio falhou: ' + e.f;
+    loadVoice(e.f).then((buf) => { if (seq !== voiceSeq) return; if (buf && playVoiceBuffer(buf)) { voiceDebug.played++; return; } voiceDebug.last = 'decode falhou: ' + e.f; voiceDebug.fallbacks++; speakSynth(text, e.v || voice); });
+  });
+  voiceDebug.played++;
 }
 export function silenceVoice() { stopVoiceFile(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }
