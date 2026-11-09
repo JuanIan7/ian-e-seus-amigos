@@ -12,11 +12,9 @@ const css = `
 .g3 .jump{background:#3ecb6b;width:min(30vh,150px);height:min(30vh,150px);right:calc(env(safe-area-inset-right) + 3vw);bottom:calc(env(safe-area-inset-bottom) + 4vh)}
 .g3 .act{background:#ff8a1f;width:min(24vh,120px);height:min(24vh,120px);right:calc(env(safe-area-inset-right) + 3vw + min(32vh,160px));bottom:calc(env(safe-area-inset-bottom) + 3vh)}
 .g3 .run{background:#9b5cff;width:min(20vh,100px);height:min(20vh,100px);right:calc(env(safe-area-inset-right) + 3vw + min(3vh,12px));bottom:calc(env(safe-area-inset-bottom) + 4vh + min(32vh,160px))}
-.g3 .lane{background:#2f9bff;width:min(22vh,108px);height:min(22vh,108px);bottom:calc(env(safe-area-inset-bottom) + 4vh)}
+.g3 .lane{background:#2f9bff;width:min(24vh,118px);height:min(24vh,118px);bottom:calc(env(safe-area-inset-bottom) + 4vh)}
 .g3 .lane.l{left:calc(env(safe-area-inset-left) + 3vw)}
-.g3 .lane.d{left:calc(env(safe-area-inset-left) + 3vw + min(24.5vh,120px));background:#1f7fe0}
-.g3 .lane.d svg{transform:rotate(180deg)}
-.g3 .lane.r{left:calc(env(safe-area-inset-left) + 3vw + min(49vh,240px))}
+.g3 .lane.r{left:calc(env(safe-area-inset-left) + 3vw + min(28vh,138px))}
 .g3 .pause{background:#2f9bff;width:min(11vh,56px);height:min(11vh,56px);right:calc(env(safe-area-inset-right) + 2vw);top:calc(env(safe-area-inset-top) + 2vh);border-width:4px}
 .g3 .chip{position:absolute;left:calc(env(safe-area-inset-left) + 2.2vw);top:calc(env(safe-area-inset-top) + 2vh);display:flex;align-items:center;gap:10px;color:#fff;font-size:min(8vh,46px);text-shadow:0 3px 0 #1b2a49,3px 0 0 #1b2a49,-3px 0 0 #1b2a49,0 -3px 0 #1b2a49;pointer-events:none}
 .g3 .chip svg{width:min(8vh,44px);height:min(8vh,44px);filter:drop-shadow(0 3px 0 #1b2a49)}
@@ -141,9 +139,8 @@ export function createHud(root, h) {
     return b;
   };
   const els = {};
-  // joystick: ← ↓ → (↓ = mergulho: no ar desce rápido). Arrastar o dedo para baixo em ← ou → também mergulha.
+  // mergulho "velado" (decisão do Juan, 09/11): sem botão próprio. Com o dedo em ← ou →, arrastar para baixo; ou deslizar para baixo na tela.
   els.left = mk('lane l', ICONS.left, () => h.lane(-1), null, false, () => h.dive());
-  els.down = mk('lane d', ICONS.up, () => h.dive());
   els.right = mk('lane r', ICONS.right, () => h.lane(1), null, false, () => h.dive());
   els.jump = mk('jump', ICONS.up, () => h.jump(true), () => h.jump(false));
   els.act = mk('act', ICONS.drop, () => h.action());
