@@ -94,7 +94,8 @@ export class Game3D {
     this.glider = buildGlider(); this.glider.scale.setScalar(1.0); this.glider.visible = false; this.kid.add(this.glider); this.glider.position.set(0, 1.9, 0.1);
     this.carryEgg = buildEgg(0.9); this.carryEgg.visible = false; this.kid.add(this.carryEgg); this.carryEgg.position.set(0, 1.75, 0);
     this.queue = this.scriptFor(this.phaseNum); this.nextS = 26; this.firstObstacle = true;
-    this.setupDog();
+    this.jobs = []; this.prebuilt = {}; this.kidPool = []; this.nextDog = null; this.jrng = rng((o.seed || 'x') + 'jobs');
+    this.setupDog(); this.pickNextPhase(); this.scheduleWarmup();
 
     // ---- interface ----
     this.hud = createHud(this.el, {
@@ -254,6 +255,73 @@ export class Game3D {
     if (this.ctxLost) return;
     this.adaptQuality(dtReal);   // ANTES de desenhar: trocar a resolução depois do render deixava um quadro em branco (piscada)
     this.render();
+    this.runJobs(dtReal);
+  }
+  // ================================================================ preparo em segundo plano
+  /** executa um pouco dos trabalhos pendentes por quadro (3 ms), só em quadros folgados: cenário da próxima fase,
+   *  próximo cãozinho, modelos das missões da fila e moradores. Assim a troca de fase não monta tudo de uma vez. */
+  runJobs(dtReal) {
+    if (!this.jobs.length || (dtReal > 1 / 40 && !this.paused)) return;
+    const t0 = performance.now();
+    while (this.jobs.length && performance.now() - t0 < 3) { const j = this.jobs[0]; let more = false; try { more = j(); } catch (e) { more = false; } if (!more) this.jobs.shift(); if (more === 'frame') break; }   // 'frame' = precisa de um quadro desenhado antes do próximo passo
+  }
+  /** decide já qual será a próxima fase (ordem; sorteio só depois de todas) para poder prepará-la com antecedência */
+  pickNextPhase() {
+    let next = null;
+    for (let i = 1; i <= PHASES.length && next === null; i++) { const id = ((this.phaseNum - 1 + i) % PHASES.length) + 1; if (!this.played.has(id)) next = id; }
+    if (next === null && this.infinite) next = this.rng.pick(PHASES.map((p) => p.id).filter((id) => id !== this.phaseNum));
+    this.nextPhaseId = next;
+  }
+  scheduleWarmup() {
+    const nextPh = this.nextPhaseId ? PHASES[this.nextPhaseId - 1] : null;
+    this.jobs = [];
+    // 1) modelos das missões e do desafio desta fase, na ordem em que vão aparecer
+    const pend = this.queue.filter((t) => t.startsWith('mission:') || t === 'puzzle').map((t) => t.replace('mission:', ''));
+    this.jobs.push(() => { const k = pend.shift(); if (k === undefined) return false; this.prebuildMission(k); return pend.length > 0; });
+    // 2) moradores que comemoram (estoque de 3)
+    this.jobs.push(() => { if (this.kidPool.length >= 3) return false; this.kidPool.push(this.makeNpc()); return this.kidPool.length < 3; });
+    // 3) moldes dos obstáculos desta fase e da próxima (o primeiro de cada tipo custava um quadro)
+    const kinds = this.obsKinds().concat(nextPh ? this.obsKinds(nextPh.theme) : [], ['wall']).filter((k, i, a) => a.indexOf(k) === i);
+    this.jobs.push(() => { const k = kinds.shift(); if (k === undefined) return false; if (!this.tpl[k]) this.tmpl(k); return kinds.length > 0; });
+    if (nextPh) {
+      // 4) cenário da próxima fase, uma peça por vez
+      this.jobs.push(() => this.world.prewarmStep(nextPh.theme));
+      // 5) o cãozinho da próxima fase
+      if (nextPh.dog && nextPh.dog !== (this.phase.dog || null)) this.jobs.push(() => { if (!this.nextDog || this.nextDog.key !== nextPh.dog) this.nextDog = { key: nextPh.dog, obj: buildDog(nextPh.dog) }; return false; });
+      // 6) envio para a placa de vídeo: cada peça nova é desenhada uma vez fora da tela (geometria sobe e o material compila
+      //    agora, uma por quadro, em vez de todas de uma vez quando o cenário novo aparece). Peças com níveis de detalhe
+      //    são mostradas com todos os níveis visíveis (senão só o nível distante subiria). O cãozinho vai sem clonar
+      //    (clonar os pelos custava mais de um segundo).
+      let pieces = null;
+      this.jobs.push(() => {
+        if (!pieces) {
+          pieces = this.world.sampleGroup(nextPh.theme).children.slice();
+          this.obsKinds().concat(this.obsKinds(nextPh.theme)).filter((k, i, a) => a.indexOf(k) === i).forEach((k) => { if (this.tpl[k]) pieces.push(this.tpl[k].clone()); });
+          if (this.nextDog) pieces.push(this.nextDog.obj);
+        }
+        if (this.warmHolder) { const h = this.warmHolder; this.warmHolder = null; this.scene.remove(h); if (h.isLOD) h.autoUpdate = true; if (h === (this.nextDog && this.nextDog.obj)) h.traverse((x) => { x.frustumCulled = x.userData.fc !== false; }); }
+        const o = pieces.shift(); if (!o) return false;
+        o.traverse((x) => { if (x.userData.fc === undefined) x.userData.fc = x.frustumCulled; x.frustumCulled = false; });
+        if (o.isLOD) { o.autoUpdate = false; o.levels.forEach((l) => { l.object.visible = true; }); }
+        o.position.set(0, -1000, -20);
+        this.warmHolder = o; this.scene.add(o);           // fica um quadro na cena (fora da tela) e sai no próximo trabalho
+        return 'frame';
+      });
+    }
+  }
+  makeNpc() { const r = this.jrng; return buildKid({ skin: r.int(0, 6), face: r.int(0, 2), hair: r.int(0, 7), hairColor: r.int(0, 7), eyes: r.int(0, 5), outfit: 9 }); }
+  /** monta (com antecedência) o modelo de uma missão ou da estação de desafio; addMission/addPuzzleStation consomem */
+  prebuildMission(key) {
+    if (key === 'puzzle') { (this.prebuilt.puzzle = this.prebuilt.puzzle || []).push(buildPuzzleStation(PUZZLE_ICON[this.phase.puzzle] || 'puzzle')); return; }
+    const side = this.jrng.frac() < 0.5 ? -1 : 1;
+    (this.prebuilt[key] = this.prebuilt[key] || []).push({ side, spec: this.buildMissionSpec(key, side) });
+  }
+  buildMissionSpec(key, side) {
+    const fk = FIRE_TARGETS[key];
+    if (!fk) return MISSIONS3[key].build(side);
+    if (fk === 'bin') { const model = buildBin(); model.scale.setScalar(1.7); return { model, tx: 3.9, flames: [[0, 2.3, 0, 1.9]] }; }
+    if (fk === 'house') return { model: buildHouse(this.jrng.pick([0xffd66b, 0xff9fb2, 0x86dcff]), 0xe8352f), tx: 7.8, flames: [[-1.4, 1.5, -1.9, 1.1], [1.4, 1.5, -1.9, 1.1], [0.0, 3.4, -0.4, 1.4]] };
+    return { model: buildTower(4), tx: 10.2, flames: [[-1.6, 1.4, -1.9, 1.1], [1.6, 3.3, -1.9, 1.1], [0, 5.2, -1.9, 1.2], [-1.6, 7.0, -1.9, 1.1]] };
   }
   /** resolução dinâmica com calma: só muda depois de 3 medições seguidas (~4,5 s) concordando, com intervalo mínimo de 10 s
    *  e no máximo 3 trocas por partida. Trocar a cada 1,5 s fazia a tela piscar o tempo todo no celular. */
@@ -565,7 +633,7 @@ export class Game3D {
     const other = [-1, 0, 1].filter((l) => l !== lane)[this.rng.int(0, 1)]; for (let i = 0; i < 3; i++) this.addStar(other, s - 1.2 + i * 1.2, 1.0);
     return { width: 6 };
   }
-  obsKinds() { return { bairro: ['cone', 'barrier', 'crate', 'hydrant'], praca: ['cone', 'bench', 'crate', 'bush'], floresta: ['log', 'rock', 'bush', 'mushroom'], altura: ['crate', 'ac', 'barrier', 'pipe'], pre: ['rock', 'log', 'bone', 'mushroom'], agua: ['buoy', 'crate', 'rope', 'barrel'], vulcao: ['rock', 'lavarock', 'log', 'barrel'] }[this.phase.theme]; }
+  obsKinds(theme = this.phase.theme) { return { bairro: ['cone', 'barrier', 'crate', 'hydrant'], praca: ['cone', 'bench', 'crate', 'bush'], floresta: ['log', 'rock', 'bush', 'mushroom'], altura: ['crate', 'ac', 'barrier', 'pipe'], pre: ['rock', 'log', 'bone', 'mushroom'], agua: ['buoy', 'crate', 'rope', 'barrel'], vulcao: ['rock', 'lavarock', 'log', 'barrel'] }[theme]; }
   spawnObstacleGroup(s) {
     if (this.phase.calm) { this.firstObstacle = false; const l = this.phase.freeCenter ? this.rng.pick([-1, 1]) : this.rng.int(-1, 1), k = this.rng.pick(this.obsKinds().slice(0, 3)); this.addObstacle(k, l, s); for (let i = 0; i < 3; i++) this.addStar(l, s - 1.4 + i * 1.4, 1.1 + (i === 1 ? 0.9 : 0.3)); return 7; }
     if (!this.firstObstacle && this.phaseNum >= 3 && this.rng.frac() < (this.modeId === 'facil' ? 0.2 : 0.35)) return this.spawnWall(s);
@@ -596,14 +664,11 @@ export class Game3D {
     this.ents.push({ type: 'pickup', kind, lane, x: this.laneX(lane), s, y: 1.1, mesh });
   }
   addMission(key, s) {
-    const side = this.rng.frac() < 0.5 ? -1 : 1; const fk = FIRE_TARGETS[key];
-    let def, spec;
-    if (fk) {
-      def = FIRE_DEFS[fk];
-      if (fk === 'bin') { const model = buildBin(); model.scale.setScalar(1.7); spec = { model, tx: 3.9, flames: [[0, 2.3, 0, 1.9]] }; }
-      else if (fk === 'house') spec = { model: buildHouse(this.rng.pick([0xffd66b, 0xff9fb2, 0x86dcff]), 0xe8352f), tx: 7.8, flames: [[-1.4, 1.5, -1.9, 1.1], [1.4, 1.5, -1.9, 1.1], [0.0, 3.4, -0.4, 1.4]] };
-      else spec = { model: buildTower(4), tx: 10.2, flames: [[-1.6, 1.4, -1.9, 1.1], [1.6, 3.3, -1.9, 1.1], [0, 5.2, -1.9, 1.2], [-1.6, 7.0, -1.9, 1.1]] };
-    } else { def = MISSIONS3[key]; spec = def.build(side); }
+    let side = this.rng.frac() < 0.5 ? -1 : 1; const fk = FIRE_TARGETS[key];
+    const def = fk ? FIRE_DEFS[fk] : MISSIONS3[key];
+    let spec; const pre = this.prebuilt[key] && this.prebuilt[key].shift();
+    if (pre) { side = pre.side; spec = pre.spec; }                   // modelo montado em segundo plano: nada a construir agora
+    else spec = this.buildMissionSpec(key, side);
     const obj = new THREE.Group(), model = spec.model;
     model.rotation.y = side < 0 ? -Math.PI / 2 : Math.PI / 2; obj.add(model);
     const fl = (spec.flames || []).map(([x, y, z, sc]) => { const f = buildFlame(); f.position.set(x, y, z); f.scale.setScalar(sc); f.userData.base = sc; const holder = new THREE.Group(); holder.add(f); holder.rotation.y = model.rotation.y; obj.add(holder); return f; });
@@ -676,7 +741,7 @@ export class Game3D {
   }
   // ---- desafio da fase: uma estação no caminho; ao chegar, o jogo para e o desafio abre (30 s, vale +1 vida)
   addPuzzleStation(s) {
-    const side = this.rng.frac() < 0.5 ? -1 : 1, obj = buildPuzzleStation(PUZZLE_ICON[this.phase.puzzle] || 'puzzle');
+    const side = this.rng.frac() < 0.5 ? -1 : 1, obj = (this.prebuilt.puzzle && this.prebuilt.puzzle.shift()) || buildPuzzleStation(PUZZLE_ICON[this.phase.puzzle] || 'puzzle');
     obj.position.set(side * 3.3, 0, 0); obj.rotation.y = side < 0 ? -0.5 : 0.5; this.scene.add(obj);
     this.ents.push({ type: 'puzzle', s, side, obj, kind: this.phase.puzzle, done: false, opened: false });
     return { width: 12, extra: 0.6 };
@@ -802,7 +867,7 @@ export class Game3D {
     // moradores comemoram (nas missões de fogo)
     m.cheer = [];
     const n = d.kind !== 'fire' ? 0 : m.kind === 'bin' ? 0 : m.kind === 'house' ? 2 : 3;
-    for (let i = 0; i < n; i++) { const k = buildKid({ skin: this.rng.int(0, 6), face: this.rng.int(0, 2), hair: this.rng.int(0, 7), hairColor: this.rng.int(0, 7), eyes: this.rng.int(0, 5), outfit: 9 }); k.position.set(m.tx + (m.side < 0 ? 1 : -1) * (m.kind === 'house' ? 3.2 : 4.2), 0, 1.4 + i * 1.5 - 1); k.rotation.y = Math.PI * (0.9 + (i - 1) * 0.12); this.scene.add(k); m.cheer.push(k); }
+    for (let i = 0; i < n; i++) { const k = this.kidPool.shift() || this.makeNpc(); k.position.set(m.tx + (m.side < 0 ? 1 : -1) * (m.kind === 'house' ? 3.2 : 4.2), 0, 1.4 + i * 1.5 - 1); k.rotation.y = Math.PI * (0.9 + (i - 1) * 0.12); this.scene.add(k); m.cheer.push(k); }
     if (d.kind !== 'fire') { const v = this.aimPoint(m); this.fx.burst(v.x, v.y + 0.6, v.z, 18, { col: 0xff7ab0, s: 0.2, speed: 1.6, up: 2.4, life: 1.2, g: -0.8 }); this.fx.burst(v.x, v.y + 0.6, v.z, 12, { col: 0xffe14a, s: 0.14, speed: 2.4, up: 1.2, life: 0.9 }); }
     this.hud.toast('⭐', '+5'); speak(this.rng.pick(['Muito bem!', 'Você conseguiu!', 'Parabéns!']));
     this.p.invul = Math.max(this.p.invul, 2.2);
@@ -815,10 +880,9 @@ export class Game3D {
     this.stage++; this.stats.phases++;
     // ordem: a fase seguinte (1, 2, 3... até a última, voltando ao começo se a partida não começou na 1);
     // só depois de passar por TODAS as fases é que a próxima passa a ser sorteada
-    let next = null;
-    for (let i = 1; i <= PHASES.length && next === null; i++) { const id = ((this.phaseNum - 1 + i) % PHASES.length) + 1; if (!this.played.has(id)) next = id; }
+    const next = this.nextPhaseId;
     if (next === null && !this.infinite) { this.winStory(); return; }                 // modo história: passou por todas = zerou
-    if (next === null) { this.randomMode = true; next = this.rng.pick(PHASES.map((p) => p.id).filter((id) => id !== this.phaseNum)); }
+    if (this.infinite && this.played.size >= PHASES.length) this.randomMode = true;
     this.phaseNum = next; this.played.add(next);
     const ph = this.phase; this.world.setTheme(ph.theme);
     this.queue = this.scriptFor(this.phaseNum); this.firstObstacle = false; this.setupDog();
@@ -828,6 +892,7 @@ export class Game3D {
     this.eq.hose = true; this.eq.egg = false;
     startMusic(ph.music); this.gainLife('fase');
     speak(this.infinite ? ph.name : 'Fase ' + this.phaseNum + '! ' + ph.name);
+    this.pickNextPhase(); this.scheduleWarmup();
   }
   /** modo história zerado: o mundo para, medalha e a frase do pai; um toque leva ao resultado */
   winStory() {
@@ -960,7 +1025,7 @@ export class Game3D {
   setupDog() {
     if (this.dog) { this.scene.remove(this.dog); this.scene.remove(this.dogShadow); disposeDeep(this.dog); this.dog = null; }
     const key = this.phase.dog; if (!key) return;
-    this.dog = buildDog(key); this.dog.scale.setScalar(1.45); this.dog.position.set(-4.7, 0, 1.2); this.scene.add(this.dog);
+    this.dog = (this.nextDog && this.nextDog.key === key) ? this.nextDog.obj : buildDog(key); this.nextDog = null; this.dog.scale.setScalar(1.45); this.dog.position.set(-4.7, 0, 1.2); this.scene.add(this.dog);
     this.dogShadow = blobShadow(1.5, 2.0); this.scene.add(this.dogShadow);
   }
   updateCompanion(dt) {
@@ -1036,6 +1101,7 @@ export class Game3D {
     stopMusic(); silenceVoice(); if (this.mini) { this.mini.destroy(); this.mini = null; } this.hud.destroy();
     // libera a memória de vídeo desta partida (malhas, materiais, texturas e o próprio contexto)
     this.scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach((m) => { Object.values(m).forEach((v) => { if (v && v.isTexture) v.dispose(); }); m.dispose(); }); });
+    this.kidPool.forEach((k) => disposeDeep(k)); if (this.nextDog) disposeDeep(this.nextDog.obj); if (this.warmHolder) this.scene.remove(this.warmHolder);
     if (this.world && this.world.lib) Object.values(this.world.lib).forEach((o) => o.traverse((x) => { if (x.geometry) x.geometry.dispose(); }));
     if (this.scene.environment) this.scene.environment.dispose();
     this.renderer.dispose(); this.renderer.forceContextLoss(); if (this.el.parentNode) this.el.parentNode.removeChild(this.el);

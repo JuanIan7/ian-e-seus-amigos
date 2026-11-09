@@ -272,4 +272,28 @@ export class World {
   }
 
   follow(camZ) { this.sky.position.z = camZ; }
+
+  // ---------------- preparo antecipado (evita travadinhas na troca de fase) ----------------
+  /** chaves de cenário que um tema pode usar (amostra o layout várias vezes, mais o fundo distante) */
+  themeKeys(theme) {
+    const T = THEMES3[theme], keys = new Set(T.far);
+    for (let k = 0; k < 10; k++) { const r = rng(this.seed + theme + 'k' + k); [-1, 1].forEach((side) => T.layout(r, side).forEach((it) => keys.add(it.key))); }
+    return [...keys];
+  }
+  /** monta UM item que falta da biblioteca do tema (chame uma vez por quadro); devolve false quando não há mais nada */
+  prewarmStep(theme) {
+    if (this.warmTheme !== theme) { this.warmTheme = theme; this.warm = [['__geo', 0]]; this.themeKeys(theme).forEach((key) => { for (let i = 0; i < 4; i++) this.warm.push([key, i]); }); }
+    while (this.warm.length) {
+      const [key, i] = this.warm.shift();
+      if (key === '__geo') { trackGeo(theme, 0); trackGeo(theme, 1); sideGeo(theme, 0); sideGeo(theme, 1); return true; }
+      if (!this.lib[key + i]) { this.libGet(key, theme, i); return true; }
+    }
+    return false;
+  }
+  /** um grupo com um exemplar de cada peça do tema (para compilar os materiais antes de aparecerem na tela) */
+  sampleGroup(theme) {
+    const g = new THREE.Group();
+    this.themeKeys(theme).forEach((key) => { if (this.lib[key + '0']) g.add(this.lib[key + '0'].clone()); });
+    return g;
+  }
 }

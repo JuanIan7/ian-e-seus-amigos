@@ -114,6 +114,18 @@ xcrun devicectl device process launch --device 00008140-0002309A2244801C br.com.
   guarda o último problema para diagnóstico no aparelho.
 - Testes novos em `tests/sim3d.mjs`: corrida infinita (aceleração, multiplicador, sem missões, ranking) e modo história zerado.
 
+## Travadinhas na troca de fase (09/11, tarde)
+
+Causa: na troca de fase (e no meio dela) o jogo montava no mesmo quadro o cenário novo, o cãozinho, cada casa/prédio das
+missões (13 mil triângulos) e os moradores que comemoram, e ainda enviava tudo para a placa de vídeo na primeira vez que
+aparecia. Solução: **preparo em segundo plano** (`scheduleWarmup`/`runJobs` em game3d.js): a cada quadro folgado, até 3 ms de
+trabalho, na ordem: modelos das missões e do desafio desta fase → estoque de 3 moradores → moldes dos obstáculos desta fase e
+da próxima → cenário da próxima fase, uma peça por vez (`World.prewarmStep`) → cãozinho da próxima fase → cada peça nova é
+desenhada um quadro fora da tela (y = -1000, sem recorte) para a geometria subir e o material compilar antes de aparecer
+(níveis de detalhe todos visíveis; o cão vai sem clonar, pois clonar os pelos custava mais de 1 s). A próxima fase passa a ser
+decidida no começo da fase atual (`pickNextPhase`). Medido no navegador de teste: troca de fase de ~90 ms para ~5 ms de
+lógica e ~24 ms no pior quadro; criar missão de 40 ms para 0,2 ms; moradores de 32 ms para 0,5 ms.
+
 ## Ideias para depois (não feitas)
 
 - Voz em Android: o WebView do Android pode não ter `speechSynthesis` (as frases faladas ficariam mudas). Se for o caso no
