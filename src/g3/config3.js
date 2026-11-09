@@ -4,7 +4,7 @@ export const MODES3 = {
   facil: {
     id: 'facil', label: 'Fácil', speed0: 6.0, speedMax: 8.6, ramp: 0.06,
     gap: [2.4, 3.4], apex: 2.0, airT: 0.9, coyote: 0.2, buffer: 0.3,
-    runBoost: 1.45, steerAssist: true, jumpAssist: true, fireHits: 3, hintDist: 20, slow: 0.4,
+    runBoost: 1.45, steerAssist: false, jumpAssist: true, fireHits: 3, hintDist: 20, slow: 0.4,   // steerAssist desligado: a batida tem que acontecer (pedido do Juan, 09/11)
     groups: ['single', 'single', 'full'], showRun: true, autoHelpAfter: 12,
   },
   aventura: {

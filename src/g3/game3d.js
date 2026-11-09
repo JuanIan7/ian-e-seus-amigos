@@ -411,7 +411,7 @@ export class Game3D {
     if (this.infinite) this.updateStarMul();
     const stopped = this.focus || this.tutorialActive || this.fall;
     if (!stopped) this.runTime += dt;                                  // só o tempo ativo conta para a velocidade básica
-    const dx = speed * dt; this.dist += dx; this.worldSpeed = speed;
+    const dx = speed * dt; this.prevDist = this.dist; this.dist += dx; this.worldSpeed = speed;
 
     this.world.update(this.dist, dt, speed);
     this.spawnLogic();
@@ -544,7 +544,8 @@ export class Game3D {
   laneBlocked(lane, s0, s1) { return this.ents.some((e) => e.type === 'obs' && !e.hit && e.lane === lane && e.s + e.d / 2 > s0 && e.s - e.d / 2 < s1); }
   assistSteer(speed) {
     const p = this.p;
-    if (!(this.cfg.steerAssist || this.assist > 0) || this.fall || (this.mission && this.mission.engaged) || this.tutorialActive || speed < 1) return;
+    // desvio automático de faixa DESLIGADO (09/11): dava a impressão de que a batida não era reconhecida. Fica só a ajuda nos vazios (pulo de resgate).
+    if (!this.cfg.steerAssist || this.fall || (this.mission && this.mission.engaged) || this.tutorialActive || speed < 1) return;
     if (this.t - p.lastSteer < 0.5 || !p.ground) return;
     const look = Math.max(2.4, speed * 1.15);
     if (!this.laneBlocked(p.lane, this.dist - 0.2, this.dist + look)) return;
@@ -690,10 +691,11 @@ export class Game3D {
 
   collide() {
     const p = this.p; if (p.invul > 0 || this.powers.fly) return;
-    const ghost = Object.keys(this.powers).some((k) => k !== 'shield');          // com qualquer poder ativo os obstáculos são afastados
-    for (const o of this.ents) {
+    const ghost = !!this.powers.truck;                                            // só a viatura afasta os obstáculos; com os outros poderes a batida conta
+    const d0 = this.prevDist ?? this.dist, d1 = this.dist;                          // trecho percorrido neste tick: em alta velocidade (×2/×3) o passo
+    for (const o of this.ents) {                                                   // é maior que um cone, e o teste só no ponto final deixava atravessar
       if (o.type !== 'obs' || o.hit) continue;
-      if (Math.abs(p.x - o.x) < o.w / 2 + PLAYER_R * 0.85 && Math.abs(this.dist - o.s) < o.d / 2 + 0.2 && p.y < o.h - 0.12) {
+      if (Math.abs(p.x - o.x) < o.w / 2 + PLAYER_R * 0.85 && o.s + o.d / 2 + 0.2 > d0 && o.s - o.d / 2 - 0.2 < d1 && p.y < o.h - 0.12) {
         if (ghost) { o.hit = true; o.fly = { t: 0, vx: (o.x >= p.x ? 1 : -1) * 5, vy: 6 }; this.fx.burst(o.x, 0.6, 0, 8, { col: 0xfff2c8, s: 0.18, speed: 2.4, life: 0.5 }); sfx.star(); continue; }
         this.onHit(o); break;
       }

@@ -138,6 +138,15 @@ lógica e ~24 ms no pior quadro; criar missão de 40 ms para 0,2 ms; moradores d
   Seta para baixo no chão continua sendo a ação; X/Z só ação. Teste em sim3d ("mergulho encurta o pulo").
   Um botão ↓ visível foi testado e o Juan preferiu **sem botão**: o mergulho fica "velado", só pelo gesto.
 
+## Colisões que não contavam (09/11, noite)
+
+Duas causas: (1) o teste de batida olhava só a posição no fim do tick; em ×2/×3 o passo por tick (até 0,7 m) era maior que um
+cone (0,8 m) ou uma barreira (0,4 m) e o boneco atravessava; agora `collide()` varre o trecho percorrido no tick
+(`prevDist` → `dist`). (2) com *qualquer* poder ativo (ímã, super pulo, turbo, jato) o obstáculo era só afastado, sem contar
+batida; agora só a viatura (e o voo) passam por cima. (3) a principal: no modo Fácil (e em qualquer modo depois de 3 batidas)
+o jogo **trocava de faixa sozinho** para desviar do obstáculo (`assistSteer`), então a criança "passava reto" pelo cone; o desvio
+automático foi desligado (fica só o pulo de resgate nos vazios). Teste "5b. Colisão em alta velocidade (×3)" em sim3d.
+
 ## Ideias para depois (não feitas)
 
 - Voz em Android: o WebView do Android pode não ter `speechSynthesis` (as frases faladas ficariam mudas). Se for o caso no

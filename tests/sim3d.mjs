@@ -128,6 +128,22 @@ for (const mode of process.env.QUICK ? [] : ['facil', 'aventura', 'desafio']) {
   ok(r.maxStuck < 12 && r.stats.missions >= 1 && !r.over, `${mode}: sem travar e concluiu missões`, `missões ${r.stats.missions}, quedas ${r.stats.falls}, batidas ${r.stats.hits}, vidas ${r.lives}, fase ${r.phase}, estrelas ${r.stars}`);
 }
 
+// ---------------------------------------------------------------- 5b. colisão em alta velocidade: cones e barreiras finas não podem ser atravessados
+console.log('5b. Colisão em alta velocidade (×3)');
+for (const mode of ['facil', 'desafio']) {
+  await start(mode, 1, true);
+  const r = await run(() => {
+    const g = window.__ian3; g.p.invul = 0; g.runTime = 9999; g.setRun(2);                       // velocidade máxima do modo, ×3
+    for (let i = 0; i < 240; i++) g.tick(1 / 60);                                                 // deixa o turbo subir
+    const kinds = ['cone', 'barrier', 'cone', 'rock', 'barrier', 'cone'];
+    let placed = 0; kinds.forEach((k, i) => { try { g.addObstacle(k === 'rock' ? 'cone' : k, g.p.lane, g.dist + 12 + i * 9); placed++; } catch (e) {} });
+    const lives0 = g.lives; let hits = 0; const sp = g.worldSpeed;
+    for (let i = 0; i < 60 * 12; i++) { g.p.invul = 0; g.lives = 5; g.tick(1 / 60); } hits = g.stats.hits;
+    return { placed, hits, speed: sp.toFixed(1), step: (sp / 60).toFixed(2) };
+  });
+  ok(r.hits === r.placed, `${mode}: ${r.hits}/${r.placed} obstáculos registraram batida a ${r.speed} m/s (passo ${r.step} m por tick)`);
+}
+
 // ---------------------------------------------------------------- 6. corrida infinita: só corrida, acelera aos poucos, estrelas valem mais, ranking
 console.log('6. Corrida infinita');
 {
