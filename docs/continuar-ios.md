@@ -136,6 +136,7 @@ lógica e ~24 ms no pior quadro; criar missão de 40 ms para 0,2 ms; moradores d
 - **Descer rápido (mergulho)**: com o dedo nos botões azuis, arrastar para baixo (joystick) ou deslizar para baixo em
   qualquer lugar; no teclado, seta para baixo / S no ar. `dive()`: gravidade ×3,5 por 0,6 s e cancela o planar.
   Seta para baixo no chão continua sendo a ação; X/Z só ação. Teste em sim3d ("mergulho encurta o pulo").
+  Como o gesto sozinho não foi encontrado pelo Juan, há também um **botão azul ↓** entre ← e → (joystick ← ↓ →).
 
 ## Ideias para depois (não feitas)
 
