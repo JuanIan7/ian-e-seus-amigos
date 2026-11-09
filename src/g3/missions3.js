@@ -43,7 +43,7 @@ export const MISSIONS3 = {
     },
     onHit(m) { m.hop = 0.5; },
   },
-  person_safe: {
+  person_safe: { voice: 'm',
     kind: 'help', icon: 'helpHand', hits: (c) => Math.max(2, c.fireHits - 1), cue: 'Leve a moça ao abrigo!', say: 'Leve a moça ao abrigo!', cam: 1, hold: 2.0,
     build(side) {
       const model = new THREE.Group(), shelter = buildShelter(), p = npc(5, 1, 1, 2);
@@ -73,13 +73,13 @@ export const MISSIONS3 = {
     },
     onHit(m) { m.shakeT = 1; },
   },
-  supplies: {
+  supplies: { voice: 'm',
     kind: 'throw', icon: 'box', hits: () => 2, cue: 'Entregue os suprimentos!', say: 'Entregue os suprimentos!', cam: 0, hold: 2.0,
     build() { const model = new THREE.Group(), tent = buildTent(), camper = npc(3, 4, 0, 0); tent.position.set(0, 0, 2.6); camper.position.set(0, 0, 0); model.add(tent, camper); return { model, tx: 4.6, aim: [0, 1.1, -0.2], parts: { camper } }; },
     update(m, t, dt) { const k = m.parts.camper; m.hop = Math.max(0, (m.hop || 0) - dt); if (m.done) poseKid(k, 'cheer', 0, t); else { poseKid(k, 'idle', 0, t); k.position.y = m.hop > 0 ? Math.abs(Math.sin(m.hop * 10)) * 0.4 : 0; } },
     onHit(m) { m.hop = 0.5; },
   },
-  rescue_roof: {
+  rescue_roof: { voice: 'm',
     kind: 'help', icon: 'basket', hits: (c) => Math.max(2, c.fireHits - 1), cue: 'Desça a cesta de resgate!', say: 'Desça a cesta de resgate!', cam: 2, camTall: 6.2, hold: 3.0,
     build() {
       const model = new THREE.Group(), top = 5.2;
@@ -151,7 +151,7 @@ export const MISSIONS3 = {
   },
 
   // =================================================================== fase 6: resgate aquático
-  rescue_swimmer: {
+  rescue_swimmer: { voice: 'm',
     kind: 'help', icon: 'ring', hits: (c) => Math.max(2, c.fireHits - 1), cue: 'Jogue a boia para o nadador!', say: 'Jogue a boia!', cam: 0, hold: 2.6,
     build(side) {
       const model = new THREE.Group(), water = buildWaterPatch(2.6), p = npc(8, 3, 3, 0); p.position.set(0, -0.9, 0); p.rotation.y = 0;
@@ -164,7 +164,7 @@ export const MISSIONS3 = {
       else { m.a = (m.a || 0) + dt; ring.visible = true; const k = Math.min(1, m.a / 1.6); p.position.z = -k * 2.4; p.position.y = -0.9 + k * 0.9; ring.position.set(0.3, 0.05 + k * 0.4, p.position.z); poseKid(p, k < 1 ? 'idle' : 'cheer', 0, t); p.rotation.z = 0; }
     },
   },
-  boat_fire: {
+  boat_fire: { voice: 'm',
     kind: 'fire', icon: 'drop', needs: 'hose', hits: (c) => c.fireHits + 1, cue: 'Fogo no barco!', say: 'Fogo no barco! Use a mangueira!', cam: 1,
     build() { const model = new THREE.Group(), boat = buildRescueBoat(0xffffff, 0x2f78e0), water = buildWaterPatch(4.2); boat.position.y = 0.0; model.add(water, boat); return { model, tx: 6.4, flames: [[-0.3, 1.6, 0.6, 1.3], [0.4, 1.3, -1.2, 1.0]], aim: [0, 1.4, 0], parts: { boat } }; },
     update(m, t) { m.parts.boat.rotation.z = Math.sin(t * 1.6) * 0.04; m.parts.boat.position.y = Math.sin(t * 2) * 0.05; },
@@ -182,7 +182,7 @@ export const MISSIONS3 = {
     },
   },
   // =================================================================== fase 7: resgate no vulcão
-  cool_lava: {
+  cool_lava: { voice: 'm',
     kind: 'fire', icon: 'drop', needs: 'hose', hits: (c) => c.fireHits + 1, cue: 'Esfrie a lava com água!', say: 'A lava está bloqueando! Use a mangueira!', cam: 0,
     build() { const flow = buildLavaFlow(); return { model: flow, tx: 4.2, flames: [[-0.8, 0.4, -0.2, 0.9], [0.6, 0.35, 0.5, 0.8], [0, 0.5, -1.0, 0.8]], aim: [0, 0.6, 0], parts: { flow } }; },
     update(m, t) { const f = m.parts.flow.userData; if (f.lava) { const k = m.done ? 0 : m.hp / m.max; f.lava.material.color.setRGB(1, 0.42 * k + 0.55 * (1 - k), 0.1 * k + 0.55 * (1 - k)); f.glow.visible = k > 0.05; f.glow.scale.setScalar(0.9 + Math.sin(t * 4) * 0.06); } },
@@ -200,7 +200,7 @@ export const MISSIONS3 = {
       else { m.a = (m.a || 0) + dt; const k = Math.min(1, m.a / 1.8); baby.position.z = -k * 3.4; baby.rotation.y = 0; baby.position.y = 0.55 + Math.abs(Math.sin(m.a * 9)) * 0.3 * (k < 1 ? 1 : 0); animCreature(baby, t, { walk: k < 1 ? 1 : 0, rate: 12, wagAmp: 0.6, wag: 14 }); }
     },
   },
-  hut_fire: {
+  hut_fire: { voice: 'm',
     kind: 'fire', icon: 'drop', needs: 'hose', hits: (c) => c.fireHits + 1, cue: 'Fogo na cabana!', say: 'Fogo na cabana! Apague com a mangueira!', cam: 1,
     build() { const hut = buildHut(); return { model: hut, tx: 6.6, flames: [[-0.9, 1.0, -1.75, 1.0], [0.9, 2.4, -1.9, 1.1], [0, 3.9, -0.6, 1.3]], aim: [0, 2.2, -1.2] }; },
   },

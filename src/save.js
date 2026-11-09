@@ -1,7 +1,7 @@
 // Salvamento local (sem contas, sem rede, sem dados pessoais).
 const KEY = 'ian-e-seus-amigos:v1';
 export const DEFAULT_LOOK = { skin: 3, face: 0, hair: 0, hairColor: 1, eyes: 0, outfit: 0, acc: 0, freckles: 0, brows: 0 };
-const DEFAULTS = { mode: 'facil', phase: 1, sound: true, tut: { jump: false, water: false }, bestStars: 0, coins: 0, inv: {}, look: { ...DEFAULT_LOOK } };
+const DEFAULTS = { mode: 'facil', gameMode: 'story', phase: 1, sound: true, ranking: [], playerName: 'Ian', storyWins: 0, tut: { jump: false, water: false }, bestStars: 0, coins: 0, inv: {}, look: { ...DEFAULT_LOOK } };
 
 let cache = null;
 export function load() {

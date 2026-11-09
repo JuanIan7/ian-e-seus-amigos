@@ -50,7 +50,21 @@ const css = `
 .g3 .run{background:#9b5cff}
 .g3 .run.on{background:#c38bff;box-shadow:0 0 0 6px rgba(255,255,255,.55),0 2px 0 rgba(27,42,73,.55)}
 .g3 .run.on2{background:#ff7a3d;box-shadow:0 0 0 8px rgba(255,255,255,.75),0 2px 0 rgba(27,42,73,.55);animation:g3run2 .5s infinite alternate}
-.g3 .run b{position:absolute;right:-6px;top:-6px;width:min(6vh,32px);height:min(6vh,32px);border-radius:50%;background:#fff;color:#1b2a49;font-size:min(3.6vh,19px);display:none;align-items:center;justify-content:center;border:3px solid #1b2a49}
+.g3 .run b{position:absolute;right:-8px;top:-8px;min-width:min(7vh,38px);height:min(7vh,38px);padding:0 4px;border-radius:min(3.5vh,19px);background:#fff;color:#1b2a49;font-size:min(3.6vh,19px);display:none;align-items:center;justify-content:center;border:3px solid #1b2a49;font-weight:900}
+.g3 .dist{position:absolute;left:calc(env(safe-area-inset-left) + 2.2vw + min(24vh,140px));top:calc(env(safe-area-inset-top) + 2vh + min(1.5vh,8px));display:none;color:#fff;font-size:min(5vh,28px);text-shadow:0 3px 0 #1b2a49,2px 0 0 #1b2a49,-2px 0 0 #1b2a49,0 -2px 0 #1b2a49;pointer-events:none}
+.g3 .mul{position:absolute;left:calc(env(safe-area-inset-left) + 2.2vw + min(44vh,270px));top:calc(env(safe-area-inset-top) + 2vh);display:none;align-items:center;justify-content:center;background:#ff8a1f;color:#fff;border:4px solid #1b2a49;border-radius:20px;padding:0 12px;height:min(8vh,44px);font-size:min(5.5vh,30px);text-shadow:0 2px 0 #1b2a49;pointer-events:none}
+.g3 .mul.pop{animation:g3pop .6s}
+.g3 .win{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,rgba(255,226,120,.75),rgba(20,34,64,.85) 70%);pointer-events:auto;z-index:31;text-align:center;color:#fff}
+.g3 .win .box{background:linear-gradient(#fff6d8,#ffe2a0);border:6px solid #1b2a49;border-radius:30px;padding:3vh 4vw;color:#1b2a49;max-width:84vw;box-shadow:0 10px 0 rgba(27,42,73,.5)}
+.g3 .win h1{margin:0 0 1vh;font-size:min(9vh,52px)}
+.g3 .win p{margin:0 0 2vh;font-size:min(5vh,27px);line-height:1.25}
+.g3 .win .medal{font-size:min(16vh,96px);line-height:1;animation:g3float 1.6s ease-in-out infinite}
+.g3 .win small{display:block;font-size:min(3.6vh,19px);opacity:.8}
+.g3 .res .rank{display:flex;flex-direction:column;gap:4px;margin:0 0 1.5vh;max-height:34vh;overflow:auto;font-size:min(3.8vh,20px);text-align:left}
+.g3 .res .rank div{display:flex;justify-content:space-between;gap:10px;padding:2px 10px;border-radius:10px}
+.g3 .res .rank div.me{background:#ffd23f;font-weight:900}
+.g3 .res .rank input{font:inherit;font-weight:900;width:7em;border:3px solid #1b2a49;border-radius:8px;padding:0 6px;background:#fff}
+.g3 .res .dist2{font-size:min(7vh,40px);margin:.5vh 0}
 .g3 .run.on b,.g3 .run.on2 b{display:flex}
 @keyframes g3run2{from{transform:scale(1)}to{transform:scale(1.07)}}
 .g3 .lives{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 2vh + min(5vh,28px));transform:translateX(-50%);display:flex;gap:4px;pointer-events:none;font-size:min(6vh,32px);line-height:1;filter:drop-shadow(0 2px 0 #1b2a49)}
@@ -143,13 +157,16 @@ export function createHud(root, h) {
   const lives = document.createElement('div'); lives.className = 'lives'; ui.appendChild(lives);
   const inv = document.createElement('div'); inv.className = 'inv'; ui.appendChild(inv);
   const res = document.createElement('div'); res.className = 'res'; ui.appendChild(res);
+  const dist = document.createElement('div'); dist.className = 'dist'; dist.innerHTML = '<span>0 m</span>'; ui.appendChild(dist);
+  const mulEl = document.createElement('div'); mulEl.className = 'mul'; ui.appendChild(mulEl);
+  const win = document.createElement('div'); win.className = 'win'; ui.appendChild(win);
 
   // deslizar o dedo para os lados também muda de faixa
   let sx = null, sy = null, st = 0;
   root.addEventListener('pointerdown', (e) => { if (e.target.closest && e.target.closest('.btn')) return; sx = e.clientX; sy = e.clientY; st = performance.now(); });
   root.addEventListener('pointerup', (e) => { if (sx === null) return; const dx = e.clientX - sx, dy = e.clientY - sy; if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2 && performance.now() - st < 600) h.lane(dx > 0 ? 1 : -1); sx = null; });
 
-  let lastStars = -1, lastBar = -1, lastDots = '';
+  let lastStars = -1, lastBar = -1, lastDots = '', lastDist = -1;
   const api = {
     els,
     setStars(n) { if (n !== lastStars) { lastStars = n; chip.lastChild.textContent = n; } },
@@ -184,14 +201,36 @@ export function createHud(root, h) {
     },
     results(r, cb) {
       res.style.display = 'flex';
-      res.innerHTML = `<div class="box"><h1>${r.reason === 'over' ? 'Fim de jogo!' : 'Muito bem!'}</h1><div class="big">⭐ <span>${r.stars}</span></div><p>estrelas foram para a lojinha · total: ⭐ ${r.coins}</p><div class="row"></div></div>`;
+      const title = r.reason === 'win' ? 'Você zerou! 🏆' : r.reason === 'over' ? 'Fim de jogo!' : 'Muito bem!';
+      const distHtml = r.infinite ? `<div class="dist2">📏 ${Math.floor(r.dist).toLocaleString('pt-BR')} m${r.record ? ' · 🏆 Novo recorde!' : ''}</div>` : '';
+      res.innerHTML = `<div class="box"><h1>${title}</h1>${distHtml}<div class="big">⭐ <span>${r.stars}</span></div><p>estrelas foram para a lojinha · total: ⭐ ${r.coins}</p><div class="rank"></div><div class="row"></div></div>`;
+      // ranking da corrida infinita: quem foi mais longe (e com quantas estrelas); o nome da linha nova pode ser editado
+      const rank = res.querySelector('.rank');
+      if (r.infinite && r.rank) {
+        r.rank.slice(0, 5).forEach((e, i) => {
+          const d = document.createElement('div'); const me = e === r.me; if (me) d.className = 'me';
+          const name = me ? `<input value="${(e.name || '').replace(/"/g, '')}" maxlength="12" aria-label="nome">` : `<b>${e.name || '—'}</b>`;
+          d.innerHTML = `<span>${['🥇', '🥈', '🥉', '4º', '5º'][i]} ${name}</span><span>📏 ${Math.floor(e.dist).toLocaleString('pt-BR')} m · ⭐ ${e.stars}</span>`; rank.appendChild(d);
+        });
+        const inp = rank.querySelector('input');
+        if (inp) { ['pointerdown', 'pointerup', 'touchstart', 'touchend'].forEach((ev) => inp.addEventListener(ev, (e) => e.stopPropagation())); inp.addEventListener('input', () => cb.name && cb.name(inp.value.trim())); inp.addEventListener('focus', () => inp.select()); }
+      } else rank.style.display = 'none';
       const row = res.querySelector('.row');
       const add = (icon, bg, fn, key) => { const b = document.createElement('div'); b.className = 'btn'; b.dataset.k = key; b.style.background = bg; b.innerHTML = icon; b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); fn(); }); row.appendChild(b); };
       add(ICONS.home, '#2f9bff', cb.menu, 'menu'); add(ICONS.again, '#3ecb6b', cb.again, 'again'); add(ICONS.shop, '#ff8a1f', cb.shop, 'shop');
     },
     pulseJump(v) { els.jump.classList.toggle('pulse', !!v); },
+    /** fim do modo história: medalha, a frase do pai e um toque para seguir ao resultado */
+    victory(text, onTap) {
+      win.style.display = 'flex'; win.innerHTML = `<div class="box"><div class="medal">🏅</div><h1>Você zerou!</h1><p>${text}</p><small>toque para continuar</small></div>`;
+      const go = (e) => { e.preventDefault(); e.stopPropagation(); win.removeEventListener('pointerdown', go); win.style.display = 'none'; win.innerHTML = ''; onTap && onTap(); };
+      setTimeout(() => win.addEventListener('pointerdown', go), 1500);
+    },
     showRun(v) { els.run.style.display = v ? 'flex' : 'none'; },
-    setRunActive(v) { const lv = v === true ? 1 : v | 0; els.run.classList.toggle('on', lv === 1); els.run.classList.toggle('on2', lv === 2); els.runBadge.textContent = lv ? String(lv) : ''; },
+    setRunActive(v, label) { const lv = v === true ? 1 : v | 0; els.run.classList.toggle('on', lv === 1); els.run.classList.toggle('on2', lv === 2); els.runBadge.textContent = lv ? (label || String(lv)) : ''; },
+    /** distância (corrida infinita) e multiplicador de estrelas */
+    setDist(m) { const v = Math.floor(m); if (v !== lastDist) { lastDist = v; dist.style.display = 'flex'; dist.firstChild.textContent = v.toLocaleString('pt-BR') + ' m'; } },
+    setMul(k) { mulEl.style.display = k > 1 ? 'flex' : 'none'; mulEl.textContent = '×' + k; mulEl.classList.remove('pop'); void mulEl.offsetWidth; mulEl.classList.add('pop'); },
     power(emoji, frac, color) {
       if (!emoji) { power.style.display = 'none'; return; }
       power.style.display = 'flex'; power.firstChild.textContent = emoji; power.querySelector('u').style.width = Math.round(frac * 100) + '%'; power.querySelector('u').style.background = color || '#fff';

@@ -34,9 +34,10 @@ export const PHASES3 = [
     script: ['obs', 'stars', 'obs', 'mission:rescue_cat', 'obs', 'stars', 'obs', 'obs', 'mission:distract_dog', 'obs', 'stars', 'obs', 'puzzle', 'obs', 'stars', 'mission:person_safe', 'obs', 'obs', 'pickup:truck', 'obs', 'stars', 'obs', 'mission:fire_dog', 'obs', 'stars'] },
   { id: 3, name: 'Aventura na floresta', theme: 'floresta', dog: 'trovao', puzzle: 'jigsaw5', music: 'floresta',
     script: ['obs', 'stars', 'gap', 'obs', 'pad', 'leaf', 'obs', 'stars', 'pickup:glider', 'gap', 'stars', 'obs', 'glidegap', 'obs', 'leaf', 'mission:rescue_bunny', 'obs', 'stars', 'puzzle', 'obs', 'gap', 'stars', 'obs', 'pad', 'leaf', 'mission:supplies', 'obs', 'stars'] },
-  // fase 4 refeita: menos obstáculos (um por vez), mais estrelas, telhados e voo
-  { id: 4, name: 'Resgate nas alturas', theme: 'altura', dog: 'pipoca', puzzle: 'apples', music: 'altura', calm: true,
-    script: ['stars', 'obs', 'stars', 'pad', 'stars', 'gap', 'stars', 'pickup:flight', 'flystars', 'flystars', 'stars', 'obs', 'leaf', 'mission:rescue_roof', 'stars', 'puzzle', 'stars', 'gap', 'stars', 'pad', 'stars', 'obs', 'mission:fire_building', 'stars', 'flystars'] },
+  // fase 4 refeita (09/11/2026): o MEIO da pista fica sempre livre para correr. Sem buracos nem plataformas no centro;
+  // obstáculos e trampolins só nas faixas laterais (freeCenter), um por vez (calm), muitas estrelas e trechos de voo.
+  { id: 4, name: 'Resgate nas alturas', theme: 'altura', dog: 'pipoca', puzzle: 'apples', music: 'altura', calm: true, freeCenter: true,
+    script: ['stars', 'obs', 'stars', 'pad', 'stars', 'obs', 'stars', 'pickup:flight', 'flystars', 'flystars', 'stars', 'obs', 'stars', 'mission:rescue_roof', 'stars', 'obs', 'puzzle', 'stars', 'pad', 'stars', 'obs', 'stars', 'mission:fire_building', 'stars', 'flystars', 'obs', 'stars'] },
   { id: 5, name: 'Mundo dos dinossauros', theme: 'pre', dog: 'pipoca', puzzle: 'hose', music: 'pre',
     script: ['obs', 'stars', 'gap', 'stars', 'leaf', 'mission:distract_dino', 'obs', 'stars', 'pickup:egg', 'gap', 'obs', 'mission:nest', 'obs', 'stars', 'puzzle', 'ptero', 'obs', 'stars', 'mission:baby_free', 'obs', 'leaf', 'stars', 'mission:baby_reunite', 'obs', 'stars'] },
   { id: 6, name: 'Resgate aquático', theme: 'agua', dog: 'bolota', puzzle: 'boat', music: 'agua',
@@ -59,3 +60,16 @@ export const SHOP = [
   { key: 'speed', name: 'Turbo', price: 100, dur: 8 },
   { key: 'jet', name: 'Jato forte', price: 100, dur: 20 },
 ];
+
+// ---------------------------------------------------------------------------
+// Modos de jogo (09/11/2026)
+//  história: fase a fase até a última; ao passar por todas, a frase final (voz do pai) e a partida termina.
+//  infinita: só corrida (sem missões nem desafios). Começa devagar e acelera aos poucos; a cada degrau de
+//            velocidade as estrelas passam a valer mais (×2, ×3...) e os obstáculos vão ficando mais frequentes.
+//            No fim, ranking local de quem foi mais longe e com quantas estrelas.
+// ---------------------------------------------------------------------------
+export const GAME_MODES = { story: { id: 'story', label: 'Modo História' }, infinite: { id: 'infinite', label: 'Corrida Infinita' } };
+export const INFINITE = { speed0: 5.0, speedMax: 15.0, ramp: 0.05, mulStep: 1.0 };   // +1 m/s a cada 20 s de corrida; cada +1 m/s = estrelas valem +1×
+export const STORY_END = 'Parabéns, você venceu todos os desafios, meu pequeno herói, meu filho.';
+// botão de velocidade (nos dois modos): 1º toque ×2, 2º toque ×3, 3º toque volta ao normal
+export const RUN_MULS = [1, 2, 3];

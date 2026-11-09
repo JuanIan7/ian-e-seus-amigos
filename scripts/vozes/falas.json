@@ -1,0 +1,494 @@
+[
+ {
+  "texto": "Monte o seu personagem!",
+  "voz": "f"
+ },
+ {
+  "texto": "Lojinha de poderes!",
+  "voz": "f"
+ },
+ {
+  "texto": "Ficou lindo!",
+  "voz": "f"
+ },
+ {
+  "texto": "Faltam estrelas! Corra mais para juntar.",
+  "voz": "f"
+ },
+ {
+  "texto": "Modo história!",
+  "voz": "f"
+ },
+ {
+  "texto": "Corrida infinita!",
+  "voz": "f"
+ },
+ {
+  "texto": "Roupa",
+  "voz": "f"
+ },
+ {
+  "texto": "Pele",
+  "voz": "f"
+ },
+ {
+  "texto": "Rosto",
+  "voz": "f"
+ },
+ {
+  "texto": "Cabelo",
+  "voz": "f"
+ },
+ {
+  "texto": "Cor do cabelo",
+  "voz": "f"
+ },
+ {
+  "texto": "Olhos",
+  "voz": "f"
+ },
+ {
+  "texto": "Acessório",
+  "voz": "f"
+ },
+ {
+  "texto": "Detalhes",
+  "voz": "f"
+ },
+ {
+  "texto": "Bombeiro",
+  "voz": "f"
+ },
+ {
+  "texto": "Equipe de resgate",
+  "voz": "f"
+ },
+ {
+  "texto": "Dinossauro",
+  "voz": "f"
+ },
+ {
+  "texto": "Explorador",
+  "voz": "f"
+ },
+ {
+  "texto": "Piloto de resgate",
+  "voz": "f"
+ },
+ {
+  "texto": "Guarda-florestal",
+  "voz": "f"
+ },
+ {
+  "texto": "Astronauta",
+  "voz": "f"
+ },
+ {
+  "texto": "Super-herói",
+  "voz": "f"
+ },
+ {
+  "texto": "Esportivo",
+  "voz": "f"
+ },
+ {
+  "texto": "Casual",
+  "voz": "f"
+ },
+ {
+  "texto": "Redondo",
+  "voz": "f"
+ },
+ {
+  "texto": "Oval",
+  "voz": "f"
+ },
+ {
+  "texto": "Quadrado",
+  "voz": "f"
+ },
+ {
+  "texto": "Curto liso",
+  "voz": "f"
+ },
+ {
+  "texto": "Longo liso",
+  "voz": "f"
+ },
+ {
+  "texto": "Ondulado",
+  "voz": "f"
+ },
+ {
+  "texto": "Cacheado",
+  "voz": "f"
+ },
+ {
+  "texto": "Crespo",
+  "voz": "f"
+ },
+ {
+  "texto": "Rabo de cavalo",
+  "voz": "f"
+ },
+ {
+  "texto": "Trança",
+  "voz": "f"
+ },
+ {
+  "texto": "Coquinhos",
+  "voz": "f"
+ },
+ {
+  "texto": "Moicano",
+  "voz": "f"
+ },
+ {
+  "texto": "Raspadinho",
+  "voz": "f"
+ },
+ {
+  "texto": "Nenhum",
+  "voz": "f"
+ },
+ {
+  "texto": "Óculos",
+  "voz": "f"
+ },
+ {
+  "texto": "Óculos escuros",
+  "voz": "f"
+ },
+ {
+  "texto": "Laço",
+  "voz": "f"
+ },
+ {
+  "texto": "Tiara de estrelas",
+  "voz": "f"
+ },
+ {
+  "texto": "Mochila",
+  "voz": "f"
+ },
+ {
+  "texto": "Cachecol",
+  "voz": "f"
+ },
+ {
+  "texto": "Sem sardas",
+  "voz": "f"
+ },
+ {
+  "texto": "Sardinhas",
+  "voz": "f"
+ },
+ {
+  "texto": "Sobrancelha fina",
+  "voz": "f"
+ },
+ {
+  "texto": "Sobrancelha grossa",
+  "voz": "f"
+ },
+ {
+  "texto": "Escudo! Use durante a corrida.",
+  "voz": "f"
+ },
+ {
+  "texto": "Viatura! Use durante a corrida.",
+  "voz": "f"
+ },
+ {
+  "texto": "Voo! Use durante a corrida.",
+  "voz": "f"
+ },
+ {
+  "texto": "Planador! Use durante a corrida.",
+  "voz": "f"
+ },
+ {
+  "texto": "Ímã de estrelas! Use durante a corrida.",
+  "voz": "f"
+ },
+ {
+  "texto": "Super pulo! Use durante a corrida.",
+  "voz": "f"
+ },
+ {
+  "texto": "Turbo! Use durante a corrida.",
+  "voz": "f"
+ },
+ {
+  "texto": "Jato forte! Use durante a corrida.",
+  "voz": "f"
+ },
+ {
+  "texto": "Fase 1! Pequeno bombeiro",
+  "voz": "f"
+ },
+ {
+  "texto": "Pequeno bombeiro",
+  "voz": "f"
+ },
+ {
+  "texto": "Fase 2! Equipe de resgate na cidade",
+  "voz": "f"
+ },
+ {
+  "texto": "Equipe de resgate na cidade",
+  "voz": "f"
+ },
+ {
+  "texto": "Fase 3! Aventura na floresta",
+  "voz": "f"
+ },
+ {
+  "texto": "Aventura na floresta",
+  "voz": "f"
+ },
+ {
+  "texto": "Fase 4! Resgate nas alturas",
+  "voz": "f"
+ },
+ {
+  "texto": "Resgate nas alturas",
+  "voz": "f"
+ },
+ {
+  "texto": "Fase 5! Mundo dos dinossauros",
+  "voz": "f"
+ },
+ {
+  "texto": "Mundo dos dinossauros",
+  "voz": "f"
+ },
+ {
+  "texto": "Fase 6! Resgate aquático",
+  "voz": "f"
+ },
+ {
+  "texto": "Resgate aquático",
+  "voz": "f"
+ },
+ {
+  "texto": "Fase 7! Resgate no vulcão",
+  "voz": "f"
+ },
+ {
+  "texto": "Resgate no vulcão",
+  "voz": "f"
+ },
+ {
+  "texto": "Toque na seta para pular!",
+  "voz": "f"
+ },
+ {
+  "texto": "Toque duas vezes para pular mais alto!",
+  "voz": "f"
+ },
+ {
+  "texto": "Segure a seta no ar para planar!",
+  "voz": "f"
+ },
+ {
+  "texto": "Mangueira!",
+  "voz": "f"
+ },
+ {
+  "texto": "Um ossinho!",
+  "voz": "f"
+ },
+ {
+  "texto": "Um ovo! Cuidado!",
+  "voz": "f"
+ },
+ {
+  "texto": "Escudo!",
+  "voz": "f"
+ },
+ {
+  "texto": "Ímã de estrelas!",
+  "voz": "f"
+ },
+ {
+  "texto": "Super pulo!",
+  "voz": "f"
+ },
+ {
+  "texto": "Turbo!",
+  "voz": "f"
+ },
+ {
+  "texto": "Voar!",
+  "voz": "f"
+ },
+ {
+  "texto": "Jato forte!",
+  "voz": "f"
+ },
+ {
+  "texto": "Planador! Segure o pulo no ar!",
+  "voz": "f"
+ },
+ {
+  "texto": "Viatura dos bombeiros!",
+  "voz": "f"
+ },
+ {
+  "texto": "Muito bem!",
+  "voz": "f"
+ },
+ {
+  "texto": "Você conseguiu!",
+  "voz": "f"
+ },
+ {
+  "texto": "Parabéns!",
+  "voz": "f"
+ },
+ {
+  "texto": "Fim de jogo! Suas estrelas foram para a lojinha.",
+  "voz": "f"
+ },
+ {
+  "texto": "Muito bem! Suas estrelas foram para a lojinha.",
+  "voz": "f"
+ },
+ {
+  "texto": "Ah não! Acabaram as vidas.",
+  "voz": "f"
+ },
+ {
+  "texto": "Cuidado! Só mais uma vida!",
+  "voz": "f"
+ },
+ {
+  "texto": "Au au!",
+  "voz": "f"
+ },
+ {
+  "texto": "Novo recorde!",
+  "voz": "f"
+ },
+ {
+  "texto": "Estrelas valendo mais!",
+  "voz": "f"
+ },
+ {
+  "texto": "Muito bem! Você ganhou uma vida!",
+  "voz": "f"
+ },
+ {
+  "texto": "O tempo acabou! Vamos continuar a corrida.",
+  "voz": "f"
+ },
+ {
+  "texto": "Monte a figura! Você tem 30 segundos.",
+  "voz": "f"
+ },
+ {
+  "texto": "Leve o cachorrinho até a casinha!",
+  "voz": "f"
+ },
+ {
+  "texto": "Pegue as maçãs com a cesta!",
+  "voz": "f"
+ },
+ {
+  "texto": "Toque nas pedras de lava para esfriar!",
+  "voz": "f"
+ },
+ {
+  "texto": "Toque no fogo para jogar água!",
+  "voz": "f"
+ },
+ {
+  "texto": "Guie o barco até a boia!",
+  "voz": "f"
+ },
+ {
+  "texto": "O Bolota vai ajudar!",
+  "voz": "f"
+ },
+ {
+  "texto": "Ajude o gatinho a descer!",
+  "voz": "f"
+ },
+ {
+  "texto": "Mande carinho para o cachorro!",
+  "voz": "f"
+ },
+ {
+  "texto": "Salve o coelhinho!",
+  "voz": "f"
+ },
+ {
+  "texto": "Distraia o dinossauro com uma fruta!",
+  "voz": "f"
+ },
+ {
+  "texto": "Leve o ovo ao ninho!",
+  "voz": "f"
+ },
+ {
+  "texto": "Ajude o filhote!",
+  "voz": "f"
+ },
+ {
+  "texto": "Leve o filhote para a família!",
+  "voz": "f"
+ },
+ {
+  "texto": "Salve o cachorrinho!",
+  "voz": "f"
+ },
+ {
+  "texto": "Ajude o dinossaurinho!",
+  "voz": "f"
+ },
+ {
+  "texto": "Fogo na lixeira!",
+  "voz": "m"
+ },
+ {
+  "texto": "Fogo na casa!",
+  "voz": "m"
+ },
+ {
+  "texto": "Fogo no prédio!",
+  "voz": "m"
+ },
+ {
+  "texto": "Leve a moça ao abrigo!",
+  "voz": "m"
+ },
+ {
+  "texto": "Entregue os suprimentos!",
+  "voz": "m"
+ },
+ {
+  "texto": "Desça a cesta de resgate!",
+  "voz": "m"
+ },
+ {
+  "texto": "Jogue a boia!",
+  "voz": "m"
+ },
+ {
+  "texto": "Fogo no barco! Use a mangueira!",
+  "voz": "m"
+ },
+ {
+  "texto": "A lava está bloqueando! Use a mangueira!",
+  "voz": "m"
+ },
+ {
+  "texto": "Fogo na cabana! Apague com a mangueira!",
+  "voz": "m"
+ },
+ {
+  "texto": "Parabéns, você venceu todos os desafios, meu pequeno herói, meu filho.",
+  "voz": "m"
+ }
+]

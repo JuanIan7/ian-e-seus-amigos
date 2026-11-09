@@ -1,5 +1,6 @@
 // Áudio 100% gerado por código (sem arquivos externos, sem licenças a registrar).
 import { load } from './save.js';
+import { VOICES } from './vozes-manifest.js';
 
 let ctx = null, master = null, musicTimer = null;
 
@@ -35,7 +36,10 @@ function noise(dur, vol = 0.2, hp = 1500) {
 
 export const sfx = {
   jump: () => tone(380, 0.22, { type: 'square', vol: 0.12, slide: 420 }),
-  star: () => { tone(880, 0.1, { vol: 0.18 }); tone(1320, 0.14, { vol: 0.18, delay: 0.07 }); },
+  // estrela: "moedinha" bem audível por cima da música (duas notas fortes + brilho)
+  star: () => { tone(988, 0.09, { type: 'square', vol: 0.3 }); tone(1319, 0.3, { type: 'square', vol: 0.32, delay: 0.08 }); tone(2637, 0.16, { vol: 0.14, delay: 0.1 }); },
+  // estrelas valendo mais (corrida infinita): arpejo subindo
+  mult: () => [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.16, { type: 'triangle', vol: 0.26, delay: i * 0.07 })),
   // clique/“pop” de fruta pega: estalo curto + nota subindo
   catch: () => { noise(0.05, 0.22, 3000); tone(700, 0.09, { type: 'triangle', vol: 0.25, slide: 500 }); tone(1500, 0.07, { vol: 0.12, delay: 0.05 }); },
   hit: () => tone(180, 0.28, { type: 'triangle', vol: 0.3, slide: -120 }),
@@ -151,13 +155,56 @@ if (typeof document !== 'undefined') document.addEventListener('visibilitychange
 });
 export function currentTrack() { return curTrack; }
 
-export function speak(text) {
-  if (!on() || !('speechSynthesis' in window)) return;
+// ---------------------------------------------------------------------------------------------
+// Falas: gravadas com voz natural (arquivos em vozes/, manifesto em src/vozes-manifest.js, gerados por
+// scripts/vozes/gerar-vozes.py). Voz feminina (a mãe) para o dia a dia e para ajudar bichinhos; voz masculina
+// (o pai) para salvar pessoas, apagar fogo e para a frase final do modo história. Se a frase ainda não tiver
+// gravação, cai na voz do sistema (speechSynthesis) com o tom certo.
+// ---------------------------------------------------------------------------------------------
+const voiceBuf = {}, voicePending = {};
+let voiceSrc = null, voiceSeq = 0;
+const voiceUrl = (f) => new URL('vozes/' + f, document.baseURI).href;
+function loadVoice(f) {
+  if (voiceBuf[f]) return Promise.resolve(voiceBuf[f]);
+  if (voicePending[f]) return voicePending[f];
+  const c = ensure(); if (!c) return Promise.resolve(null);
+  voicePending[f] = fetch(voiceUrl(f)).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+    .then((ab) => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)))
+    .then((b) => { voiceBuf[f] = b; return b; }).catch(() => { voiceBuf[f] = false; return null; })
+    .finally(() => { delete voicePending[f]; });
+  return voicePending[f];
+}
+/** pré-carrega as falas (chamado ao começar a partida: evita atraso na primeira frase) */
+export function preloadVoices(texts) { texts.forEach((t) => { const e = VOICES[norm(t)]; if (e) loadVoice(e.f); }); }
+const norm = (t) => String(t).replace(/\s+/g, ' ').trim();
+function stopVoiceFile() { if (voiceSrc) { try { voiceSrc.stop(); } catch (e) {} voiceSrc = null; } }
+function playVoiceBuffer(b) {
+  const c = ensure(); if (!c || !b) return;
+  stopVoiceFile(); const src = c.createBufferSource(), g = c.createGain(); g.gain.value = 1.0;
+  src.buffer = b; src.connect(g); g.connect(master); src.start(); voiceSrc = src; src.onended = () => { if (voiceSrc === src) voiceSrc = null; };
+}
+/** voz do sistema (reserva): gênero só muda o tom */
+function speakSynth(text, voice) {
+  if (!('speechSynthesis' in window)) return;
   try {
     const ss = window.speechSynthesis; if (ss.speaking || ss.pending) ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'pt-BR'; u.rate = 0.9; u.pitch = 1.3; u.volume = 0.9;
+    u.lang = 'pt-BR'; u.rate = 0.92; u.pitch = voice === 'm' ? 0.75 : 1.15; u.volume = 0.9;
+    const vs = ss.getVoices ? ss.getVoices().filter((v) => /pt/i.test(v.lang)) : [];
+    const pick = vs.find((v) => /(Luciana|Francisca|Camila|Google português)/i.test(v.name) && voice !== 'm') || vs.find((v) => /(Felipe|Daniel|Ricardo)/i.test(v.name) && voice === 'm') || vs[0];
+    if (pick) u.voice = pick;
     setTimeout(() => { try { ss.speak(u); } catch (e) { /* sem voz */ } }, 0);     // falar logo depois de cancelar perde a frase em alguns Androids
   } catch (e) { /* sem voz: segue só com o visual */ }
 }
-export function silenceVoice() { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }
+/** fala uma frase. voice: 'f' (padrão) ou 'm'; se a frase tiver gravação, o gênero vem do manifesto */
+export function speak(text, voice = 'f') {
+  if (!on()) return;
+  const e = VOICES[norm(text)]; const seq = ++voiceSeq;
+  silenceVoice();
+  if (!e) { speakSynth(text, voice); return; }
+  const b = voiceBuf[e.f];
+  if (b) { playVoiceBuffer(b); return; }
+  if (b === false) { speakSynth(text, e.v || voice); return; }
+  loadVoice(e.f).then((buf) => { if (seq !== voiceSeq) return; if (buf) playVoiceBuffer(buf); else speakSynth(text, e.v || voice); });
+}
+export function silenceVoice() { stopVoiceFile(); try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {} }

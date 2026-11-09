@@ -8,14 +8,13 @@ import { buildStar, buildPickup } from './props.js';
 import { buildObstacle, OBSTACLES, buildFlame, buildBin, buildHouse, buildTower, buildEgg, buildDog, buildDino, buildPlatform, buildRaft, buildLifeRing, buildFireTruck, FLAME_T } from './final.js';
 import { MISSIONS3, ACTIONS } from './missions3.js';
 import { buildBoneProp, buildGiftBox, buildFruit, buildLeaf, buildPad, buildGlider, buildWing, animCreature } from './creatures.js';
-import { MODES3, PHASES3, LIVES, SHOP } from './config3.js';
+import { MODES3, PHASES3, LIVES, SHOP, INFINITE, STORY_END, RUN_MULS } from './config3.js';
 import { POWERS, STARS_PER_POWER } from '../config.js';
 import { load, save } from '../save.js';
 import { startMinigame, PUZZLE_ICON } from './minigames.js';
 import { buildPuzzleStation } from './props.js';
 import { sfx, unlock, startMusic, stopMusic, speak, silenceVoice } from '../audio.js';
 const PHASES = PHASES3;
-const RUN2_MUL = 1.3;   // 2º toque em correr: 30% acima da corrida normal
 import { createHud } from './hud.js';
 
 const STOP = 3.2;                       // distância (em z) em que o mundo para diante de uma missão
@@ -25,9 +24,9 @@ const POWERS_ALL = { ...POWERS, glide: { name: 'Planador', say: 'Planador! Segur
 const POWER_POOL = ['shield', 'magnet', 'jump', 'speed', 'jet'];     // 'fly' entra a partir da fase 4 (trechos de voo)
 const FIRE_TARGETS = { fire_bin: 'bin', fire_house: 'house', fire_building: 'tower' };
 const FIRE_DEFS = {
-  bin: { kind: 'fire', icon: 'drop', needs: 'hose', cam: 0, cue: 'Fogo na lixeira!', hits: (c) => c.fireHits },
-  house: { kind: 'fire', icon: 'drop', needs: 'hose', cam: 1, cue: 'Fogo na casa!', hits: (c) => c.fireHits + 1 },
-  tower: { kind: 'fire', icon: 'drop', needs: 'hose', cam: 2, cue: 'Fogo no prédio!', hits: (c) => c.fireHits + 2 },
+  bin: { kind: 'fire', icon: 'drop', needs: 'hose', cam: 0, cue: 'Fogo na lixeira!', hits: (c) => c.fireHits, voice: 'm' },
+  house: { kind: 'fire', icon: 'drop', needs: 'hose', cam: 1, cue: 'Fogo na casa!', hits: (c) => c.fireHits + 1, voice: 'm' },
+  tower: { kind: 'fire', icon: 'drop', needs: 'hose', cam: 2, cue: 'Fogo no prédio!', hits: (c) => c.fireHits + 2, voice: 'm' },
 };
 const EQUIP_EMOJI = { hose: '🧯', bone: '🦴', egg: '🥚', fruit: '🍎' };
 const GIVE_TEXT = { hose: 'Um amigo trouxe a mangueira!', bone: 'Um amigo trouxe um ossinho!', egg: 'Um amigo trouxe o ovo!', fruit: 'Um amigo trouxe uma fruta!' };
@@ -38,7 +37,8 @@ export class Game3D {
     this.modeId = o.mode || 'facil'; this.cfg = MODES3[this.modeId];
     const c = this.cfg; this.g = 8 * c.apex / (c.airT * c.airT); this.jumpV0 = this.g * c.airT / 2;
     this.rng = rng(o.seed || 'ian-' + Math.floor(Math.random() * 1e9));
-    this.phaseNum = o.phase || 1;
+    this.gameMode = o.gameMode || 'story'; this.infinite = this.gameMode === 'infinite';   // história (fases) ou corrida infinita (só corrida)
+    this.phaseNum = this.infinite ? 1 : (o.phase || 1); this.starMul = 1;
     this.look = o.look || load().look;
 
     // ---- desenho ----
@@ -100,12 +100,12 @@ export class Game3D {
     this.hud = createHud(this.el, {
       lane: (d) => this.steer(d), jump: (v) => this.setJump(v), run: () => this.toggleRun(), action: () => this.pressAction(), pause: () => this.setPaused(true), item: (k) => this.useItem(k),
     });
-    this.hud.showRun(this.cfg.showRun); this.hud.setDots(this.phaseNum - 1, PHASES.length, 0);
+    this.hud.showRun(this.cfg.showRun); if (!this.infinite) this.hud.setDots(this.phaseNum - 1, PHASES.length, 0); else { this.hud.setDist(0); this.hud.els.act.style.display = 'none'; }   // sem missões na infinita: sem botão de ação
     this.hud.setStars(0); this.hud.setLives(this.lives, this.maxLives); this.hud.setInv(this.inv, SHOP);
     this.bindKeys();
     this.resize(); this.onResize = () => this.resize(); window.addEventListener('resize', this.onResize);
     this.onHidden = () => { if (document.hidden) this.setPaused(true); }; document.addEventListener('visibilitychange', this.onHidden);
-    this.hud.banner('Fase ' + this.phaseNum, this.phase.name);
+    if (this.infinite) { this.hud.banner('Corrida infinita', this.phase.name); speak('Corrida infinita!'); } else this.hud.banner('Fase ' + this.phaseNum, this.phase.name);
     startMusic(this.phase.music);
     window.__ian3 = this;
     this.last = performance.now(); this.frames = 0; this.acc = 0;
@@ -115,7 +115,8 @@ export class Game3D {
 
   get phase() { return PHASES[(this.phaseNum - 1) % PHASES.length]; }
   get loop() { return Math.floor((this.stage - 1) / PHASES.length); }
-  get baseSpeed() { const c = this.cfg; return Math.min(c.speedMax, c.speed0 + c.ramp * this.runTime) * (1 - 0.06 * this.assist); }
+  get baseSpeed() { const c = this.cfg; if (this.infinite) return Math.min(INFINITE.speedMax, INFINITE.speed0 + INFINITE.ramp * this.runTime) * (1 - 0.06 * this.assist); return Math.min(c.speedMax, c.speed0 + c.ramp * this.runTime) * (1 - 0.06 * this.assist); }
+  get speedCap() { return this.infinite ? INFINITE.speedMax : this.cfg.speedMax; }
   get jumpV() { return this.jumpV0 * (this.powers.jump ? 1.25 : 1); }
   jumpDist(speed = this.baseSpeed) { return speed * this.cfg.airT; }
 
@@ -137,8 +138,8 @@ export class Game3D {
   }
   setJump(v) { unlock(); if (v === this.jumpHeld) return; this.jumpHeld = v; if (v) this.pressJump(); }
   /** nível de corrida: 0 = normal, 1 = acelera, 2 = acelera mais (v=true/false também aceito: liga nível 1 / desliga) */
-  setRun(v) { let lv = v === true ? 1 : v === false ? 0 : (v | 0); if (this.mini) lv = 0; this.runLevel = lv; this.runHeld = lv > 0; this.hud.setRunActive(lv); }
-  /** correr é por toques (segurar o botão impedia de pular ao mesmo tempo no celular): 1º toque acelera, 2º acelera mais, 3º desliga */
+  setRun(v) { let lv = v === true ? 1 : v === false ? 0 : (v | 0); if (this.mini) lv = 0; this.runLevel = lv; this.runHeld = lv > 0; this.hud.setRunActive(lv, lv ? RUN_MULS[lv] + 'x' : ''); }
+  /** velocidade por toques (segurar o botão impedia de pular ao mesmo tempo no celular): 1º toque ×2, 2º toque ×3, 3º volta ao normal */
   toggleRun() { unlock(); if (this.paused || this.mini) return; this.setRun((this.runLevel + 1) % 3); }
   steer(d) { unlock(); if (this.paused || this.mini || this.fall) return; const p = this.p; const nl = Math.max(-1, Math.min(1, p.lane + d)); if (nl !== p.lane) { p.lane = nl; sfx.tap && sfx.tap(); } p.lastSteer = this.t; }
   pressJump() {
@@ -167,15 +168,27 @@ export class Game3D {
   exit(action = 'menu') { const d = { action, stars: this.stars, phase: this.phaseNum }; this.destroy(); this.onExit(d); }
   /** fim da partida (perdeu as vidas ou encerrou): as estrelas da corrida vão para a lojinha */
   endGame(reason = 'quit') {
-    if (this.over) return; this.over = true; this.paused = false; this.hud.pauseUI(false);
+    if (this.over) return; this.over = true; this.paused = false; this.hud.pauseUI(false); this.won = this.won || reason === 'win';
     if (this.mini) { this.mini.destroy(); this.mini = null; }
     this.setRun(false); this.jumpHeld = false; stopMusic();
     const earned = this.stars, st = load();
     save({ coins: (st.coins || 0) + earned, bestStars: Math.max(st.bestStars || 0, earned) });
     this.stats.ended = reason; reason === 'over' ? sfx.hit() : sfx.win();
-    speak(reason === 'over' ? 'Fim de jogo! Suas estrelas foram para a lojinha.' : 'Muito bem! Suas estrelas foram para a lojinha.');
-    this.hud.results({ reason, stars: earned, coins: load().coins, phase: this.phaseNum, stage: this.stage, missions: this.stats.missions },
-      { again: () => this.exit('again'), shop: () => this.exit('shop'), menu: () => this.exit('menu') });
+    const cb = { again: () => this.exit('again'), shop: () => this.exit('shop'), menu: () => this.exit('menu') };
+    if (this.infinite) {
+      // ranking local: quem foi mais longe (desempate: estrelas). A linha nova pode ganhar um nome no próprio resultado.
+      const dist = Math.floor(this.dist), list = (st.ranking || []).slice();
+      const me = { name: st.playerName || 'Ian', dist, stars: earned, mul: this.starMul, date: Date.now() };
+      list.push(me); list.sort((a, b) => b.dist - a.dist || b.stars - a.stars);
+      const top = list.slice(0, 10), record = top[0] === me && list.length > 1 && (list[1].dist < dist);
+      save({ ranking: top });
+      cb.name = (n) => { me.name = n || 'Ian'; save({ ranking: top, playerName: me.name }); };
+      speak(record ? 'Novo recorde!' : (reason === 'over' ? 'Fim de jogo! Suas estrelas foram para a lojinha.' : 'Muito bem! Suas estrelas foram para a lojinha.'));
+      this.hud.results({ reason, stars: earned, coins: load().coins, infinite: true, dist, rank: top, me, record }, cb);
+      return;
+    }
+    if (reason !== 'win') speak(reason === 'over' ? 'Fim de jogo! Suas estrelas foram para a lojinha.' : 'Muito bem! Suas estrelas foram para a lojinha.');
+    this.hud.results({ reason, stars: earned, coins: load().coins, phase: this.phaseNum, stage: this.stage, missions: this.stats.missions }, cb);
   }
   // ---- vidas ----
   loseLife() {
@@ -197,11 +210,37 @@ export class Game3D {
 
   // ================================================================ roteiro das fases
   scriptFor(num) {
+    if (this.infinite) return this.infiniteScript();
     const ph = PHASES[(num - 1) % PHASES.length]; let wall = false;
     return ph.script.map((tok) => {
       if (tok === 'obs' && ph.id === 2 && !wall) { wall = true; return 'wall'; }          // a fase 2 apresenta o pulo duplo
       return tok;
     });
+  }
+
+  /** trecho da corrida infinita: só pista. Quanto mais avançado (stage), mais obstáculos e menos estrelas "de graça". */
+  infiniteScript() {
+    const r = this.rng, n = this.stage, free = !!this.phase.freeCenter, out = [];
+    const pObs = Math.min(0.62, 0.38 + 0.03 * n);
+    let last = '';
+    for (let i = 0; i < 24; i++) {
+      const x = r.frac(); let tok;
+      if (x < pObs) tok = 'obs';
+      else if (x < pObs + 0.22) tok = 'stars';
+      else if (x < pObs + 0.30) tok = free ? 'stars' : 'gap';
+      else if (x < pObs + 0.34) tok = 'pad';
+      else if (x < pObs + 0.37) tok = 'flystars';
+      else if (x < pObs + 0.39) tok = r.pick(['pickup:glider', 'pickup:truck', 'pickup:flight']);
+      else tok = (n >= 2 && !free) ? 'wall' : 'obs';
+      if (tok === last && (tok === 'gap' || tok === 'pad' || tok === 'wall')) tok = 'stars';
+      out.push(tok); last = tok;
+    }
+    return out;
+  }
+  /** corrida infinita: a cada degrau de velocidade as estrelas valem mais (×2, ×3...) */
+  updateStarMul() {
+    const k = 1 + Math.max(0, Math.floor((this.baseSpeed - INFINITE.speed0) / INFINITE.mulStep + 1e-6));
+    if (k !== this.starMul) { this.starMul = k; this.hud.setMul(k); this.hud.toast('⭐', 'Estrelas ×' + k + '!'); sfx.mult && sfx.mult(); }
   }
 
   // ================================================================ laço principal
@@ -288,11 +327,12 @@ export class Game3D {
     if (this.resumeMul < 1) { this.resumeMul = Math.min(1, this.resumeMul + dt / 1.3); mul = Math.min(mul, 0.35 + 0.65 * this.resumeMul); }
     const rec = this.recover > 0 ? c.slow + (1 - c.slow) * (1 - this.recover / 1.0) : 1;
     // correr: aceleração gradual enquanto o botão está pressionado; ao soltar volta suavemente à velocidade da partida
-    const runBoost = c.runBoost * (this.runLevel >= 2 ? RUN2_MUL : 1);                 // nível 2 corre ainda mais
-    const turboMax = Math.max(this.powers.speed ? 1.5 : 1, runBoost, this.powers.truck ? 1.35 : 1);
+    const runMul = RUN_MULS[this.runLevel] || 1;                                       // botão de velocidade: ×2 / ×3
+    const turboMax = Math.max(this.powers.speed ? 1.5 : 1, runMul, this.powers.truck ? 1.35 : 1);
     const wantTurbo = (this.runLevel > 0 && !this.fall && !this.focus && !this.tutorialActive) ? turboMax : (this.powers.speed ? 1.5 : this.powers.truck ? 1.35 : 1);
     this.turbo += (wantTurbo - this.turbo) * Math.min(1, dt * (wantTurbo > this.turbo ? 2.6 : 3.2));
-    const speed = Math.min(this.baseSpeed * this.turbo, c.speedMax * runBoost * 1.02) * mul * rec;
+    const speed = Math.min(this.baseSpeed * this.turbo, this.speedCap * turboMax * 1.02) * mul * rec;
+    if (this.infinite) this.updateStarMul();
     const stopped = this.focus || this.tutorialActive || this.fall;
     if (!stopped) this.runTime += dt;                                  // só o tempo ativo conta para a velocidade básica
     const dx = speed * dt; this.dist += dx; this.worldSpeed = speed;
@@ -449,7 +489,7 @@ export class Game3D {
       const tok = this.queue.shift(); const s = this.nextS;
       const r = this.spawnToken(tok, s);
       const sp = this.baseSpeed;
-      const g = this.rng.between(c.gap[0], c.gap[1]) * (1 + 0.15 * this.assist) * Math.max(0.8, 1 - 0.05 * this.loop);
+      const g = this.rng.between(c.gap[0], c.gap[1]) * (1 + 0.15 * this.assist) * (this.infinite ? Math.max(0.6, 1 - 0.035 * (this.stage - 1)) : Math.max(0.8, 1 - 0.05 * this.loop));
       this.nextS = s + r.width + (g + (r.extra || 0)) * sp * (r.short ? 0.35 : 1);
     }
   }
@@ -497,7 +537,7 @@ export class Game3D {
     const e = { type: 'plat', lane, x: this.laneX(lane), s, len, w: 1.9, top, mesh, natural }; this.ents.push(e); return e;
   }
   spawnPad(s) {
-    const lane = this.rng.int(-1, 1), top = 2.4;
+    const lane = this.phase.freeCenter ? this.rng.pick([-1, 1]) : this.rng.int(-1, 1), top = 2.4;
     const mesh = buildPad(); this.scene.add(mesh); this.ents.push({ type: 'pad', lane, x: this.laneX(lane), s: s + 1, mesh, bounce: 0 });
     this.addPlat('top', lane, s + 7.2, 4.6, top);
     for (let i = 0; i < 5; i++) this.addStar(lane, s + 5.4 + i * 1.0, top + 0.9);
@@ -527,9 +567,9 @@ export class Game3D {
   }
   obsKinds() { return { bairro: ['cone', 'barrier', 'crate', 'hydrant'], praca: ['cone', 'bench', 'crate', 'bush'], floresta: ['log', 'rock', 'bush', 'mushroom'], altura: ['crate', 'ac', 'barrier', 'pipe'], pre: ['rock', 'log', 'bone', 'mushroom'], agua: ['buoy', 'crate', 'rope', 'barrel'], vulcao: ['rock', 'lavarock', 'log', 'barrel'] }[this.phase.theme]; }
   spawnObstacleGroup(s) {
-    if (this.phase.calm) { this.firstObstacle = false; const l = this.rng.int(-1, 1), k = this.rng.pick(this.obsKinds().slice(0, 3)); this.addObstacle(k, l, s); for (let i = 0; i < 3; i++) this.addStar(l, s - 1.4 + i * 1.4, 1.1 + (i === 1 ? 0.9 : 0.3)); return 7; }
+    if (this.phase.calm) { this.firstObstacle = false; const l = this.phase.freeCenter ? this.rng.pick([-1, 1]) : this.rng.int(-1, 1), k = this.rng.pick(this.obsKinds().slice(0, 3)); this.addObstacle(k, l, s); for (let i = 0; i < 3; i++) this.addStar(l, s - 1.4 + i * 1.4, 1.1 + (i === 1 ? 0.9 : 0.3)); return 7; }
     if (!this.firstObstacle && this.phaseNum >= 3 && this.rng.frac() < (this.modeId === 'facil' ? 0.2 : 0.35)) return this.spawnWall(s);
-    const grp = this.firstObstacle ? 'full' : this.rng.pick(this.cfg.groups); this.firstObstacle = false;
+    const grp = this.firstObstacle ? 'full' : this.rng.pick(this.infinite ? (this.stage < 3 ? ['single', 'single', 'double'] : this.stage < 6 ? ['single', 'double', 'full'] : ['double', 'full', 'full']) : this.cfg.groups); this.firstObstacle = false;
     const kinds = this.obsKinds(), r = this.rng;
     const k = r.pick(kinds.slice(0, 3));
     if (grp === 'full') { for (let l = -1; l <= 1; l++) this.addObstacle(k === 'barrier' || k === 'log' || k === 'pipe' || k === 'bench' ? k : r.pick(['cone', 'crate', 'rock', 'bush', 'ac', 'mushroom'].filter((x) => kinds.includes(x)).concat([kinds[0]])), l, s); for (let i = 0; i < 3; i++) this.addStar(0, s - 1.2 + i * 1.2, 1.1 + (i === 1 ? 0.8 : 0.3)); return 6; }
@@ -621,6 +661,7 @@ export class Game3D {
   }
 
   addStars(n) {
+    if (this.infinite) n *= this.starMul;
     this.stars += n; this.stats.stars += n; this.hud.setStars(this.stars);
     if (this.stars > (load().bestStars || 0)) save({ bestStars: this.stars });
     while (this.stars >= this.nextPowerAt) { this.nextPowerAt += STARS_PER_POWER; { const pool = this.phaseNum >= 4 ? POWER_POOL.concat(['fly']) : POWER_POOL, free = pool.filter((k) => !this.powers[k]); this.grantPower(this.rng.pick(free.length ? free : pool)); } }
@@ -686,7 +727,7 @@ export class Game3D {
   // ================================================================ missões (incêndio, resgate, entrega)
   engageMission(m) {
     m.engaged = true; m.idle = 0; const d = m.def;
-    this.hud.toast(d.kind === 'fire' ? '🔥' : '❗', d.cue); speak(d.say || d.cue);
+    this.hud.toast(d.kind === 'fire' ? '🔥' : '❗', d.cue); speak(d.say || d.cue, d.voice || 'f');
     if (d.needs && !this.eq[d.needs]) { this.eq[d.needs] = true; this.hud.toast(EQUIP_EMOJI[d.needs], GIVE_TEXT[d.needs]); }
     this.tutorialWater = !load().tut.water;
     if (d.dogAssist) m.assistAt = this.t + 2.2;
@@ -776,15 +817,26 @@ export class Game3D {
     // só depois de passar por TODAS as fases é que a próxima passa a ser sorteada
     let next = null;
     for (let i = 1; i <= PHASES.length && next === null; i++) { const id = ((this.phaseNum - 1 + i) % PHASES.length) + 1; if (!this.played.has(id)) next = id; }
+    if (next === null && !this.infinite) { this.winStory(); return; }                 // modo história: passou por todas = zerou
     if (next === null) { this.randomMode = true; next = this.rng.pick(PHASES.map((p) => p.id).filter((id) => id !== this.phaseNum)); }
     this.phaseNum = next; this.played.add(next);
     const ph = this.phase; this.world.setTheme(ph.theme);
     this.queue = this.scriptFor(this.phaseNum); this.firstObstacle = false; this.setupDog();
-    this.hud.banner('Fase ' + this.phaseNum, ph.name); this.hud.setDots(this.phaseNum - 1, PHASES.length, this.loop);
+    if (this.infinite) { this.hud.banner('Nova área', ph.name); }
+    else { this.hud.banner('Fase ' + this.phaseNum, ph.name); this.hud.setDots(this.phaseNum - 1, PHASES.length, this.loop); }
     const th = THEMES3[ph.theme]; this.themeTarget = th; this.sunTarget = th.sun;
     this.eq.hose = true; this.eq.egg = false;
     startMusic(ph.music); this.gainLife('fase');
-    speak('Fase ' + this.phaseNum + '! ' + ph.name);
+    speak(this.infinite ? ph.name : 'Fase ' + this.phaseNum + '! ' + ph.name);
+  }
+  /** modo história zerado: o mundo para, medalha e a frase do pai; um toque leva ao resultado */
+  winStory() {
+    if (this.won) return; this.won = true; this.paused = true; this.setRun(false); this.jumpHeld = false;
+    stopMusic(); sfx.win(); this.p.cheer = 99; this.stats.storyWin = true;
+    save({ storyWins: (load().storyWins || 0) + 1 });
+    for (let i = 0; i < 40; i++) this.fx.burst(this.p.x + (Math.random() - 0.5) * 6, 1 + Math.random() * 4, -2 - Math.random() * 6, 1, { col: [0xffd23f, 0xff5c8a, 0x4db8ff, 0x3ecb6b][i % 4], s: 0.16, speed: 2.5, life: 1.4 });
+    this.hud.victory(STORY_END, () => { this.paused = false; this.endGame('win'); });
+    setTimeout(() => speak(STORY_END, 'm'), 700);
   }
 
   // ================================================================ atualização das entidades
@@ -945,6 +997,7 @@ export class Game3D {
   }
 
   updateHud(m) {
+    if (this.infinite) this.hud.setDist(this.dist);
     const frac = (this.stars - (this.nextPowerAt - STARS_PER_POWER)) / STARS_PER_POWER; this.hud.setBar(Math.max(0, Math.min(1, frac)));
     const keys = Object.keys(this.powers);
     if (keys.length) { const k = keys[keys.length - 1], pw = this.powers[k]; this.hud.power(POWER_EMOJI[k], pw.t / pw.dur, '#' + POWERS_ALL[k].color.toString(16).padStart(6, '0')); } else this.hud.power(null);
@@ -968,7 +1021,7 @@ export class Game3D {
   snapshot() {
     const m = this.mission, p = this.p;
     return {
-      mode: this.modeId, phase: this.phaseNum, theme: this.world.nextTheme, t: this.t, dist: this.dist, stars: this.stars, speed: this.worldSpeed, base: this.baseSpeed, turbo: this.turbo, runLevel: this.runLevel, random: this.randomMode,
+      mode: this.modeId, phase: this.phaseNum, theme: this.world.nextTheme, t: this.t, dist: this.dist, stars: this.stars, speed: this.worldSpeed, base: this.baseSpeed, turbo: this.turbo, runLevel: this.runLevel, random: this.randomMode, gameMode: this.gameMode, starMul: this.starMul, won: !!this.won,
       y: p.y, lane: p.lane, onGround: p.ground, floating: p.floating, dbl: p.dbl, assist: this.assist, powers: Object.keys(this.powers), eq: { ...this.eq },
       falling: !!this.fall, paused: this.paused, lives: this.lives, over: this.over, stage: this.stage, inv: { ...this.inv }, mini: !!this.mini, offer: this.offer ? this.offer.kind : null, tutorial: this.tutorialActive, mission: m ? { key: m.key, hp: m.hp, engaged: m.engaged, done: m.done } : null, focus: !!this.focus, runTime: this.runTime,
       stats: { ...this.stats }, ents: this.ents.length, queue: this.queue.length,

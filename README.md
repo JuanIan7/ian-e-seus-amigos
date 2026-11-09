@@ -1,4 +1,4 @@
-# Ian e Seus Amigos
+# Ian e Seus Amigos: Corrida de Resgate
 
 Jogo infantil de corrida e resgate para Android (para o Ian, 4 anos, e seus primos de 5 e 7). Corrida lateral automática, dois botões grandes, três modos de dificuldade (Fácil, Aventura, Desafio).
 

@@ -8,9 +8,10 @@ import { SKINS, HAIR_COLORS, EYE_COLORS, OUTFITS, FACES } from '../character.js'
 import { animCreature } from '../g3/creatures.js';
 import { buildDog, buildFireTruck, SCENERY } from '../g3/final.js';
 import { rng, lowDetail } from '../g3/kit.js';
-import { MODES3, PHASES3, SHOP } from '../g3/config3.js';
+import { MODES3, PHASES3, SHOP, GAME_MODES } from '../g3/config3.js';
 import { load, save, DEFAULT_LOOK } from '../save.js';
-import { sfx, unlock, startMusic, stopMusic, speak } from '../audio.js';
+import { sfx, unlock, startMusic, stopMusic, speak, preloadVoices } from '../audio.js';
+import { VOICES } from '../vozes-manifest.js';
 
 // Créditos: aparecem na tela inicial. Só remover se o Juan pedir.
 const AUTHOR = 'Juan Carlos Silva de Araujo';
@@ -30,13 +31,20 @@ const css = `
 .front .scr.on{display:block}
 .front .b{pointer-events:auto;cursor:pointer;border:5px solid #1b2a49;border-radius:22px;box-shadow:0 6px 0 rgba(27,42,73,.55),inset 0 6px 0 rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;transition:transform .08s;-webkit-tap-highlight-color:transparent}
 .front .b:active,.front .b.dn{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 rgba(27,42,73,.55)}
-.front .title{position:absolute;left:3vw;top:2.5vh;font-size:min(8vh,48px);line-height:.95;color:#fff;text-shadow:0 5px 0 #1b2a49,4px 0 0 #1b2a49,-4px 0 0 #1b2a49,0 -4px 0 #1b2a49,4px 4px 0 #1b2a49,-4px 4px 0 #1b2a49}
-.front .title small{display:block;font-size:.55em;color:#ffd23f}
-.front .modes{position:absolute;left:3vw;top:calc(3vh + min(25vh,150px));display:flex;gap:1.4vw}
-.front .mode{width:min(19vh,118px);height:min(17vh,96px);background:#fff6d8;flex-direction:column;gap:2px;font-size:min(3.6vh,20px)}
-.front .mode i{font-style:normal;font-size:min(4.4vh,26px);letter-spacing:-3px}
+.front .title{position:absolute;left:3vw;top:2vh;font-size:min(6.6vh,40px);line-height:1;color:#fff;letter-spacing:.5px;text-shadow:0 4px 0 #1b2a49,3px 0 0 #1b2a49,-3px 0 0 #1b2a49,0 -3px 0 #1b2a49,3px 3px 0 #1b2a49,-3px 3px 0 #1b2a49}
+.front .title small{display:inline-block;margin-top:.9vh;font-size:.5em;letter-spacing:2px;color:#1b2a49;background:#ffd23f;border:3px solid #1b2a49;border-radius:30px;padding:.2em .7em;text-shadow:none;box-shadow:0 4px 0 rgba(27,42,73,.5)}
+.front .gmodes{position:absolute;left:3vw;top:calc(2vh + min(16vh,96px));display:flex;gap:1.6vw}
+.front .gm{width:min(31vh,196px);height:min(15vh,88px);background:#fff6d8;flex-direction:column;gap:0;font-size:min(3.4vh,19px);border-radius:22px;line-height:1.1}
+.front .gm i{font-style:normal;font-size:min(5.5vh,30px)}
+.front .gm em{font-style:normal;font-size:min(2.4vh,13px);opacity:.75}
+.front .gm.sel{background:#3ecb6b;color:#fff;outline:5px solid #fff;outline-offset:-11px;text-shadow:0 2px 0 rgba(27,42,73,.5)}
+.front .gm.inf.sel{background:#9b5cff}
+.front .modes{position:absolute;left:3vw;top:calc(4vh + min(16vh,96px) + min(15vh,88px));display:flex;gap:1.2vw}
+.front .mode{width:auto;min-width:min(15vh,92px);padding:0 min(2vh,12px);height:min(10vh,60px);background:#fff6d8;flex-direction:row;gap:6px;font-size:min(3vh,16px);border-width:4px;white-space:nowrap}
+.front .mode i{font-style:normal;font-size:min(2.6vh,15px);letter-spacing:-4px;margin-right:3px}
 .front .mode.sel{background:#ffd23f;outline:5px solid #fff;outline-offset:-11px}
-.front .phases{position:absolute;left:3vw;top:calc(5vh + min(25vh,150px) + min(17vh,96px));display:flex;gap:min(1.2vh,8px);flex-wrap:wrap;max-width:52vw}
+.front .phases{position:absolute;left:3vw;top:calc(5.5vh + min(16vh,96px) + min(15vh,88px) + min(10vh,60px));display:flex;gap:min(1.2vh,8px);flex-wrap:wrap;max-width:52vw}
+.front .phases.hide{display:none}
 .front .ph{width:min(11.5vh,66px);height:min(11.5vh,66px);background:#fff6d8;border-radius:50%;font-size:min(5.8vh,34px);position:relative;border-width:4px}
 .front .ph b{position:absolute;right:-6px;top:-6px;width:min(5vh,26px);height:min(5vh,26px);border-radius:50%;background:#2f9bff;color:#fff;font-size:min(3vh,16px);display:flex;align-items:center;justify-content:center;border:3px solid #1b2a49}
 .front .ph.sel{background:#3ecb6b;transform:scale(1.12)}
@@ -176,11 +184,15 @@ export class FrontApp {
 
   buildHome() {
     const d = this.homeEl = this.scr('home');
-    d.innerHTML = `<div class="title">Ian e<br>Seus Amigos<small>corrida de resgate</small></div>`;
+    d.innerHTML = `<div class="title">Ian e Seus Amigos<br><small>CORRIDA DE RESGATE</small></div>`;
+    // dois jeitos de jogar: Modo História (fase a fase até zerar) e Corrida Infinita (só corrida, ranking no fim)
+    const gms = document.createElement('div'); gms.className = 'gmodes'; d.appendChild(gms);
+    this.gmBtns = Object.values(GAME_MODES).map((m) => this.mkBtn(gms, 'gm' + (m.id === 'infinite' ? ' inf' : ''), m.id === 'story' ? '<i>📖</i>Modo História<em></em>' : '<i>♾️</i>Corrida Infinita<em></em>', () => { save({ gameMode: m.id }); speak(m.id === 'story' ? 'Modo história!' : 'Corrida infinita!'); this.refreshHome(); }));
     const modes = document.createElement('div'); modes.className = 'modes'; d.appendChild(modes);
     this.modeBtns = Object.values(MODES3).map((m, i) => this.mkBtn(modes, 'mode', `<i>${'⭐'.repeat(i + 1)}</i>${m.label}`, () => { save({ mode: m.id }); speak(m.label); this.refreshHome(); }));
     const phs = document.createElement('div'); phs.className = 'phases'; d.appendChild(phs);
-    this.phaseBtns = PHASES3.map((p, i) => this.mkBtn(phs, 'ph', `${PHASE_ICON[i]}<b>${p.id}</b>`, () => { save({ phase: p.id }); speak('Fase ' + p.id + '. ' + p.name); this.refreshHome(); }));
+    this.phasesEl = phs;
+    this.phaseBtns = PHASES3.map((p, i) => this.mkBtn(phs, 'ph', `${PHASE_ICON[i]}<b>${p.id}</b>`, () => { save({ phase: p.id }); speak('Fase ' + p.id + '! ' + p.name); this.refreshHome(); }));
     this.mkBtn(d, 'play', PLAY_SVG, () => this.startGame());
     const cr = document.createElement('div'); cr.className = 'credits'; cr.innerHTML = `Desenvolvido por ${AUTHOR}<br>© ${YEAR} ${AUTHOR}. Todos os direitos reservados.`; d.appendChild(cr);
     const side = document.createElement('div'); side.className = 'side'; d.appendChild(side);
@@ -191,6 +203,12 @@ export class FrontApp {
   }
   refreshHome() {
     const s = load();
+    const gm = s.gameMode || 'story';
+    this.gmBtns.forEach((b, i) => b.classList.toggle('sel', Object.keys(GAME_MODES)[i] === gm));
+    const best = (s.ranking || [])[0];
+    this.gmBtns[0].querySelector('em').textContent = s.storyWins ? `zerado ${s.storyWins}×  🏅` : 'fase a fase até zerar';
+    this.gmBtns[1].querySelector('em').textContent = best ? `recorde: ${Math.floor(best.dist).toLocaleString('pt-BR')} m` : 'só corrida · ranking';
+    this.phasesEl.classList.toggle('hide', gm !== 'story');
     this.modeBtns.forEach((b, i) => b.classList.toggle('sel', Object.keys(MODES3)[i] === s.mode));
     this.phaseBtns.forEach((b, i) => b.classList.toggle('sel', PHASES3[i].id === (s.phase || 1)));
     this.coinsEl.innerHTML = `⭐ ${s.coins || 0}`; this.sndBtn.innerHTML = s.sound ? '🔊' : '🔇';
@@ -275,9 +293,10 @@ export class FrontApp {
     const s = load(); unlock();
     if (this.game) { this.game.destroy(); this.game = null; }
     this.el.style.display = 'none'; stopMusic(); this.renderer.setSize(2, 2, false);   // libera a memória de vídeo do palco enquanto o jogo roda (resize() restaura ao voltar)
-    const mode = o.mode || s.mode || 'facil', phase = o.phase || s.phase || 1;
-    this.lastStart = { mode, phase };
-    this.game = new Game3D({ root: document.body, mode, phase, seed: o.seed, manual: o.manual, look: s.look, onExit: (d) => this.onGameExit(d) });
+    const mode = o.mode || s.mode || 'facil', phase = o.phase || s.phase || 1, gameMode = o.gameMode || s.gameMode || 'story';
+    this.lastStart = { mode, phase, gameMode };
+    if (!this.voicesLoaded) { this.voicesLoaded = true; preloadVoices(Object.keys(VOICES)); }
+    this.game = new Game3D({ root: document.body, mode, phase, gameMode, seed: o.seed, manual: o.manual, look: s.look, onExit: (d) => this.onGameExit(d) });
     return this.game;
   }
   onGameExit(d = {}) {

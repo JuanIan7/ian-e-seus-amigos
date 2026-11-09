@@ -37,7 +37,7 @@ for (const mode of ['facil', 'aventura', 'desafio']) {
   await run(() => window.__ian3.setRun(false));
   const rel = await ticks(240);
   ok(mid.speed > free * 1.01 && mid.speed < full.speed, `${mode}: acelera aos poucos (${free.toFixed(2)} → ${mid.speed.toFixed(2)} → ${full.speed.toFixed(2)})`);
-  ok(full.speed <= cfg.speedMax * cfg.runBoost * 1.03, `${mode}: respeita o limite seguro`, `${full.speed.toFixed(2)} ≤ ${(cfg.speedMax * cfg.runBoost).toFixed(2)}`);
+  ok(full.speed <= cfg.speedMax * 2 * 1.03, `${mode}: respeita o limite seguro (×2)`, `${full.speed.toFixed(2)} ≤ ${(cfg.speedMax * 2).toFixed(2)}`);
   ok(rel.speed < full.speed - 0.2 && rel.speed >= rel.base * 0.98, `${mode}: ao soltar, volta suavemente (${rel.speed.toFixed(2)})`);
 }
 
@@ -122,6 +122,32 @@ for (const mode of process.env.QUICK ? [] : ['facil', 'aventura', 'desafio']) {
     return { ...g.snapshot(), maxStuck };
   });
   ok(r.maxStuck < 12 && r.stats.missions >= 1 && !r.over, `${mode}: sem travar e concluiu missões`, `missões ${r.stats.missions}, quedas ${r.stats.falls}, batidas ${r.stats.hits}, vidas ${r.lives}, fase ${r.phase}, estrelas ${r.stars}`);
+}
+
+// ---------------------------------------------------------------- 6. corrida infinita: só corrida, acelera aos poucos, estrelas valem mais, ranking
+console.log('6. Corrida infinita');
+{
+  await page.evaluate(() => { window.__ian.game.scene.start('Game3D', { mode: 'facil', gameMode: 'infinite', seed: 'inf', manual: true }); });
+  await page.waitForFunction(() => window.__ian3 && window.__ian3.infinite, null, { timeout: 20000 });
+  const r = await run(() => {
+    const g = window.__ian3; g.p.invul = 1e9; g.tutorialJump = false; const s0 = g.baseSpeed; let muls = new Set([g.starMul]);
+    for (let i = 0; i < 60 * 70; i++) { const h = g.nextHazard(); if (g.p.ground && h && h.gap < g.jumpDist() * 0.3 && h.gap > 0) { g.setJump(true); g.setJump(false); } g.tick(1 / 60); muls.add(g.starMul); }
+    const toks = g.queue.concat(g.ents.map((e) => e.type));
+    return { s0, s1: g.baseSpeed, dist: g.dist, muls: [...muls], hasMission: toks.some((t) => t === 'mission' || t === 'puzzle' || /^mission|^puzzle/.test(t)), stars: g.stars, stage: g.stage };
+  });
+  ok(r.s0 < 5.5 && r.s1 > r.s0 + 2.5, `começa devagar e acelera (${r.s0.toFixed(1)} → ${r.s1.toFixed(1)} m/s)`);
+  ok(r.muls.includes(1) && r.muls.includes(2) && r.muls.includes(3), 'multiplicador de estrelas sobe por degraus', 'muls=' + r.muls.join(','));
+  ok(!r.hasMission, 'sem missões nem desafios na corrida infinita');
+  ok(r.dist > 300, `distância percorrida ${r.dist.toFixed(0)} m`);
+  const end = await run(() => { const g = window.__ian3; g.endGame('over'); const st = JSON.parse(localStorage.getItem('ian-e-seus-amigos:v1')); return { rank: st.ranking, hasInput: !!document.querySelector('.g3 .res input'), rows: document.querySelectorAll('.g3 .res .rank div').length }; });
+  ok(end.rank && end.rank.length === 1 && end.rank[0].dist > 300 && end.hasInput && end.rows === 1, 'ranking salvo e mostrado no resultado', JSON.stringify(end.rank));
+}
+// ---------------------------------------------------------------- 7. modo história: zera ao passar por todas as fases
+console.log('7. Modo história zerado');
+{
+  await start('facil', 1, true);
+  const r = await run(() => { const g = window.__ian3; for (let k = 0; k < 7; k++) g.advancePhase(); return { won: !!g.won, paused: g.paused, win: getComputedStyle(document.querySelector('.g3 .win')).display, text: document.querySelector('.g3 .win').textContent }; });
+  ok(r.won && r.paused && r.win === 'flex' && /meu pequeno herói, meu filho/.test(r.text), 'depois da 7ª fase aparece a tela de vitória com a frase do pai');
 }
 
 console.log('erros de página:', errors.length ? errors.slice(0, 6) : 'nenhum');

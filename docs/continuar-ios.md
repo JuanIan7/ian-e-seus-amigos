@@ -87,6 +87,26 @@ xcrun devicectl device process launch --device 00008140-0002309A2244801C br.com.
   (regra do Juan para todos os apps: só tirar se ele pedir).
 - APK local: `cd android && ./gradlew assembleDebug` → copiar para `builds/android/` (pasta ignorada pelo git).
 
+## Atualização de 09/11/2026 (pedidos do Juan depois de jogar no iPhone)
+
+- **Nome**: "Ian e Seus Amigos: Corrida de Resgate" (título novo na tela inicial, README, package.json, strings.xml e CFBundleName;
+  o rótulo do ícone continua "Ian e Seus Amigos" para não ser cortado).
+- **Dois modos na tela inicial** (`gameMode` no save): **Modo História** (fase a fase; ao passar por todas aparece a medalha e a
+  frase "Parabéns, você venceu todos os desafios, meu pequeno herói, meu filho." com voz masculina; `winStory()`) e
+  **Corrida Infinita** (só corrida: sem missões nem desafios; começa a 5 m/s e sobe +1 m/s a cada 20 s até 15; a cada degrau
+  as estrelas valem ×2, ×3…; obstáculos ficam mais frequentes; no fim, ranking local top 10 por distância com nome editável;
+  `INFINITE` em config3.js, `infiniteScript()`, `updateStarMul()`, `ranking`/`playerName` no save).
+- **Botão de velocidade** nos dois modos: 1º toque ×2, 2º toque ×3, 3º toque volta ao normal (`RUN_MULS`, selo "2x"/"3x").
+- **Fase 4 (alturas)** refeita: o meio da pista fica sempre livre (sem buracos nem plataformas no centro; obstáculos e
+  trampolins só nas laterais: `freeCenter`).
+- **Som ao pegar estrela** bem mais audível (`sfx.star`) e arpejo quando o multiplicador sobe (`sfx.mult`).
+- **Falas com voz natural**: `speak()` agora toca arquivos gravados (`public/vozes/*.m4a`, manifesto `src/vozes-manifest.js`)
+  e só cai na voz do sistema se a frase não tiver gravação. Gênero por frase em `scripts/vozes/falas.json`: feminina (a mãe,
+  voz Kore) para o dia a dia e para ajudar bichinhos; masculina (o pai) para salvar pessoas, apagar fogo e a frase final.
+  **Gerar** (API paga do Gemini, só com autorização do Juan): `python3 scripts/vozes/gerar-vozes.py [--voz-m Charon]`
+  (chave em ~/Projetos/gbs-online/.env.local), depois `npm run build && npx cap sync` e reinstalar. 123 falas (11 masculinas).
+- Testes novos em `tests/sim3d.mjs`: corrida infinita (aceleração, multiplicador, sem missões, ranking) e modo história zerado.
+
 ## Ideias para depois (não feitas)
 
 - Voz em Android: o WebView do Android pode não ter `speechSynthesis` (as frases faladas ficariam mudas). Se for o caso no
