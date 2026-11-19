@@ -1,5 +1,6 @@
 // Interface do jogo 3D em HTML: botões grandes com multitoque, ícones que dispensam leitura, faixa de fase e pausa.
 const css = `
+.g3 .tl{position:absolute;left:calc(env(safe-area-inset-left) + 2.2vw);top:calc(env(safe-area-inset-top) + 2vh);display:flex;align-items:center;gap:min(2.6vh,16px);pointer-events:none;white-space:nowrap}
 .g3{position:fixed;inset:0;overflow:hidden;background:#8fd3ff;touch-action:none;-webkit-user-select:none;user-select:none;font-family:'Arial Black',Arial,sans-serif}
 .g3 canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 .g3 .ui{position:absolute;inset:0;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
@@ -77,7 +78,7 @@ const css = `
 .g3 .lives.gain b:last-child{animation:g3pop .6s}
 @keyframes g3shake{0%,100%{transform:translateX(-50%)}25%{transform:translateX(calc(-50% - 10px))}75%{transform:translateX(calc(-50% + 10px))}}
 @keyframes g3pop{0%{transform:scale(.2)}60%{transform:scale(1.5)}100%{transform:scale(1)}}
-.g3 .inv{position:absolute;right:calc(env(safe-area-inset-right) + 2vw + min(13vh,66px));top:calc(env(safe-area-inset-top) + 2vh);display:flex;gap:8px;pointer-events:none}
+.g3 .inv{position:absolute;right:calc(env(safe-area-inset-right) + 2vw + min(13vh,66px));top:calc(env(safe-area-inset-top) + 2vh);display:flex;gap:8px;pointer-events:none;flex-wrap:wrap;justify-content:flex-end;max-width:calc(48vw - env(safe-area-inset-right) - min(13vh,66px) - min(22vh,120px))}
 .g3 .inv .it{position:relative;pointer-events:auto;width:min(11vh,56px);height:min(11vh,56px);border-radius:16px;background:#fff6d8;border:4px solid #1b2a49;display:flex;align-items:center;justify-content:center;font-size:min(6.4vh,32px);box-shadow:0 4px 0 rgba(27,42,73,.5);cursor:pointer}
 .g3 .inv .it i{position:absolute;right:-8px;bottom:-8px;min-width:24px;height:24px;border-radius:12px;background:#e8352f;color:#fff;font:700 15px/24px Arial,sans-serif;font-style:normal;text-align:center;border:3px solid #1b2a49}
 .g3 .inv .it.act{background:#ffd23f;animation:g3pulse .6s ease-in-out infinite}
@@ -92,6 +93,7 @@ const css = `
 .g3 .veil{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;gap:5vw;pointer-events:auto;z-index:25}
 .g3 .veil .btn{position:static;width:min(24vh,120px);height:min(24vh,120px)}
 .g3 .veil .big{width:min(34vh,170px);height:min(34vh,170px);background:#3ecb6b}
+.g3 .tl .chip,.g3 .tl .dist,.g3 .tl .mul{position:static}
 `;
 
 const svg = (body, vb = '0 0 100 100') => `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
@@ -150,7 +152,8 @@ export function createHud(root, h) {
   els.pause = mk('pause', ICONS.pause, () => h.pause());
   els.act.classList.add('off');
 
-  const chip = document.createElement('div'); chip.className = 'chip'; chip.innerHTML = ICONS.star + '<span>0</span>'; ui.appendChild(chip);
+  const tl = document.createElement('div'); tl.className = 'tl'; ui.appendChild(tl);
+  const chip = document.createElement('div'); chip.className = 'chip'; chip.innerHTML = ICONS.star + '<span>0</span>'; tl.appendChild(chip);
   const bar = document.createElement('div'); bar.className = 'bar'; bar.innerHTML = '<i></i>'; ui.appendChild(bar);
   const power = document.createElement('div'); power.className = 'power'; power.innerHTML = '<b></b><i><u></u></i>'; ui.appendChild(power);
   const dots = document.createElement('div'); dots.className = 'dots'; ui.appendChild(dots);
@@ -163,8 +166,8 @@ export function createHud(root, h) {
   const lives = document.createElement('div'); lives.className = 'lives'; ui.appendChild(lives);
   const inv = document.createElement('div'); inv.className = 'inv'; ui.appendChild(inv);
   const res = document.createElement('div'); res.className = 'res'; ui.appendChild(res);
-  const dist = document.createElement('div'); dist.className = 'dist'; dist.innerHTML = '<span>0 m</span>'; ui.appendChild(dist);
-  const mulEl = document.createElement('div'); mulEl.className = 'mul'; ui.appendChild(mulEl);
+  const dist = document.createElement('div'); dist.className = 'dist'; dist.innerHTML = '<span>0 m</span>'; tl.appendChild(dist);
+  const mulEl = document.createElement('div'); mulEl.className = 'mul'; tl.appendChild(mulEl);
   const win = document.createElement('div'); win.className = 'win'; ui.appendChild(win);
   const flash = document.createElement('div'); flash.className = 'hitflash'; ui.appendChild(flash);
 
@@ -207,7 +210,7 @@ export function createHud(root, h) {
       });
     },
     results(r, cb) {
-      res.style.display = 'flex';
+      res.style.display = 'flex'; const shownAt = performance.now();
       const title = r.reason === 'win' ? 'Você zerou! 🏆' : r.reason === 'over' ? 'Fim de jogo!' : 'Muito bem!';
       const distHtml = r.infinite ? `<div class="dist2">📏 ${Math.floor(r.dist).toLocaleString('pt-BR')} m${r.record ? ' · 🏆 Novo recorde!' : ''}</div>` : '';
       res.innerHTML = `<div class="box"><h1>${title}</h1>${distHtml}<div class="big">⭐ <span>${r.stars}</span></div><p>estrelas foram para a lojinha · total: ⭐ ${r.coins}</p><div class="rank"></div><div class="row"></div></div>`;
@@ -223,7 +226,7 @@ export function createHud(root, h) {
         if (inp) { ['pointerdown', 'pointerup', 'touchstart', 'touchend'].forEach((ev) => inp.addEventListener(ev, (e) => e.stopPropagation())); inp.addEventListener('input', () => cb.name && cb.name(inp.value.trim())); inp.addEventListener('focus', () => inp.select()); }
       } else rank.style.display = 'none';
       const row = res.querySelector('.row');
-      const add = (icon, bg, fn, key) => { const b = document.createElement('div'); b.className = 'btn'; b.dataset.k = key; b.style.background = bg; b.innerHTML = icon; b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); fn(); }); row.appendChild(b); };
+      const add = (icon, bg, fn, key) => { const b = document.createElement('div'); b.className = 'btn'; b.dataset.k = key; b.style.background = bg; b.innerHTML = icon; b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (performance.now() - shownAt < 500) return; fn(); }); row.appendChild(b); };
       add(ICONS.home, '#2f9bff', cb.menu, 'menu'); add(ICONS.again, '#3ecb6b', cb.again, 'again'); add(ICONS.shop, '#ff8a1f', cb.shop, 'shop');
     },
     pulseJump(v) { els.jump.classList.toggle('pulse', !!v); },

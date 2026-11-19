@@ -125,7 +125,8 @@ function shell(root, icon, o) {
       if (left <= 0) api.timeout();
     }
   };
-  const loop = (now) => { if (!api.alive) return; raf = requestAnimationFrame(loop); const dt = Math.min(0.05, (now - last) / 1000); last = now; api.tick(dt); };
+  // com o jogo pausado (app em segundo plano, tela de pausa por cima) o desafio também para: o relógio não corre escondido
+  const loop = (now) => { if (!api.alive) return; raf = requestAnimationFrame(loop); const dt = Math.min(0.05, (now - last) / 1000); last = now; if (o.paused && o.paused()) return; api.tick(dt); };
   api.setProg = (n, total, emoji) => {
     if (total > 8) { U.prog.innerHTML = `<b class="on">${emoji}</b><span style="font-size:22px;color:#1b2a49">${n}/${total}</span>`; return; }
     U.prog.innerHTML = Array.from({ length: total }, (_, i) => `<b class="${i < n ? 'on' : ''}">${emoji}</b>`).join('');

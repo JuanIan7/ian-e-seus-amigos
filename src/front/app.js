@@ -13,7 +13,9 @@ import { load, save, DEFAULT_LOOK } from '../save.js';
 import { sfx, unlock, startMusic, stopMusic, speak, preloadVoices } from '../audio.js';
 import { VOICES } from '../vozes-manifest.js';
 
-// Créditos: aparecem na tela inicial. Só remover se o Juan pedir.
+// Assinatura (padrão de todos os projetos do Juan): logo da águia, "Desenvolvido por JuanIan7" (abre o GitHub) e direitos.
+// Aparece na tela inicial. Só remover ou alterar se o Juan pedir.
+const DEVELOPER = 'JuanIan7', DEVELOPER_URL = 'https://github.com/JuanIan7';
 const AUTHOR = 'Juan Carlos Silva de Araujo';
 const YEAR = 2026;
 import { Game3D } from '../g3/game3d.js';
@@ -34,9 +36,9 @@ const css = `
 .front .title{position:absolute;left:3vw;top:2vh;font-size:min(6.6vh,40px);line-height:1;color:#fff;letter-spacing:.5px;text-shadow:0 4px 0 #1b2a49,3px 0 0 #1b2a49,-3px 0 0 #1b2a49,0 -3px 0 #1b2a49,3px 3px 0 #1b2a49,-3px 3px 0 #1b2a49}
 .front .title small{display:inline-block;margin-top:.9vh;font-size:.5em;letter-spacing:2px;color:#1b2a49;background:#ffd23f;border:3px solid #1b2a49;border-radius:30px;padding:.2em .7em;text-shadow:none;box-shadow:0 4px 0 rgba(27,42,73,.5)}
 .front .gmodes{position:absolute;left:3vw;top:calc(2vh + min(16vh,96px));display:flex;gap:1.6vw}
-.front .gm{width:min(31vh,196px);height:min(15vh,88px);background:#fff6d8;flex-direction:column;gap:0;font-size:min(3.4vh,19px);border-radius:22px;line-height:1.1}
+.front .gm{width:min(34vh,214px);height:min(15vh,88px);background:#fff6d8;flex-direction:column;gap:0;font-size:min(3.4vh,19px);border-radius:22px;line-height:1.1}
 .front .gm i{font-style:normal;font-size:min(5.5vh,30px)}
-.front .gm em{font-style:normal;font-size:min(2.4vh,13px);opacity:.75}
+.front .gm em{font-style:normal;font-size:min(2.2vh,12px);opacity:.75;white-space:nowrap}
 .front .gm.sel{background:#3ecb6b;color:#fff;outline:5px solid #fff;outline-offset:-11px;text-shadow:0 2px 0 rgba(27,42,73,.5)}
 .front .gm.inf.sel{background:#9b5cff}
 .front .modes{position:absolute;left:3vw;top:calc(4vh + min(16vh,96px) + min(15vh,88px));display:flex;gap:1.2vw}
@@ -51,7 +53,9 @@ const css = `
 .front .play{position:absolute;left:3vw;bottom:4vh;width:min(28vh,170px);height:min(22vh,120px);background:#3ecb6b;border-radius:34px}
 .front .play svg{width:46%;height:60%}
 .front .side{position:absolute;bottom:4vh;display:flex;gap:2vw;left:calc(3vw + min(28vh,170px) + 2.5vw)}
-.front .credits{position:absolute;right:3vw;bottom:1.2vh;text-align:right;color:#fff;font-size:min(2.3vh,13px);line-height:1.25;text-shadow:0 2px 0 #1b2a49,1px 0 0 #1b2a49,-1px 0 0 #1b2a49,0 -1px 0 #1b2a49;pointer-events:none;opacity:.95}
+.front .credits{position:absolute;right:calc(env(safe-area-inset-right) + 3vw);bottom:calc(env(safe-area-inset-bottom) + 1.2vh);display:flex;align-items:center;gap:8px;text-align:right;color:#fff;font-size:min(2.3vh,13px);line-height:1.25;text-shadow:0 2px 0 #1b2a49,1px 0 0 #1b2a49,-1px 0 0 #1b2a49,0 -1px 0 #1b2a49;pointer-events:auto;cursor:pointer;opacity:.95}
+.front .credits img{height:min(7vh,40px);width:auto;display:block;filter:drop-shadow(0 2px 0 rgba(27,42,73,.6))}
+.front .credits u{text-decoration:none;color:#ffd23f}
 .front .sbtn{width:min(19vh,108px);height:min(19vh,108px);background:#2f9bff;color:#fff;flex-direction:column;font-size:min(7vh,40px);border-radius:28px;position:relative}
 .front .sbtn span{font-size:min(3vh,15px);margin-top:2px}
 .front .sbtn.shop{background:#ff8a1f}
@@ -194,7 +198,10 @@ export class FrontApp {
     this.phasesEl = phs;
     this.phaseBtns = PHASES3.map((p, i) => this.mkBtn(phs, 'ph', `${PHASE_ICON[i]}<b>${p.id}</b>`, () => { save({ phase: p.id }); speak('Fase ' + p.id + '! ' + p.name); this.refreshHome(); }));
     this.mkBtn(d, 'play', PLAY_SVG, () => this.startGame());
-    const cr = document.createElement('div'); cr.className = 'credits'; cr.innerHTML = `Desenvolvido por ${AUTHOR}<br>© ${YEAR} ${AUTHOR}. Todos os direitos reservados.`; d.appendChild(cr);
+    const cr = document.createElement('div'); cr.className = 'credits'; cr.innerHTML = `<div>Desenvolvido por <u>${DEVELOPER}</u> · github.com/JuanIan7<br>© ${YEAR} ${AUTHOR}. Todos os direitos reservados.</div><img src="icons/logo-juanian7.png" alt="Logo JuanIan7">`; d.appendChild(cr);
+    // toque na assinatura abre a página do desenvolvedor (precisa soltar o dedo no mesmo lugar: não abre por esbarrão)
+    let crAt = null; cr.addEventListener('pointerdown', (e) => { e.stopPropagation(); crAt = { x: e.clientX, y: e.clientY }; });
+    cr.addEventListener('pointerup', (e) => { if (crAt && Math.hypot(e.clientX - crAt.x, e.clientY - crAt.y) < 12) { try { window.open(DEVELOPER_URL, '_blank', 'noopener'); } catch (x) { /* sem navegador */ } } crAt = null; });
     const side = document.createElement('div'); side.className = 'side'; d.appendChild(side);
     this.mkBtn(side, 'sbtn', '🧒<span>Personagem</span>', () => { speak('Monte o seu personagem!'); this.show('editor'); });
     this.mkBtn(side, 'sbtn shop', '🛍️<span>Lojinha</span>', () => { speak('Lojinha de poderes!'); this.show('shop'); });

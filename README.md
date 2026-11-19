@@ -54,6 +54,14 @@ Teste no navegador: Espaço/↑ = pular, ↓/X = ação, P/Esc = pausa. Para PCs
 ## APK
 Cada push na `main` roda o GitHub Actions (`.github/workflows/build-apk.yml`): simula o jogo, compila o APK de teste (assinatura de depuração) e publica em **Releases → latest** (`ian-e-seus-amigos.apk`). Abra o link da Release no celular, baixe e instale (permitir "apps desconhecidos").
 
+### Instalador para os amigos (Google Drive)
+O APK do GitHub Actions usa chave de depuração e **não** deve ser enviado a ninguém. O instalador para os amigos sai de
+`bash scripts/publicar-instaladores.sh "o que mudou"` (ou `npm run publicar`): assina com a chave fixa dos jogos do Ian
+(fora do repositório, em `~/Projetos/_identidade/android`) e grava na pasta do Drive
+"Jogos Filho Versão APK e Versão IOS atualizados", com `versao.txt`. Com a mesma chave, quem atualiza não perde o progresso.
+
+Caça-bugs: `npm run test:bugs` (um robô joga a história inteira e a corrida infinita conferindo anomalias).
+
 ## Créditos
 
-Desenvolvido por Juan Carlos Silva de Araujo. © 2026 Juan Carlos Silva de Araujo. Todos os direitos reservados.
+Desenvolvido por [JuanIan7](https://github.com/JuanIan7). © 2026 Juan Carlos Silva de Araujo. Todos os direitos reservados.

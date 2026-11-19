@@ -7,8 +7,9 @@ android {
         applicationId "br.com.ianeamigos.jogo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // O script scripts/publicar-instaladores.sh passa um número de versão crescente a cada build
+        versionCode((System.getenv("ANDROID_VERSION_CODE") ?: "1") as Integer)
+        versionName(System.getenv("ANDROID_VERSION_NAME") ?: "1.0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,7 +17,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Chave fixa dos APKs de teste (a mesma de todos os jogos do Ian): com a mesma assinatura, o amigo instala a
+    // atualização por cima e não perde o progresso. A chave fica fora do repositório (~/Projetos/_identidade/android).
+    signingConfigs {
+        if (System.getenv("ANDROID_KEYSTORE_FILE")) {
+            teste {
+                storeFile file(System.getenv("ANDROID_KEYSTORE_FILE"))
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias(System.getenv("ANDROID_KEY_ALIAS") ?: "jogosdoian")
+                keyPassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            }
+        }
+    }
     buildTypes {
+        debug {
+            if (System.getenv("ANDROID_KEYSTORE_FILE")) signingConfig signingConfigs.teste
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

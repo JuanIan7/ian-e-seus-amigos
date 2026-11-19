@@ -165,14 +165,14 @@ export class Game3D {
     if (m && !m.done && this.sprayCd <= 0) this.spray(m);
   }
   setPaused(v) {
-    if (v === this.paused || this.over) return; this.paused = v;
+    if (v === this.paused || this.over || this.won) return; this.paused = v;
     if (v) {
       stopMusic(); silenceVoice();
       this.hud.pauseUI(true, {
         resume: () => this.setPaused(false), home: () => this.endGame('quit'),
         sound: () => { const on = !load().sound; save({ sound: on }); return on; },
       }, load().sound);
-    } else { this.hud.pauseUI(false); startMusic(this.phase.music); this.last = performance.now(); }
+    } else { this.hud.pauseUI(false); unlock(); startMusic(this.phase.music); this.last = performance.now(); }
   }
   exit(action = 'menu') { const d = { action, stars: this.stars, phase: this.phaseNum }; this.destroy(); this.onExit(d); }
   /** fim da partida (perdeu as vidas ou encerrou): as estrelas da corrida vão para a lojinha */
@@ -213,6 +213,8 @@ export class Game3D {
   // ---- poderes comprados na lojinha ----
   useItem(k) {
     if (this.paused || this.mini || this.over || !(this.inv[k] > 0) || this.powers[k]) return false;
+    // viatura não entra em missão: usada perto de uma, era cancelada na hora e o item se perdia. Avisa e guarda o item.
+    if (k === 'truck' && (this.focus || this.ents.some((e) => e.type === 'mission' && !e.done && e.s - this.dist < 32))) { this.hud.toast('🚒', 'Depois da missão!'); sfx.tap && sfx.tap(); return false; }
     unlock(); this.inv[k]--; const st = load(); save({ inv: { ...st.inv, [k]: Math.max(0, (st.inv[k] || 0) - 1) } }); this.hud.setInv(this.inv, SHOP);
     const d = SHOP.find((x) => x.key === k); this.grantPower(k, d && d.dur); this.stats.used = (this.stats.used || 0) + 1; return true;
   }
@@ -248,7 +250,8 @@ export class Game3D {
   }
   /** corrida infinita: a cada degrau de velocidade as estrelas valem mais (×2, ×3...) */
   updateStarMul() {
-    const k = 1 + Math.max(0, Math.floor((this.baseSpeed - INFINITE.speed0) / INFINITE.mulStep + 1e-6));
+    const raw = Math.min(INFINITE.speedMax, INFINITE.speed0 + INFINITE.ramp * this.runTime);   // sem o desconto da ajuda automática
+    const k = Math.max(this.starMul, 1 + Math.max(0, Math.floor((raw - INFINITE.speed0) / INFINITE.mulStep + 1e-6)));
     if (k !== this.starMul) { this.starMul = k; this.hud.setMul(k); this.hud.toast('⭐', 'Estrelas ×' + k + '!'); sfx.mult && sfx.mult(); }
   }
 
@@ -432,6 +435,9 @@ export class Game3D {
   // ================================================================ física do personagem
   groundOK(s) { return !this.world.inHole(s - 0.12, s + 0.12); }
   bridge() { return !!this.powers.truck || !!this.powers.fly; }
+  /** voo suspenso: em missão, ou chegando a uma missão ou ao desafio da fase, a criança pousa (senão ficava flutuando de asas
+   *  abertas sem ajudar, e o desafio só abria quando o poder acabava). Depois da missão o voo continua de onde parou. */
+  flyHeld() { return !!this.focus || this.ents.some((e) => (e.type === 'mission' || e.type === 'puzzle') && !e.done && e.s - this.dist < 12 && e.s - this.dist > -2); }
   /** altura do apoio sob a criança em (x, s): chão, plataformas e topo de obstáculos; -Infinity = vazio (buraco) */
   floorAt(x, s, y) {
     let f = (this.bridge() || this.groundOK(s)) ? 0 : -Infinity;
@@ -451,7 +457,9 @@ export class Game3D {
     if (p.softT > 0) p.softT -= dt;
     p.floating = false;
     // ---- voo (poder): segurar o pulo sobe, soltar desce devagar; não há risco de cair
-    if (this.powers.fly && !this.fall) {
+    const flying = this.powers.fly && !this.fall && !this.flyHeld();
+    if (this.powers.fly && !flying && p.flying) p.softT = 2.6;          // pouso suave
+    if (flying) {
       const target = this.jumpHeld ? 3.5 : 1.5;
       p.y += (target - p.y) * Math.min(1, dt * 3.4); p.vy = (target - p.y) * 3.4; p.ground = false; p.coyote = 0; p.buffer = 0; p.dbl = false; p.dblReq = false; p.floatT = 0; p.flying = true; p.rescued = false;
       if (p.flip > 0) p.flip -= dt; p.squash += (0 - p.squash) * Math.min(1, dt * 10);
@@ -766,7 +774,8 @@ export class Game3D {
     const fx = { star: () => sfx.star(), catch: () => sfx.catch && sfx.catch(), tap: () => sfx.tap && sfx.tap(), win: () => sfx.win(), hit: () => sfx.hit() };
     const reward = this.lives < this.maxLives ? '+1 ❤️ vida!' : '+5 ⭐';
     this.mini = startMinigame(this.el, kind || this.phase.puzzle, {
-      mode: this.modeId, rng: this.rng.frac, sfx: fx, speak, time: 30, reward, rewardSay: 'Muito bem! Você ganhou uma vida!',
+      mode: this.modeId, rng: this.rng.frac, sfx: fx, speak, time: 30, reward, rewardSay: this.lives < this.maxLives ? 'Muito bem! Você ganhou uma vida!' : 'Muito bem!',   // com as vidas cheias o prêmio são estrelas: não anuncia vida
+      paused: () => this.paused,
       onWin: () => this.closeMini(true), onClose: () => this.closeMini(false), onTimeout: () => this.closeMini(false),
     });
     this.mini.kindName = kind; this.mini.station = station;

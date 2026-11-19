@@ -490,5 +490,17 @@
  {
   "texto": "Parabéns, você venceu todos os desafios, meu pequeno herói, meu filho.",
   "voz": "m"
+ },
+ {
+  "texto": "Fácil",
+  "voz": "f"
+ },
+ {
+  "texto": "Aventura",
+  "voz": "f"
+ },
+ {
+  "texto": "Desafio",
+  "voz": "f"
  }
 ]

@@ -147,6 +147,46 @@ batida; agora só a viatura (e o voo) passam por cima. (3) a principal: no modo 
 o jogo **trocava de faixa sozinho** para desviar do obstáculo (`assistSteer`), então a criança "passava reto" pelo cone; o desvio
 automático foi desligado (fica só o pulo de resgate nos vazios). Teste "5b. Colisão em alta velocidade (×3)" em sim3d.
 
+## Caça aos bugs e reinstalação (18/11/2026)
+
+Pedido do Juan: rodar o jogo atrás de erros, corrigir o que aparecesse e reinstalar no iPhone (o app de 09/11 tinha expirado).
+
+**Robô caçador de bugs** (`npm run test:bugs`, arquivo `tests/bugs3d.mjs`): joga a história inteira nos três modos e 12 min de
+corrida infinita mexendo em tudo como uma criança (troca de faixa, ×2/×3, mergulho, poderes da lojinha) e confere a cada tick:
+valores inválidos, travas, obstáculo atravessado sem batida, missão que não termina, desafio que não abre, vazamento de objetos,
+erros de página e frases sem gravação. Usa só o salvamento do navegador de teste. Resultado final: tudo ok.
+
+Corrigido:
+- **Voo perto de missão ou do desafio da fase**: a criança ficava flutuando de asas abertas durante a missão (sem a pose da
+  mangueira) e o desafio só abria quando o poder acabava (até 10 s parada). Agora o voo fica suspenso a 12 m de uma missão ou
+  desafio (`flyHeld()`): ela pousa, ajuda e volta a voar depois. O tempo do poder não corre durante a missão.
+- **Viatura usada colada numa missão**: era cancelada na hora e o item da lojinha se perdia. Agora o jogo avisa
+  "Depois da missão!" e guarda o item.
+- **Relógio do desafio correndo escondido**: ao sair do app no meio do desafio, a pausa cobria o desafio mas os 30 s continuavam
+  contando. O desafio agora para junto com a pausa (`paused` passado ao minijogo).
+- **Voz robótica nas dificuldades**: "Fácil", "Aventura" e "Desafio" não tinham gravação e caíam na voz do sistema. Regra nova:
+  frase sem gravação fica em silêncio e entra em `window.__ianVoice.missing` (os testes exigem lista vazia na partida). As três
+  frases já estão em `scripts/vozes/falas.json`; falta gerar (API paga: só com autorização do Juan).
+- **Som depois de ligação, Siri ou alarme no iPhone**: o áudio ficava no estado `interrupted` e não voltava; `unlock()` agora
+  retoma em qualquer estado que não seja `running`. Continuar da pausa também destrava o áudio.
+- **Tela**: com muitos poderes comprados, os itens passavam por cima dos corações (agora quebram em duas linhas); na corrida
+  infinita, com milhares de estrelas, o placar passava por cima da distância (placar, distância e ×N numa fila só, `.tl`).
+- **Multiplicador de estrelas** não cai mais quando a ajuda automática reduz a velocidade (antes caía avisando "Estrelas ×N!").
+- **Resultado**: os botões só valem meio segundo depois de a tela aparecer (dedo que ainda estava jogando não escolhe sem querer).
+  Com as vidas cheias, o prêmio do desafio (estrelas) não anuncia mais "ganhou uma vida". Tecla P não despausa na tela de vitória.
+- Subtítulo dos cartões "Modo História"/"Corrida Infinita" não encosta mais na borda.
+
+Também nesta atualização (regras gerais do Juan):
+- **Assinatura nova**: logo da águia + "Desenvolvido por JuanIan7 · github.com/JuanIan7" (toque abre o GitHub) + direitos, na
+  tela inicial e nos metadados (Info.plist, strings.xml, package.json, README, index.html). Logo em `public/icons/`.
+- **Instalador Android pelo Drive**: `bash scripts/publicar-instaladores.sh "o que mudou"` (ou `npm run publicar`) assina com a
+  chave fixa dos jogos do Ian (`~/Projetos/_identidade/android`), numera a versão pela data e grava em
+  "Jogos Filho Versão APK e Versão IOS atualizados/Ian e Seus Amigos - Corrida de Resgate" com `versao.txt`.
+  O `android/app/build.gradle` lê a chave por variáveis de ambiente. Quem tinha um APK antigo (chave de depuração) precisa
+  desinstalar uma única vez; daí em diante instala por cima sem perder o progresso.
+- **iPhone**: reinstalado em 18/11 às 22h21; o perfil vale até **25/11/2026 22h21**. Depois de expirar, o iPhone pede de novo a
+  confiança no perfil: Ajustes > Geral > VPN e Gerenciamento de Dispositivos > Apple Development: juanhanzi@gmail.com > Confiar.
+
 ## Ideias para depois (não feitas)
 
 - Voz em Android: o WebView do Android pode não ter `speechSynthesis` (as frases faladas ficariam mudas). Se for o caso no

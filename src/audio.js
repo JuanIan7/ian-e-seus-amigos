@@ -11,7 +11,7 @@ function ensure() {
   try { ctx = new AC(); master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination); } catch (e) { ctx = null; }
   return ctx;
 }
-export function unlock() { const c = ensure(); if (c && c.state === 'suspended') c.resume(); }
+export function unlock() { const c = ensure(); if (c && c.state !== 'running' && c.state !== 'closed') { try { const p = c.resume(); p && p.catch && p.catch(() => {}); } catch (e) { /* segue sem som */ } } }   // no iOS, depois de ligação/Siri/alarme o estado é 'interrupted', não 'suspended'
 const on = () => load().sound;
 
 function tone(freq, dur, { type = 'sine', vol = 0.25, slide = 0, delay = 0 } = {}) {
@@ -159,7 +159,8 @@ export function currentTrack() { return curTrack; }
 // Falas: gravadas com voz natural (arquivos em vozes/, manifesto em src/vozes-manifest.js, gerados por
 // scripts/vozes/gerar-vozes.py). Voz feminina (a mãe) para o dia a dia e para ajudar bichinhos; voz masculina
 // (o pai) para salvar pessoas, apagar fogo e para a frase final do modo história. Se a frase ainda não tiver
-// gravação, cai na voz do sistema (speechSynthesis) com o tom certo.
+// gravação, NÃO é falada (decisão de 18/11/2026: nada de voz robótica) e entra em voiceDebug.missing, que os testes conferem.
+// A voz do sistema só fica como última reserva quando o aparelho não consegue tocar um arquivo que existe.
 // ---------------------------------------------------------------------------------------------
 const voiceBuf = {}, voicePending = {}, voiceEls = {};
 let voiceSrc = null, voiceEl = null, voiceSeq = 0;
@@ -221,14 +222,14 @@ function speakSynth(text, voice) {
   } catch (e) { /* sem voz: segue só com o visual */ }
 }
 /** último problema ao tocar uma gravação (para diagnóstico no aparelho: window.__ianVoice) */
-export const voiceDebug = { last: null, played: 0, fallbacks: 0 };
+export const voiceDebug = { last: null, played: 0, fallbacks: 0, missing: [] };   // missing: frases faladas sem gravação (cairiam na voz robótica); os testes exigem lista vazia
 if (typeof window !== 'undefined') window.__ianVoice = voiceDebug;
 /** fala uma frase. voice: 'f' (padrão) ou 'm'; se a frase tiver gravação, o gênero vem do manifesto */
 export function speak(text, voice = 'f') {
   if (!on()) return;
   const e = VOICES[norm(text)]; const seq = ++voiceSeq;
   silenceVoice();
-  if (!e) { voiceDebug.last = 'sem gravação: ' + text; voiceDebug.fallbacks++; speakSynth(text, voice); return; }
+  if (!e) { voiceDebug.last = 'sem gravação: ' + text; voiceDebug.fallbacks++; if (voiceDebug.missing.length < 60 && !voiceDebug.missing.includes(norm(text))) voiceDebug.missing.push(norm(text)); return; }   // sem gravação: fica em silêncio (a voz do sistema é robótica e o Juan não quer); a frase entra em scripts/vozes/falas.json para a próxima geração
   // 1) <audio> nativo; 2) Web Audio decodificado; 3) voz do sistema
   playVoiceElement(e.f, () => {
     if (seq !== voiceSeq) return;

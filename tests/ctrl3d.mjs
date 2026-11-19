@@ -85,6 +85,7 @@ await page.locator('.g3 .veil .btn').nth(0).dispatchEvent('pointerdown');
 ok(await page.locator('.g3 .res').evaluate((e) => getComputedStyle(e).display !== 'none'), 'encerrar mostra o resultado (estrelas da corrida)');
 const coins1 = await run(() => JSON.parse(localStorage.getItem('ian-e-seus-amigos:v1')).coins || 0);
 ok(coins1 >= coins0 + 37, 'as estrelas da corrida viram estrelas da lojinha', `${coins0} → ${coins1}`);
+await page.waitForTimeout(600);   // os botões do resultado só valem meio segundo depois de a tela aparecer
 await page.locator('.g3 .res .btn[data-k="menu"]').dispatchEvent('pointerdown');
 await page.waitForFunction(() => window.__ian.game.scene.isActive('Menu'), null, { timeout: 8000 }).catch(() => {});
 ok(await run(() => window.__ian.game.scene.isActive('Menu') && !window.__ian3), 'saída clara para o menu');
@@ -95,6 +96,7 @@ await run(() => { const g = window.__ian3; g.p.invul = 0; });
 for (let k = 0; k < 3; k++) await run(() => { const g = window.__ian3; g.p.invul = 0; g.onHit({ x: g.p.x, hit: false }); for (let i = 0; i < 30; i++) g.tick(1 / 60); });
 const ov = await run(() => { const g = window.__ian3; for (let i = 0; i < 120; i++) g.tick(1 / 60); return { lives: g.lives, over: g.over }; });
 ok(ov.lives === 0 && ov.over, '3 batidas = fim de jogo', JSON.stringify(ov));
+await page.waitForTimeout(600);   // os botões do resultado só valem meio segundo depois de a tela aparecer
 await page.locator('.g3 .res .btn[data-k="shop"]').dispatchEvent('pointerdown');
 await page.waitForFunction(() => window.__ian.app.screen === 'shop' && !window.__ian3, null, { timeout: 8000 }).catch(() => {});
 await run(() => { const s = JSON.parse(localStorage.getItem('ian-e-seus-amigos:v1')); s.coins = 250; localStorage.setItem('ian-e-seus-amigos:v1', JSON.stringify(s)); });

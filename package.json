@@ -1,11 +1,12 @@
 {
   "name": "ian-e-seus-amigos",
   "version": "0.1.0",
-  "author": "Juan Carlos Silva de Araujo",
+  "author": "JuanIan7 (https://github.com/JuanIan7)",
+  "homepage": "https://github.com/JuanIan7",
   "license": "UNLICENSED",
   "private": true,
   "type": "module",
-  "description": "Jogo infantil de corrida e resgate - Ian e Seus Amigos",
+  "description": "Jogo infantil de corrida e resgate - Ian e Seus Amigos. Desenvolvido por JuanIan7. © 2026 Juan Carlos Silva de Araujo. Todos os direitos reservados.",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
@@ -13,7 +14,9 @@
     "test": "node tests/sim3d.mjs && node tests/mini3d.mjs && node tests/ctrl3d.mjs",
     "test:ui": "node tests/ui.mjs",
     "test:2d": "node tests/sim.mjs",
-    "test:fases": "node tests/phases3d.mjs"
+    "test:fases": "node tests/phases3d.mjs",
+    "test:bugs": "node tests/bugs3d.mjs",
+    "publicar": "bash scripts/publicar-instaladores.sh"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.0",
