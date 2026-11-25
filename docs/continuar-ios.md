@@ -187,6 +187,12 @@ Também nesta atualização (regras gerais do Juan):
 - **iPhone**: reinstalado em 18/11 às 22h21; o perfil vale até **25/11/2026 22h21**. Depois de expirar, o iPhone pede de novo a
   confiança no perfil: Ajustes > Geral > VPN e Gerenciamento de Dispositivos > Apple Development: juanhanzi@gmail.com > Confiar.
 
+## Modelos 3D do Tripo (25/11/2026)
+
+Seis trocas aprovadas pelo Juan depois de uma prévia lado a lado: cenário das fases 1, 2, 4, 5 e 6 e o hidrante. Quatro ficaram de
+fora (pterossauro, cones, boia e viatura). Tudo em `docs/2026-11-25-modelos-3d-tripo.md`. Regra dele para modelos novos: mostrar a
+prévia antes de aplicar e não publicar nada sem ele pedir.
+
 ## Ideias para depois (não feitas)
 
 - Voz em Android: o WebView do Android pode não ter `speechSynthesis` (as frases faladas ficariam mudas). Se for o caso no

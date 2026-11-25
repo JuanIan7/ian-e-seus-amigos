@@ -5,6 +5,7 @@ import { THREE, PART_HOOK, toMesh, hex, markShared } from './kit.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as B from './props.js';
 import * as C from './creatures.js';
+import { usa, modelo, modeloPronto } from './modelos.js';
 import { HQ, treeMuito, houseAlta, towerAlta, lampAlta, truckAlta, TEX, LEAVES } from './hq.js';
 import { HQ2, withLevel, FUR, shopMuito, fountainAlta, plazaMuito, obs2Muito } from './hq2.js';
 import { pineMuito, bigtreeMuito, groundMuito, obs3Muito, leafPadAlta } from './hq3.js';
@@ -131,8 +132,14 @@ const WALLS = [0xffd66b, 0xff9fb2, 0x86dcff, 0xb4f08a, 0xffb36b, 0xcdb2ff], ROOF
 const TOWER_C = [0xb9c6dd, 0xffcf9a, 0xa7e0ff, 0xf2b7d0, 0xc8e6a5];
 const lampRot = () => { const g = new THREE.Group(), l = lampAlta(); l.rotation.y = Math.PI; g.add(l); return compact(g); };
 
+const pronto = (nome, o) => () => modelo(nome, o) || new THREE.Group();
 export const SCENERY = {
   ...B.SCENERY,
+  // modelos prontos (só aparecem se o item de cenário estiver ligado; ver EXTRAS em world.js)
+  quartelM: pronto('quartel', { altura: 6.4 }), ambulanciaM: pronto('ambulancia', { comprimento: 3.3 }), cachorroM: pronto('cachorro', { altura: 1.25 }),
+  jipeM: pronto('jipe', { comprimento: 3.4 }), arvoreGatoM: pronto('arvore-gato', { altura: 4.6 }),
+  dinoRexM: pronto('dino-rex', { altura: 4.4 }), dinoTriM: pronto('dino-tri', { altura: 3.0 }), dinoBraquiM: pronto('dino-braqui', { altura: 7.5 }), dinoEstegoM: pronto('dino-estego', { altura: 2.7 }),
+  lanchaM: pronto('lancha', { comprimento: 5.2 }), heliM: pronto('helicoptero', { comprimento: 5.6 }),
   // fase 1
   tree: (r) => scaled(solid(treeMuito(r.pick(TREE_C), r.int(1, 9))), r.between(0.95, 1.3)),
   house: (r) => solid(houseAlta(r.pick(WALLS), r.pick(ROOFS))),
@@ -194,7 +201,14 @@ const OBS = {
   lavarock: () => lavarockMuito(),
 };
 export const OBSTACLES = B.OBSTACLES;
-export function buildObstacle(kind) { return OBS[kind] ? solid(OBS[kind]()) : B.buildObstacle(kind); }
+// obstáculos com modelo pronto (item ligado + arquivo carregado); medidas escolhidas para caber na caixa de colisão de cada um
+const OBS_MODELO = { hydrant: ['hidrante', 'hidrante', { altura: 0.92 }] };
+export function buildObstacle(kind) {
+  const om = OBS_MODELO[kind]; if (om && usa(om[0])) { const m = modelo(om[1], om[2]); if (m) return m; }
+  return OBS[kind] ? solid(OBS[kind]()) : B.buildObstacle(kind);
+}
+/** este obstáculo tem modelo pronto ligado e já carregado? (o jogo refaz o molde se o arquivo chegou depois) */
+export function obstaculoPronto(kind) { const om = OBS_MODELO[kind]; return !!(om && usa(om[0]) && modeloPronto(om[1])); }
 
 // ------------------------------------------------------------------ missões e veículos
 export function buildBin() { const g = HQ.binfire.muito(); g.remove(g.children[g.children.length - 1]); return solid(g); }

@@ -10,7 +10,7 @@ Jogo infantil de corrida e resgate para Android (para o Ian, 4 anos, e seus prim
 - Pause no canto superior direito (continuar, voltar ao menu, som).
 
 ## Versão atual (3D) — o que tem
-Jogo em **Three.js** (3D cartoon, tudo modelado por código, sem imagens externas). A versão 2D antiga continua com `?2d` na URL.
+Jogo em **Three.js** (3D cartoon, quase tudo modelado por código). Desde 25/11/2026, parte do cenário e o hidrante usam modelos 3D gerados pelo Juan no Tripo (`public/modelos/`, ver `docs/2026-11-25-modelos-3d-tripo.md`). A versão 2D antiga continua com `?2d` na URL.
 - **Tela inicial 3D:** personagem num palco com o cãozinho e a viatura; escolha de modo (⭐ Fácil, ⭐⭐ Aventura, ⭐⭐⭐ Desafio), fase inicial (1 a 7), **Personagem** e **Lojinha**.
 - **Personalização:** roupa (10), pele (7), rosto (3), cabelo (10, inclui moicano e raspadinho), cor do cabelo (8), olhos (6), acessório (óculos, óculos escuros, laço, tiara, mochila, cachecol), sardas e sobrancelhas. Prévia 3D que gira com o dedo; botão 🎲 sorteia.
 - **7 fases** na mesma partida: 1 Pequeno bombeiro, 2 Resgate na cidade, 3 Floresta, 4 Alturas (refeita, com menos obstáculos), 5 Dinossauros, 6 **Resgate aquático**, 7 **Resgate no vulcão**. Depois da 7ª, a próxima fase é **sorteada**. Cada fase tem **música própria**.
@@ -37,7 +37,7 @@ Ainda falta: arte final, áudio final, ajuste fino de dificuldade com as crianç
 - **Tecnologia:** Phaser 3 + Vite (HTML5) empacotado com Capacitor. Funciona offline, desenvolvimento e testes no navegador, APK gerado pelo GitHub Actions.
 - **Câmera:** corrida lateral com profundidade por paralaxe, celular na horizontal. Tela lógica 1560×720 (≈19,5:9); outras proporções ganham faixas.
 - **Controles:** 2 botões grandes (ação à esquerda, pular à direita), toque imediato (pointerdown), até 3 toques simultâneos.
-- **Arte/áudio:** tudo desenhado/sintetizado por código; nenhuma imagem de referência foi incorporada ao jogo (as referências do projeto servem só para entender temas). Nenhum recurso externo → nada a atribuir.
+- **Arte/áudio:** desenhado/sintetizado por código; nenhuma imagem de referência foi incorporada ao jogo (as referências do projeto servem só para entender temas). Exceções, ambas do próprio Juan: as falas gravadas (`public/vozes/`, Gemini TTS) e os modelos 3D de cenário (`public/modelos/`, gerados na conta dele no Tripo; arte original, sem personagem de terceiros). Nada de terceiros a atribuir.
 - **Sem** anúncios, compras, contas, chat, ranking ou coleta de dados. O app mantém a permissão INTERNET padrão do Capacitor (a remover/validar numa etapa de endurecimento).
 
 ## Desenvolver

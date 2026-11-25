@@ -12,6 +12,7 @@ import { MODES3, PHASES3, SHOP, GAME_MODES } from '../g3/config3.js';
 import { load, save, DEFAULT_LOOK } from '../save.js';
 import { sfx, unlock, startMusic, stopMusic, speak, preloadVoices } from '../audio.js';
 import { VOICES } from '../vozes-manifest.js';
+import * as modelos from '../g3/modelos.js';
 
 // Assinatura (padrão de todos os projetos do Juan): logo da águia, "Desenvolvido por JuanIan7" (abre o GitHub) e direitos.
 // Aparece na tela inicial. Só remover ou alterar se o Juan pedir.
@@ -125,6 +126,7 @@ export class FrontApp {
     put('house', -9, -9, 1, 0.5); put('house', 8, -12, 1, -0.4); put('tree', -5, -6, 1.1); put('tree', 5.5, -5, 1.2); put('tree', -11, -3, 1.3); put('bush', -3.4, -2.5, 0.9); put('bush', 3.6, -2.2, 0.8); put('flowers', 2.6, 1.5, 0.6); put('flowers', -2.8, 1.2, 0.55);
     for (let i = 0; i < 6; i++) { const c = put('cloud', -30 + i * 12, -46 - (i % 2) * 6, 0.75); c.position.y = 15 + (i % 3) * 3; }
     this.truck = buildFireTruck(); this.truck.scale.setScalar(0.62); this.truck.position.set(4.6, 0, -3.6); this.truck.rotation.y = -0.7; s.add(this.truck);
+    modelos.carregarModelos();   // modelos prontos (cenário e hidrante): baixam em segundo plano enquanto a criança está na tela inicial
     this.dog = buildDog('bolota'); this.dog.scale.setScalar(1.1); this.dog.position.set(1.75, 0, 0.7); this.dog.rotation.y = Math.PI - 0.5; s.add(this.dog);
     const dsh = blobShadow(1.1, 1.4); dsh.position.set(1.75, 0.02, 0.7); s.add(dsh);
     this.shadow = blobShadow(1.1, 1.1); this.shadow.position.y = 0.25; s.add(this.shadow);
@@ -323,6 +325,6 @@ export function startApp() {
     start: (n, d = {}) => { if (n === 'Game3D') app.startGame(d); else if (n === 'Character') { app.toHome(); app.show('editor'); } else app.toHome(); },
     stop: () => {},
   };
-  window.__ian = { app, game: { scene } };
+  window.__ian = { app, game: { scene }, modelos, THREE };   // modelos/THREE: usados pelos testes (tests/previa-modelos.mjs, tests/bugs3d.mjs)
   return app;
 }

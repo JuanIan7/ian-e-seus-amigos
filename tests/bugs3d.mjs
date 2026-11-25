@@ -85,12 +85,14 @@ const BOT = (seed) => {
   };
 };
 
+const URL0 = 'http://localhost:' + (process.env.PORT || 4199) + '/?renderer=canvas' + (process.env.MODELOS ? '&modelos=' + process.env.MODELOS : '');
 async function open(o) {
-  await page.goto('http://localhost:' + (process.env.PORT || 4199) + '/?renderer=canvas');
+  await page.goto(URL0);
   await page.waitForFunction(() => window.__ian && window.__ian.game.scene.isActive('Menu'), null, { timeout: 20000 });
   // dados só deste navegador de teste (nunca o salvamento real do jogador): lojinha cheia para o robô usar os poderes
   await page.evaluate(() => { localStorage.setItem('ian-e-seus-amigos:v1', JSON.stringify({ inv: { shield: 3, truck: 3, fly: 3, glide: 3, magnet: 3, jump: 3, speed: 3, jet: 3 } })); });
-  await page.reload(); await page.waitForFunction(() => window.__ian && window.__ian.game.scene.isActive('Menu'), null, { timeout: 20000 });
+  await page.goto(URL0); await page.waitForFunction(() => window.__ian && window.__ian.game.scene.isActive('Menu'), null, { timeout: 20000 });
+  await page.evaluate(() => window.__ian.modelos.carregarModelos());      // modelos prontos (cenário, hidrante) carregados antes da partida, como no aparelho
   await page.evaluate((o) => window.__ian.game.scene.start('Game3D', { ...o, manual: true }), o);
   await page.waitForFunction(() => window.__ian3, null, { timeout: 20000 });
 }

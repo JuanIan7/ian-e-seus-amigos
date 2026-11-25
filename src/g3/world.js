@@ -1,6 +1,7 @@
 // Mundo 3D: céu, pista em blocos reciclados, cenário lateral por tema, buracos. O jogador fica em z = 0 e o
 // mundo "corre" em direção a +z; uma posição s na pista vira z = dist - s (negativo = à frente).
 import { THREE, P, box, toMesh, mergeParts, toon, hex, mixHex, rng, lowDetail, disposeDeep } from './kit.js';
+import { usa } from './modelos.js';
 import { SCENERY, buildSea, animateSea, SEA_TILE } from './final.js';
 import { SCENERY as SCENERY_LO } from './props.js';
 
@@ -94,6 +95,23 @@ export const THEMES3 = {
   },
 };
 
+// Peças extras de cenário com os modelos prontos (cada tema tem seu item; desligado = cenário como sempre foi).
+// Usam um sorteio à parte, para não mudar a posição do resto do cenário. `tira` remove da mesma calçada o que ficaria por baixo.
+const lado = (c) => (c % 2 ? 1 : -1);
+const EXTRAS = {
+  bairro: (r, c) => (usa('cenario-bairro') && ((c % 5) + 5) % 5 === 1) ? { side: lado(c), tira: (it) => it.x > 6 && it.x < 14, items: [
+    { key: 'quartelM', x: 11.6, z: 6, face: true }, { key: 'ambulanciaM', x: 7.5, z: 8.2, rot: Math.PI }, { key: 'cachorroM', x: 6.6, z: 3.4, face: true }] } : null,
+  praca: (r, c) => { if (!usa('cenario-praca')) return null; const k = ((c % 4) + 4) % 4;
+    return k === 1 ? { side: lado(c >> 2), tira: (it) => it.x > 6 && it.x < 8.6, items: [{ key: 'jipeM', x: 7.4, z: 6, rot: Math.PI }] }
+      : k === 3 ? { side: lado((c >> 2) + 1), tira: (it) => it.x > 6 && it.x < 9, items: [{ key: 'arvoreGatoM', x: 7.6, z: 6, face: true }] } : null; },
+  pre: (r, c) => (usa('cenario-dinos') && ((c % 3) + 3) % 3 === 0) ? { side: lado(Math.floor(c / 3)), tira: (it) => it.x > 7.5 && it.x < 17, items: [
+    { key: r.pick(['dinoRexM', 'dinoTriM', 'dinoBraquiM', 'dinoEstegoM']), x: r.between(10.5, 13), z: 6, face: true, vira: r.between(-0.5, 0.5) }] } : null,
+  agua: (r, c) => (usa('cenario-mar') && ((c % 4) + 4) % 4 === 1) ? { side: lado(c >> 2), tira: (it) => it.key === 'boat' || it.key === 'palmisle' || it.key === 'rocksea', items: [
+    { key: 'lanchaM', x: r.between(10.5, 13), z: 6, y: -0.62, rot: Math.PI + r.between(-0.4, 0.4) }] } : null,
+  altura: (r, c) => (usa('cenario-alturas') && ((c % 4) + 4) % 4 === 2) ? { side: lado(c >> 2), tira: (it) => it.x > 6 && it.x < 9, items: [
+    { key: 'heliM', x: 9.4, z: 6, face: true, vira: 0.5 }] } : null,
+};
+
 const sideGeoCache = {}, trackGeoCache = {};
 function trackGeo(th, parity) {
   const k = th + parity; if (trackGeoCache[k]) return trackGeoCache[k];
@@ -173,6 +191,7 @@ export class World {
     if (!this.lib[id]) {
       const hq = lowDetail(() => SCENERY[key](rng(this.seed + id))), lk = LO_KEY[key] || key;
       if (SCENERY_LO[lk] && SCENERY_LO[lk] !== SCENERY[key]) { const lod = new THREE.LOD(); lod.addLevel(hq, 0); lod.addLevel(lowDetail(() => SCENERY_LO[lk](rng(this.seed + id))), LOD_NEAR[key] || LOD_FAR); this.lib[id] = lod; }
+      else if (key.endsWith('M') && !hq.children.length) return hq;      // modelo pronto ainda não carregado: não guarda o vazio
       else this.lib[id] = hq;
     }
     return this.lib[id].clone();
@@ -257,6 +276,7 @@ export class World {
   fillChunk(ch, c, theme) {
     while (ch.g.children.length) ch.g.remove(ch.g.children[0]);
     const T = THEMES3[theme], r = rng(this.seed + theme + c);
+    const ex = EXTRAS[theme] ? EXTRAS[theme](rng(this.seed + theme + c + 'x'), c) : null;
     [-1, 1].forEach((side) => {
       const items = T.layout(r, side);
       items.forEach((it, idx) => {
@@ -267,8 +287,15 @@ export class World {
         else if (it.face) o.rotation.y = side < 0 ? -Math.PI / 2 : Math.PI / 2;
         else o.rotation.y = r.between(0, 6.28);
         if (it.key === 'lamp') o.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
+        if (ex && ex.side === side && ex.tira(it)) return;                // dá lugar à peça extra desta calçada (depois dos sorteios, para o resto do cenário não mudar)
         ch.g.add(o);
       });
+    });
+    if (ex) ex.items.forEach((it) => {
+      const o = this.libGet(it.key, theme, 0);
+      o.position.set(it.x * ex.side, it.y || 0, -it.z);
+      o.rotation.y = it.rot !== undefined ? it.rot : (ex.side < 0 ? Math.PI / 2 : -Math.PI / 2) + (it.vira || 0);   // de frente para a pista
+      ch.g.add(o);
     });
   }
 
@@ -279,6 +306,7 @@ export class World {
   themeKeys(theme) {
     const T = THEMES3[theme], keys = new Set(T.far);
     for (let k = 0; k < 10; k++) { const r = rng(this.seed + theme + 'k' + k); [-1, 1].forEach((side) => T.layout(r, side).forEach((it) => keys.add(it.key))); }
+    if (EXTRAS[theme]) for (let c = 0; c < 24; c++) { const ex = EXTRAS[theme](rng(this.seed + theme + 'kx' + c), c); if (ex) ex.items.forEach((it) => keys.add(it.key)); }
     return [...keys];
   }
   /** monta UM item que falta da biblioteca do tema (chame uma vez por quadro); devolve false quando não há mais nada */

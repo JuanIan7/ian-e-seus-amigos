@@ -5,7 +5,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { buildKid, poseKid } from './kid.js';
 import { World, LANE_W, THEMES3 } from './world.js';
 import { buildStar, buildPickup } from './props.js';
-import { buildObstacle, OBSTACLES, buildFlame, buildBin, buildHouse, buildTower, buildEgg, buildDog, buildDino, buildPlatform, buildRaft, buildLifeRing, buildFireTruck, FLAME_T } from './final.js';
+import { obstaculoPronto, buildObstacle, OBSTACLES, buildFlame, buildBin, buildHouse, buildTower, buildEgg, buildDog, buildDino, buildPlatform, buildRaft, buildLifeRing, buildFireTruck, FLAME_T } from './final.js';
 import { MISSIONS3, ACTIONS } from './missions3.js';
 import { buildBoneProp, buildGiftBox, buildFruit, buildLeaf, buildPad, buildGlider, buildWing, animCreature } from './creatures.js';
 import { MODES3, PHASES3, LIVES, SHOP, INFINITE, STORY_END, RUN_MULS } from './config3.js';
@@ -664,7 +664,11 @@ export class Game3D {
     for (let i = 0; i < 3; i++) this.addStar(l, s - 1.4 + i * 1.4, 1.1 + (i === 1 ? 0.9 : 0.3));
     return 5;
   }
-  tmpl(kind) { return (this.tpl[kind] ||= markShared(buildObstacle(kind))); }
+  tmpl(kind) {
+    // modelo pronto que chegou depois de o molde antigo ter sido montado: refaz o molde (os clones já na pista ficam como estão)
+    if (this.tpl[kind] && !this.tpl[kind].userData.modelo && obstaculoPronto(kind)) this.tpl[kind] = null;
+    return (this.tpl[kind] ||= markShared(buildObstacle(kind)));
+  }
   addObstacle(kind, lane, s) {
     const d = OBSTACLES[kind]; let mesh;
     if (kind === 'ptero') { mesh = new THREE.Group(); const b = buildDino('ptero'); b.scale.setScalar(1.15); b.rotation.y = Math.PI; mesh.add(b); mesh.userData.b = b; }
