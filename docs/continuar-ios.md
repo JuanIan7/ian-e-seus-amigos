@@ -193,6 +193,23 @@ Seis trocas aprovadas pelo Juan depois de uma prévia lado a lado: cenário das 
 fora (pterossauro, cones, boia e viatura). Tudo em `docs/2026-11-25-modelos-3d-tripo.md`. Regra dele para modelos novos: mostrar a
 prévia antes de aplicar e não publicar nada sem ele pedir.
 
+## Publicação de 25/11/2026 e reinstalação dos três jogos no iPhone
+
+O Juan pediu "pode publicar e reinstalar os jogos". Feito em 25/11, por volta das 23h:
+- **Este jogo:** commit `2b3076c` enviado ao GitHub; iPhone reinstalado; APK com a chave fixa na pasta do Drive
+  (versão 2026.11.25-2308, com o `versao.txt`).
+- **Os outros dois jogos do Ian estavam vencidos no iPhone** e foram reinstalados da última versão salva de cada um, sem mexer
+  nas pastas dos projetos:
+  - *Super Resgatista IAN*: a pasta fica no iCloud e muitos arquivos estavam só na nuvem (a compilação travava esperando o
+    download). Saída: `git clone` do GitHub para uma pasta local, `npm ci`, `npm run build`, `npx cap sync ios`, `xcodebuild` com
+    `DEVELOPMENT_TEAM=8B992A8Y4H` e `devicectl device install app`. O commit que ele tem a mais na pasta é só de documentação.
+  - *Guardiões da Floresta* (Godot, `~/Documents/Pessoais/Projeto Unity Jogos/Jogo 02`): havia outra sessão trabalhando lá, com
+    mudanças não salvas. Saída: `git archive HEAD godot | tar -x` para uma pasta temporária, `Godot --headless --import`,
+    `--export-debug "iOS"` e os mesmos `xcodebuild` e `devicectl`. Foi a versão do commit `de50203`, sem o que estava em andamento.
+- Os três perfis valem até **02/12/2026, por volta das 23h**. Lembrete na agenda pessoal em 01/12 às 10h.
+- Se o iPhone recusar abrir o app logo depois de instalar ("profile has not been explicitly trusted"), basta tentar de novo um
+  pouco depois ou confiar no perfil em Ajustes > Geral > VPN e Gerenciamento de Dispositivos.
+
 ## Ideias para depois (não feitas)
 
 - Voz em Android: o WebView do Android pode não ter `speechSynthesis` (as frases faladas ficariam mudas). Se for o caso no
